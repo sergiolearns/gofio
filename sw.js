@@ -1,6 +1,6 @@
 // Service worker de Gofio: guarda la app para que funcione sin conexión (en el sótano del gimnasio).
 // Al publicar una versión nueva se cambia VERSION; la app avisa y el usuario decide cuándo actualizar.
-const VERSION = 'gofio-0.1.0';
+const VERSION = 'gofio-0.1.1';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/variables.css', 'css/app.css',
@@ -13,7 +13,7 @@ const ARCHIVOS = [
   'js/pantallas/ajustes.js', 'js/pantallas/bienvenida.js',
   'js/cerebro/index.js', 'js/cerebro/musculos.js', 'js/cerebro/fechas.js', 'js/cerebro/ejercicios.js', 'js/cerebro/plantilla.js',
   'js/cerebro/volumen.js', 'js/cerebro/esfuerzo.js', 'js/cerebro/progresion.js', 'js/cerebro/vuelta.js', 'js/cerebro/planificador.js',
-  'js/cerebro/dia-malo.js', 'js/cerebro/sustituciones.js', 'js/cerebro/constancia.js',
+  'js/cerebro/dia-malo.js', 'js/cerebro/sustituciones.js', 'js/cerebro/constancia.js', 'js/cerebro/generador.js',
 ];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ARCHIVOS)));

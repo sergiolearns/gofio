@@ -11,3 +11,4 @@ export * from './planificador.js'; // R15
 export * from './dia-malo.js';     // R21
 export * from './sustituciones.js';// R22
 export * from './constancia.js';   // R23
+export * from './generador.js';    // R25

@@ -1,7 +1,7 @@
 // «Mi semana»: constancia (R23), series por músculo con su franja (R9) y los entrenos de la semana.
 import * as G from '../cerebro/index.js';
 import { estado, ajuste, hoy, sesionesHechas, seriesHechas, seriesDe, resumen, ponerAjuste } from '../logica.js';
-import { el, esc, kg, num, sierra, hoja, granos, reduceMovimiento } from '../ui.js';
+import { el, esc, kg, num, sierra, hoja, granos, reduceMovimiento, escalonar } from '../ui.js';
 import { exportarCopia } from './ajustes.js';
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -29,7 +29,7 @@ export function semanaPantalla(_, nav) {
     if (d > peor) { peor = d; corto = m; }
   }
   const tarde = G.diaSemana(fecha) >= 3;
-  const linea2 = dias === 0 ? 'Aún puede sumar. Nada roto.' : tarde && corto && peor >= 0.5 ? `${SUJETO[corto]} por detrás.` : 'Va sumando.';
+  const linea2 = dias === 0 ? 'Aún hay tiempo.' : tarde && corto && peor >= 0.5 ? `${SUJETO[corto]} por detrás.` : 'Va sumando.';
   const titular = `${NUM[dias] ?? `${dias} días`} esta semana.`;
 
   // Recordatorio de copia: los domingos, o si la última tiene más de 7 días (06-tecnica.md, punto 4).
@@ -66,21 +66,21 @@ export function semanaPantalla(_, nav) {
       <h1 class="titular grande" id="titulo-semana">${esc(titular)}<br>${esc(linea2)}</h1>
     </div>
     ${sierra()}
-    ${recordar ? `<div class="recordatorio"><span>¿Guardamos copia de la semana?</span><button class="chip" type="button" data-copia>Guardar</button></div>` : ''}
-    <div class="fila-titulo"><h2>Constancia</h2><span class="etiqueta">un grano por día entrenado</span></div>
+    ${recordar ? `<div class="recordatorio"><span>¿Guardamos copia?</span><button class="chip" type="button" data-copia>Guardar</button></div>` : ''}
+    <div class="fila-titulo"><h2>Constancia</h2><span class="etiqueta">un grano, un día</span></div>
     <div class="constancia" role="img" aria-label="Días entrenados en las últimas 8 semanas: ${c.semanas.map((w) => w.dias).join(', ')}">${constancia}</div>
     <div class="constancia-pie" aria-hidden="true">${c.semanas.map((w) => `<span>${w.dias}</span>`).join('')}</div>
-    <p class="etiqueta" style="margin-top:8px">${c.conEntreno} de ${c.total} semanas con entreno. Faltar una no borra nada.</p>
+    <p class="etiqueta" style="margin-top:8px">${c.conEntreno} de ${c.total} semanas entrenando. Una floja no borra nada.</p>
     ${sierra()}
-    <div class="fila-titulo"><h2>Series por músculo</h2><span class="etiqueta">franja de 10 a 20</span></div>
+    <div class="fila-titulo"><h2>Series por músculo</h2><span class="etiqueta">lo bueno: 10-20</span></div>
     <ul class="barras" role="img" aria-label="Series por músculo esta semana: ${tablaAccesible}">${barras}</ul>
-    <div class="leyenda"><span><i style="width:16px;height:8px;background:var(--harina-2)"></i>franja útil (R9)</span><span><i style="width:2px;height:12px;background:var(--tierra)"></i>lo que pide tu rutina</span><span>Cuenta fraccional: 1 serie directa, 0,5 si ayuda</span></div>
+    <div class="leyenda"><span><i style="width:16px;height:8px;background:var(--harina-2)"></i>zona buena</span><span><i style="width:2px;height:12px;background:var(--tierra)"></i>tu rutina</span><span>Si el músculo solo ayuda, cuenta media</span></div>
     ${sierra()}
-    <div class="fila-titulo"><h2>Entrenos de la semana</h2></div>
-    ${filasSesiones ? `<ul class="lista-sesiones">${filasSesiones}</ul>` : '<p class="texto-2" style="font-size:15px">Todavía ninguno. Cuando quieras, en «Hoy» está lo que toca.</p>'}
+    <div class="fila-titulo"><h2>Esta semana</h2></div>
+    ${filasSesiones ? `<ul class="lista-sesiones">${filasSesiones}</ul>` : '<p class="texto-2" style="font-size:15px">Aún nada. En Hoy tienes lo que toca.</p>'}
     ${sierra()}
     <div class="fila-titulo"><h2>Peso, comida y pasos</h2></div>
-    <p class="hueco">Llegan en la v0.3 (peso y comida) y la v0.4 (pasos). Hasta entonces aquí no hay números: Gofio no se inventa datos.</p>
+    <p class="hueco">Muy pronto. Mientras, aquí no verás números inventados.</p>
   </section>`);
 
   nodo.querySelector('[data-copia]')?.addEventListener('click', async () => { await exportarCopia(); nav.refrescar(); });
@@ -91,6 +91,7 @@ export function semanaPantalla(_, nav) {
     alEntrar({ refresco } = {}) {
       if (refresco || reduceMovimiento()) return;
       nodo.querySelectorAll('.barra .valor').forEach((b, k) => b.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 520, delay: 60 + k * 30, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'backwards' }));
+      escalonar(nodo.querySelectorAll('.lista-sesiones li, .barras li'), { desde: 40, retraso: 22 });
       nodo.querySelectorAll('.constancia .g').forEach((g, k) => g.animate([{ transform: 'translateY(-10px) scale(.4)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 360, delay: 40 + k * 22, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' }));
     },
   };
@@ -106,7 +107,7 @@ function detalle(id, nav) {
   }).join('');
   const r = resumen(s);
   const { nodo } = hoja(`<h2>${esc(s.nombre)}</h2><p class="sub">${r.series} series · ${r.minutos} min</p><ul class="opciones">${porEj}</ul>
-    <div class="botones"><button class="boton plano" type="button" data-ver>Ver el resumen</button></div>`, { clara: true });
+    <div class="botones"><button class="boton plano" type="button" data-ver>Ver resumen</button></div>`, { clara: true });
   nodo.querySelector('[data-ver]').onclick = () => { document.querySelector('.hoja-fondo')?.click(); nav.ir('hecho', { sesionId: id, soloVer: true }); };
 }
 

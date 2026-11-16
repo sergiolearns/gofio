@@ -2,11 +2,11 @@
 import * as G from '../cerebro/index.js';
 import { estado, prescripcion, seriesDelHueco, siguienteHueco, guardarSerie, borrarSerie, guardarSesion, terminarSesion,
   escalonDe, descansoDe, ponerNota } from '../logica.js';
-import { el, esc, kg, mmss, icono, granos, ajustarTitulo, hoja, pedirNumero, confirmar, vibrar, reduceMovimiento } from '../ui.js';
+import { el, esc, kg, mmss, icono, granos, ajustarTitulo, hoja, pedirNumero, confirmar, vibrar, reduceMovimiento, estallidoGranos, escalonar, pop } from '../ui.js';
 
 const sesionPorId = (id) => estado.sesiones.find((s) => s.id === id);
-const rango = (a, b) => (a === b ? `${a}` : `${a} a ${b}`);
-const textoRir = (r) => (r.min === r.max ? `deja ${r.min} sin hacer` : r.min === 0 ? `al fallo o deja ${r.max}` : `deja ${r.min} o ${r.max} sin hacer`);
+const rango = (a, b) => (a === b ? `${a}` : `${a}-${b}`);
+const textoRir = (r) => (r.min === r.max ? `deja ${r.min}` : r.min === 0 ? `al fallo o deja ${r.max}` : `deja ${r.min}-${r.max}`);
 
 // ── Wake Lock: la pantalla no se apaga durante la sesión (si iOS lo permite) ──
 let candado = null;
@@ -49,17 +49,17 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
       <div style="display:flex;align-items:center;gap:10px">${granos(n, total, nueva)}<span class="etiqueta num">serie ${Math.min(n + 1, total)} de ${total}</span></div>
     </div>
     <h1 class="titular grande serie-titulo" id="titulo-serie">${esc(ej.nombre)}</h1>
-    <p class="serie-sub">${rango(slot.repMin, slot.repMax)} repeticiones, ${textoRir(p.rir)}${slot.original ? ` · cambia a ${esc(G.ejercicio(slot.original).nombre.toLowerCase())}` : ''}</p>
-    ${otraVez ? `<p class="serie-otra-vez">La otra vez: <b class="num">${otraVez}</b></p>` : ''}
+    <p class="serie-sub">${rango(slot.repMin, slot.repMax)} reps · ${textoRir(p.rir)}${slot.original ? ` · en lugar de ${esc(G.ejercicio(slot.original).nombre.toLowerCase())}` : ''}</p>
+    ${otraVez ? `<p class="serie-otra-vez">Última vez: <b class="num">${otraVez}</b></p>` : ''}
     ${sug ? `<div class="sugerencia"><span class="flecha">${icono(sug.icono)}</span><span>${esc(sug.texto)}</span></div>` : ''}
     <div class="paso">
       <button class="redondo" type="button" data-peso="-1" aria-label="Menos peso">${icono('menos', 'width="26" height="26"')}</button>
-      <div class="valor"><button type="button" data-escribir-peso aria-label="Escribir el peso"><span class="cifra peso num" data-v-peso>${peso == null ? '—' : kg(peso)}</span></button><span class="unidad">${lastre ? 'kg de lastre' : 'kilos'}</span></div>
+      <div class="valor"><button type="button" data-escribir-peso aria-label="Escribir el peso"><span class="cifra peso num" data-v-peso>${peso == null ? '—' : kg(peso)}</span></button><span class="unidad">${lastre ? 'kg de lastre' : 'kg'}</span></div>
       <button class="redondo" type="button" data-peso="1" aria-label="Más peso">${icono('mas', 'width="26" height="26"')}</button>
     </div>
     <div class="paso" style="margin-top:6px">
       <button class="redondo" type="button" data-reps="-1" aria-label="Una repetición menos">${icono('menos', 'width="26" height="26"')}</button>
-      <div class="valor"><span class="cifra reps num" data-v-reps>${reps}</span><span class="unidad">repeticiones</span></div>
+      <div class="valor"><span class="cifra reps num" data-v-reps>${reps}</span><span class="unidad">reps</span></div>
       <button class="redondo" type="button" data-reps="1" aria-label="Una repetición más">${icono('mas', 'width="26" height="26"')}</button>
     </div>
     <div class="rir" role="group" aria-labelledby="rir-t">
@@ -72,11 +72,11 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
       <button class="chip" type="button" data-cambiar>${icono('cambiar', 'width="18" height="18"')}Cambiar</button>
       <button class="chip" type="button" data-nota>${icono('nota', 'width="18" height="18"')}Nota</button>
       <button class="chip" type="button" data-lista>${icono('lista', 'width="18" height="18"')}Ejercicios</button>
-      ${n > 0 ? `<button class="chip" type="button" data-deshacer>Borrar la última</button>` : ''}
+      ${n > 0 ? `<button class="chip" type="button" data-deshacer>Borrar última</button>` : ''}
       <button class="chip" type="button" data-terminar>${icono('fin', 'width="18" height="18"')}Terminar</button>
     </div>
     <div class="relleno"></div>
-    <button class="boton boton-guardar" type="button" data-guardar>${esUltima ? 'Guardar y terminar' : 'Guardar serie'}${esUltima ? '' : `<span class="lado">descanso ${mmss(descansoDe(slot.ej))}</span>`}</button>
+    <button class="boton boton-guardar" type="button" data-guardar>${esUltima ? 'Guardar y terminar' : 'Guardar serie'}${esUltima ? '' : `<span class="lado">${mmss(descansoDe(slot.ej))}</span>`}</button>
   </section>`);
 
   const vPeso = nodo.querySelector('[data-v-peso]');
@@ -91,7 +91,7 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
     peso = G.siguienteEscalon(peso, escalon, dir); pintarPeso(dir);
   }));
   async function escribirPeso() {
-    const v = await pedirNumero({ titulo: lastre ? 'Lastre' : 'Peso', sub: lastre ? 'Kilos de lastre (0 si vas sin lastre).' : ej.equipo === 'mancuernas' ? 'Kilos de cada mancuerna.' : 'Kilos totales.', valor: peso ?? '' });
+    const v = await pedirNumero({ titulo: lastre ? 'Lastre' : 'Peso', sub: lastre ? 'Kilos extra (0 sin lastre).' : ej.equipo === 'mancuernas' ? 'Kilos de cada mancuerna.' : 'Kilos en total.', valor: peso ?? '' });
     if (v != null) { const d = peso == null ? 1 : Math.sign(v - peso); peso = v; pintarPeso(d); }
   }
   nodo.querySelector('[data-escribir-peso]').onclick = escribirPeso;
@@ -101,12 +101,15 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
   nodo.querySelectorAll('[data-rir]').forEach((b) => b.addEventListener('click', () => {
     rir = Number(b.dataset.rir);
     nodo.querySelectorAll('[data-rir]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    pop(b, 1.1); vibrar();
   }));
 
   nodo.querySelector('[data-guardar]').onclick = async () => {
     if (peso == null) { await escribirPeso(); if (peso == null) return; }
     vibrar();
+    estallidoGranos(nodo.querySelector('[data-guardar]'));
     await guardarSerie(s, i, { peso, reps, rir });
+    await new Promise((ok) => setTimeout(ok, reduceMovimiento() ? 0 : 160));
     const sigMismo = seriesDelHueco(s, i).length < slot.series ? i : -1;
     const sig = sigMismo >= 0 ? i : siguienteHueco(s, (i + 1) % s.plan.length);
     if (sig === -1) {
@@ -120,19 +123,20 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
   };
 
   nodo.querySelector('[data-deshacer]')?.addEventListener('click', async () => {
-    const ok = await confirmar({ titulo: 'Borrar la última serie', texto: `${kg(ultimaHoy.peso)} kg × ${ultimaHoy.reps}, RIR ${ultimaHoy.rir}.`, si: 'Borrar', peligro: true });
+    const ok = await confirmar({ titulo: '¿Borrar la última?', texto: `${kg(ultimaHoy.peso)} kg × ${ultimaHoy.reps}, te quedaban ${ultimaHoy.rir === 4 ? '4 o más' : ultimaHoy.rir}.`, si: 'Borrar', peligro: true });
     if (ok) { await borrarSerie(ultimaHoy); nav.refrescar(); }
   });
   nodo.querySelector('[data-nota]').onclick = () => {
-    const { nodo: h, cerrar } = hoja(`<h2>Nota · ${esc(ej.nombre)}</h2><p class="sub">Se queda para la próxima vez (asiento, agarre, máquina…).</p>
-      <textarea aria-label="Nota" maxlength="400" enterkeyhint="done">${esc(nota ?? '')}</textarea><div class="botones"><button class="boton" type="button">Guardar nota</button></div>`);
+    const { nodo: h, cerrar } = hoja(`<h2>Nota</h2><p class="sub">${esc(ej.nombre)}: asiento, agarre, máquina…</p>
+      <textarea aria-label="Nota" maxlength="400" enterkeyhint="done">${esc(nota ?? '')}</textarea><div class="botones"><button class="boton" type="button">Guardar</button></div>`);
     h.querySelector('.boton').onclick = async () => { await ponerNota(slot.ej, h.querySelector('textarea').value); cerrar(); nav.refrescar(); };
   };
   nodo.querySelector('[data-cambiar]').onclick = () => {
     const sust = G.sustitutos(slot.original ?? slot.ej);
     const lista = [...(slot.original ? [{ ...G.ejercicio(slot.original), mismoPatron: true, vuelta: true }] : []), ...sust.filter((x) => x.id !== slot.ej)];
-    const { nodo: h, cerrar } = hoja(`<h2>Cambiar ejercicio</h2><p class="sub">Si la máquina está ocupada. Se mantienen las series y repeticiones; el peso sale de tu historial con el ejercicio nuevo (R22).</p>
-      <ul class="opciones">${lista.map((x) => `<li><button type="button" data-ej="${x.id}"><span class="que"><b>${esc(x.nombre)}</b><span>${x.vuelta ? 'El de tu rutina' : x.mismoPatron ? 'Mismo movimiento' : 'Mismo músculo, otro movimiento'}</span></span></button></li>`).join('')}</ul>`);
+    const { nodo: h, cerrar } = hoja(`<h2>Cambiar ejercicio</h2><p class="sub">¿Máquina ocupada? Mismas series y reps.</p>
+      <ul class="opciones">${lista.map((x) => `<li><button type="button" data-ej="${x.id}"><span class="que"><b>${esc(x.nombre)}</b><span>${x.vuelta ? 'El de tu rutina' : x.mismoPatron ? 'Mismo movimiento' : 'Mismo músculo'}</span></span></button></li>`).join('')}</ul>`);
+    escalonar(h.querySelectorAll('.opciones li'), { desde: 120, retraso: 30 });
     h.querySelectorAll('[data-ej]').forEach((b) => b.addEventListener('click', async () => {
       const nuevo = b.dataset.ej;
       slot.original = slot.original ?? slot.ej;
@@ -144,13 +148,14 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
   nodo.querySelector('[data-lista]').onclick = () => {
     const { nodo: h, cerrar } = hoja(`<h2>${esc(s.nombre)}</h2><ul class="opciones">${s.plan.map((x, k) => {
       const hh = seriesDelHueco(s, k).length;
-      return `<li><button type="button" data-k="${k}"><span class="que"><b>${esc(G.ejercicio(x.ej).nombre)}</b><span>${hh} de ${x.series} series</span></span>${granos(hh, x.series)}</button></li>`;
+      return `<li><button type="button" data-k="${k}"><span class="que"><b>${esc(G.ejercicio(x.ej).nombre)}</b><span>${hh} de ${x.series}</span></span>${granos(hh, x.series)}</button></li>`;
     }).join('')}</ul>`);
+    escalonar(h.querySelectorAll('.opciones li'), { desde: 120, retraso: 30 });
     h.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => { cerrar(); nav.reemplazar('serie', { sesionId: s.id, i: Number(b.dataset.k) }); }));
   };
   nodo.querySelector('[data-terminar]').onclick = async () => {
     const hay = estado.series.some((x) => x.sesionId === s.id);
-    const ok = await confirmar({ titulo: 'Terminar la molienda', texto: hay ? 'Lo que no has hecho se queda sin hacer; no pasa nada. La semana se recalcula sola.' : 'No has guardado ninguna serie: la sesión se descarta.', si: 'Terminar' });
+    const ok = await confirmar({ titulo: '¿Terminar ya?', texto: hay ? 'Lo que falte se queda. La semana se reajusta sola.' : 'No has guardado nada: no cuenta.', si: 'Terminar' });
     if (!ok) return;
     const r = await terminarSesion(s); mantenerEncendida(false);
     if (r) nav.reemplazar('hecho', { sesionId: s.id }); else nav.volver();
@@ -164,14 +169,14 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
 
 /** R12 · La sugerencia de la próxima vez, en una frase. */
 function sugerencia(p, slot) {
-  if (p.vuelta === 'larga') return { icono: 'baja', texto: `Semana de vuelta: ${p.peso != null ? `${kg(p.peso)} kg (un 10 % menos), ` : ''}${p.series} series y 2-3 de margen.` };
-  if (slot.diaMalo) return { icono: 'igual', texto: 'Día malo: el peso de siempre, 2 series y más margen.' };
+  if (p.vuelta === 'larga') return { icono: 'baja', texto: `Semana de vuelta: ${p.peso != null ? `${kg(p.peso)} kg, ` : ''}${p.series} series, sin apurar.` };
+  if (slot.diaMalo) return { icono: 'igual', texto: 'Día malo: tu peso, 2 series, sin apurar.' };
   switch (p.accion) {
-    case 'subir': return { icono: 'sube', texto: `Sube a ${kg(p.peso)} kg: la otra vez llegaste a ${slot.repMax} en todas las series.` };
-    case 'bajar': return { icono: 'baja', texto: `Baja a ${kg(p.peso)} kg: la otra vez no llegaste a ${slot.repMin} con algo de margen.` };
-    case 'mantener': return { icono: 'igual', texto: `Mismo peso; busca ${p.reps.join(' · ')} repeticiones.` };
-    case 'inicial': return { icono: 'igual', texto: `Empiezas con tu carga de partida: ${kg(p.peso)} kg.` };
-    case 'primera': return { icono: 'info', texto: `Primera vez: pon un peso con el que llegues a ${rango(slot.repMin, slot.repMax)} dejando ${p.rir.min}-${p.rir.max} sin hacer.` };
+    case 'subir': return { icono: 'sube', texto: `Sube a ${kg(p.peso)} kg. Llegaste a ${slot.repMax} en todas.` };
+    case 'bajar': return { icono: 'baja', texto: `Baja a ${kg(p.peso)} kg y recupera reps.` };
+    case 'mantener': return { icono: 'igual', texto: `Mismo peso. Busca ${p.reps.join(' · ')}.` };
+    case 'inicial': return { icono: 'igual', texto: `Empiezas con ${kg(p.peso)} kg.` };
+    case 'primera': return { icono: 'info', texto: `Primera vez: un peso que te deje ${rango(slot.repMin, slot.repMax)} reps con margen.` };
     default: return null;
   }
 }
@@ -196,19 +201,19 @@ export function descansoPantalla({ sesionId }, nav) {
       ${granos(hechasDesde, desde.series, hechasDesde - 1)}
     </div>
     <h1 class="titular grande" id="titulo-descanso" style="margin-top:12px">Descanso</h1>
-    <p class="serie-sub">${esc(G.ejercicio(desde.ej).nombre)} · van ${hechasDesde} de ${desde.series}</p>
+    <p class="serie-sub">${esc(G.ejercicio(desde.ej).nombre)} · ${hechasDesde} de ${desde.series}</p>
     <div class="descanso-disco" role="timer" aria-label="Tiempo de descanso">
       <svg class="anillo" viewBox="0 0 328 328" aria-hidden="true"><circle class="pista" cx="164" cy="164" r="${R}"/><circle class="hecho" cx="164" cy="164" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
       <img src="iconos/disco-millo.svg" alt="" width="300" height="300" draggable="false">
     </div>
     <p class="cifra descanso-tiempo num" data-tiempo aria-live="off">${mmss(d.total)}</p>
-    <p class="etiqueta" style="text-align:center;margin-top:6px">La muela da una vuelta en ${mmss(d.total)}</p>
+    <p class="etiqueta" data-respira style="text-align:center;margin-top:6px">Respira.</p>
     <div class="relleno"></div>
     <div class="descanso-pie">
       <button class="redondo" type="button" data-mas style="font-size:20px">+30 s</button>
-      <p class="siguiente">${mismo ? `Ahora viene la serie ${hechasSig + 1}` : `Ahora: <b>${esc(G.ejercicio(sig.ej).nombre)}</b>`}<br><b class="num">${pesoSig != null ? `${kg(pesoSig)} kg × ` : ''}${rango(sig.repMin, sig.repMax)}</b></p>
+      <p class="siguiente">${mismo ? `Siguiente: serie ${hechasSig + 1}` : `Siguiente: <b>${esc(G.ejercicio(sig.ej).nombre)}</b>`}<br><b class="num">${pesoSig != null ? `${kg(pesoSig)} kg × ` : ''}${rango(sig.repMin, sig.repMax)}</b></p>
     </div>
-    <button class="boton" type="button" data-ya style="margin-top:14px">${mismo ? `Empezar ya la serie ${hechasSig + 1}` : 'Empezar ya'}</button>
+    <button class="boton" type="button" data-ya style="margin-top:14px">${mismo ? `Empezar serie ${hechasSig + 1}` : 'Vamos'}</button>
   </section>`);
 
   const img = nodo.querySelector('img');
@@ -226,13 +231,13 @@ export function descansoPantalla({ sesionId }, nav) {
     if (!quieto) img.style.transform = `rotate(${angulo}deg)`;
     anillo.style.strokeDashoffset = String(C * (1 - Math.min(1, f)));
     tiempo.textContent = mmss(quedan / 1000);
-    if (quedan <= 0 && !avisado) { avisado = true; tiempo.classList.add('listo'); vibrar(); }
+    if (quedan <= 0 && !avisado) { avisado = true; tiempo.classList.add('listo'); nodo.querySelector('[data-respira]').textContent = '¡Dale!'; pop(nodo.querySelector('[data-ya]'), 1.05); vibrar(); }
     raf = requestAnimationFrame(cuadro);
   }
   nodo.querySelector('[data-volver]').onclick = () => nav.volver();
   nodo.querySelector('[data-mas]').onclick = async () => {
     d.hasta += 30000; d.total += 30; avisado = false; tiempo.classList.remove('listo'); vibrar();
-    nodo.querySelectorAll('.etiqueta')[0].textContent = `La muela da una vuelta en ${mmss(d.total)}`;
+    nodo.querySelector('[data-respira]').textContent = 'Respira.';
     await guardarSesion(s);
   };
   nodo.querySelector('[data-ya]').onclick = async () => {

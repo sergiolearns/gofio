@@ -1,7 +1,7 @@
 // «Molienda hecha»: el resumen al terminar, con el disco en almagre estampado como un sello.
 import * as G from '../cerebro/index.js';
 import { estado, resumen, planDeHoy, hoy, seriesDe } from '../logica.js';
-import { el, esc, kg, num, grano, contar, vibrar, reduceMovimiento } from '../ui.js';
+import { el, esc, kg, num, grano, contar, vibrar, reduceMovimiento, escalonar } from '../ui.js';
 
 export function hechoPantalla({ sesionId, soloVer = false }, nav) {
   const s = estado.sesiones.find((x) => x.id === sesionId);
@@ -15,17 +15,17 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
     const m = r.mejor; const nombre = G.ejercicio(m.ej).nombre;
     const sube = m.delta != null && m.delta > 0.05;
     mejor = `${m.marca ? '<p class="fuerte" style="color:var(--almagre)">Marca nueva.</p>' : ''}<p>${esc(nombre)}: ${kg(m.top.peso)} kg × ${m.top.reps}. ${sube
-      ? `Fuerza estimada ${num(m.hoyE)} kg, ${num(m.delta)} más que la otra vez.`
-      : `Fuerza estimada ${num(m.hoyE)} kg, como la otra vez: se consolida.`}</p>`;
+      ? `Fuerza +${num(m.delta)} kg.`
+      : 'Igual que la última vez: se asienta.'}</p>`;
   } else {
-    mejor = '<p>Primera vez con estos ejercicios en Gofio: ya hay de dónde partir.</p>';
+    mejor = '<p>Primera vez: ya tienes punto de partida.</p>';
   }
   // Lo próximo: lo que propondría el planificador mañana (R15), sin datos inventados.
   let proximo = '';
   try {
     const manana = G.sumarDias(hoy(), 1);
     const plan = planDeHoy(manana, Date.parse(manana + 'T18:00:00'));
-    proximo = `${r.duro ? 'Hecho gofio. ' : ''}Si vienes mañana, tocaría ${plan.nombre.toLowerCase()}.`;
+    proximo = `${r.duro ? 'Hecho gofio. ' : ''}Mañana, si vienes: ${plan.nombre.toLowerCase()}.`;
   } catch { proximo = r.duro ? 'Hecho gofio.' : ''; }
 
   const nodo = el(`<section class="hecho" aria-labelledby="titulo-hecho">
@@ -38,12 +38,12 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
       <div><span class="cifra" data-n="${r.ejercicios}">${r.ejercicios}</span><p class="etiqueta">ejercicios</p></div>
     </div>
     <div class="hecho-granos" role="img" aria-label="${r.series} series, un grano por serie">${ss.map(() => grano(true)).join('')}</div>
-    <p class="etiqueta" style="margin-top:6px">Un grano por serie.</p>
+    <p class="etiqueta" style="margin-top:6px">Un grano, una serie.</p>
     <svg class="sierra" width="100%" height="10" aria-hidden="true"><defs><pattern id="ph" width="12" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L6 2L12 10Z" fill="currentColor"/></pattern></defs><rect width="100%" height="10" fill="url(#ph)"/></svg>
-    <div class="bloque"><h3>Lo mejor de hoy</h3>${mejor}</div>
+    <div class="bloque"><h3>Lo mejor</h3>${mejor}</div>
     ${proximo ? `<div class="bloque"><h3>Lo próximo</h3><p>${esc(proximo)}</p></div>` : ''}
     <div class="relleno" style="min-height:24px"></div>
-    <button class="boton oscuro" type="button" data-cerrar>${soloVer ? 'Volver' : 'Guardar y cerrar'}</button>
+    <button class="boton oscuro" type="button" data-cerrar>${soloVer ? 'Volver' : 'Listo'}</button>
   </section>`);
 
   nodo.querySelector('[data-cerrar]').onclick = () => { vibrar(); if (soloVer) nav.volver(); else nav.ir('hoy', {}, { modo: 'pestana' }); };
@@ -54,6 +54,7 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
       const sello = nodo.querySelector('.sello');
       if (!soloVer) { sello.classList.add('estampa'); setTimeout(vibrar, 500); }
       nodo.querySelectorAll('[data-n]').forEach((c) => contar(c, Number(c.dataset.n), soloVer ? 0 : 900));
+      escalonar(nodo.querySelectorAll('.bloque'), { desde: soloVer ? 0 : 900, retraso: 120 });
       if (!soloVer && !reduceMovimiento()) {
         nodo.querySelectorAll('.hecho-granos .grano').forEach((g, k) => g.animate(
           [{ transform: 'translateY(-14px) scale(.6)', opacity: 0 }, { transform: 'none', opacity: 1 }],

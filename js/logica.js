@@ -14,6 +14,7 @@ export const ajuste = (clave) => {
     case 'escalones': return { ...G.ESCALONES_POR_DEFECTO, ...(a.escalones ?? {}) };
     case 'descanso': return { ...DESCANSO_POR_DEFECTO, ...(a.descanso ?? {}) };
     case 'minutos': return a.minutos ?? 75;
+    case 'objetivo': return a.objetivo ?? 'recomposicion';
     case 'diasPorSemana': return a.diasPorSemana ?? null;
     case 'cargasIniciales': return a.cargasIniciales ?? {};
     case 'perfil': return a.perfil ?? {};
@@ -80,29 +81,28 @@ export function planDeHoy(fecha = hoy(), ahora = Date.now()) {
   const plantilla = ajuste('plantilla');
   const plan = G.planificar({
     plantilla, series: seriesHechas(), sesiones: sesionesHechas(), hoy: fecha, ahora,
-    diasPorSemana: ajuste('diasPorSemana'), minutos: ajuste('minutos'),
+    diasPorSemana: ajuste('diasPorSemana'), diasPorDefecto: ajuste('diasDisponibles') ?? 3, minutos: ajuste('minutos'),
   });
   const ejercicios = plan.tipo === 'combinada' ? plan.ejercicios : G.diaDe(plantilla, plan.diaId).ejercicios;
   return { ...plan, nombre: plan.tipo === 'combinada' ? 'Combinada' : G.diaDe(plantilla, plan.diaId).nombre, ejercicios };
 }
 
-const ART = { pecho: 'al pecho', dorsal: 'a la espalda', 'hombro-anterior': 'al hombro anterior', 'hombro-lateral': 'al hombro lateral',
-  'hombro-posterior': 'al hombro posterior', biceps: 'al bíceps', triceps: 'al tríceps', cuadriceps: 'a los cuádriceps',
-  isquios: 'a los isquios', gluteo: 'al glúteo', gemelos: 'a los gemelos', abdomen: 'al abdomen' };
-export const aMusculo = (m) => ART[m] ?? m;
-const series = (n) => `${String(n).replace('.', ',')} ${n === 1 ? 'serie' : 'series'}`;
+// Nombres cortos para hablar de tú a tú.
+const CORTO = { pecho: 'pecho', dorsal: 'espalda', 'hombro-anterior': 'hombro', 'hombro-lateral': 'hombro', 'hombro-posterior': 'hombro de atrás',
+  biceps: 'bíceps', triceps: 'tríceps', cuadriceps: 'cuádriceps', isquios: 'isquios', gluteo: 'glúteo', gemelos: 'gemelos', abdomen: 'abdomen' };
+export const musculoCorto = (m) => CORTO[m] ?? m;
 
-/** R15.8 · El porqué en una frase. */
+/** R15.8 · El porqué en una frase corta. */
 export function porQue(plan) {
   const plantilla = ajuste('plantilla');
-  const ayer = plan.ayer ? G.diaDe(plantilla, plan.ayer)?.nombre : null;
-  const { musculo, faltan } = plan.motivo ?? {};
-  if (!musculo) return 'Semana completa: lo de hoy es extra. Sin prisa.';
-  const base = `${aMusculo(musculo)[0].toUpperCase() + aMusculo(musculo).slice(1)} le${musculo === 'cuadriceps' || musculo === 'isquios' || musculo === 'gemelos' ? 's' : ''} faltan ${series(faltan)} esta semana`;
-  if (plan.tipo === 'combinada') return `Solo queda una sesión esta semana: junto lo que más falta. ${base}.`;
-  if (ayer) return `${base} y ayer hiciste ${ayer.toLowerCase()}.`;
-  if (plan.razon === 'rotacion') return `${base}. Es el siguiente de tu rutina.`;
-  return `${base}.`;
+  const ayer = plan.ayer ? G.diaDe(plantilla, plan.ayer)?.nombre?.toLowerCase() : null;
+  const { musculo } = plan.motivo ?? {};
+  if (!musculo) return 'Semana hecha. Lo de hoy, de regalo.';
+  if (plan.tipo === 'combinada') return `Última de la semana: lo que más falta, junto.`;
+  const base = `Vas corto de ${musculoCorto(musculo)}.`;
+  if (ayer) return `${base} Ayer, ${ayer}.`;
+  if (plan.razon === 'rotacion') return `${base} Te toca por orden.`;
+  return base;
 }
 
 /** Empieza una sesión con una lista de ejercicios. */

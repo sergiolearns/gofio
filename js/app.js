@@ -1,7 +1,7 @@
 // Gofio v0.1 · arranque, navegación entre pantallas (con gesto de volver desde el borde) y pestañas.
 import { estado, arrancar, ajuste, sesionEnCurso } from './logica.js';
 import { pedirPersistencia } from './datos.js';
-import { icono, el, avisar, reduceMovimiento } from './ui.js';
+import { icono, el, avisar, reduceMovimiento, pop } from './ui.js';
 import { PANTALLAS } from './pantallas/index.js';
 
 const app = document.getElementById('app');
@@ -19,6 +19,7 @@ nav.addEventListener('click', (e) => {
   e.preventDefault();
   if (pila.length === 1 && pila[0].nombre === a.dataset.p) { pila[0].nodo.scrollTo({ top: 0, behavior: reduceMovimiento() ? 'auto' : 'smooth' }); return; }
   ir(a.dataset.p, {}, { modo: 'pestana' });
+  pop(nav.querySelector('[aria-current="page"] svg'), 1.25);
 });
 
 function montar(nombre, params) {
@@ -146,7 +147,7 @@ function registrarSW() {
   navigator.serviceWorker.register('sw.js').then((reg) => {
     const ofrecer = (w) => {
       if (!w || sesionEnCurso()) return;
-      avisar('Hay una versión nueva de Gofio', { texto: 'Actualizar', hacer: () => w.postMessage('saltar') });
+      avisar('Hay versión nueva', { texto: 'Actualizar', hacer: () => w.postMessage('saltar') });
     };
     if (reg.waiting && navigator.serviceWorker.controller) ofrecer(reg.waiting);
     reg.addEventListener('updatefound', () => {
@@ -164,22 +165,30 @@ function registrarSW() {
 const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const instalada = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 
+/** La cortinilla se queda lo justo para que se vea la animación (≈1,4 s desde que se abre) y se va con un fundido. */
+function quitarCortinilla() {
+  const c = document.getElementById('cortinilla'); if (!c) return;
+  const espera = reduceMovimiento() ? 0 : Math.max(0, 1450 - performance.now());
+  setTimeout(() => { c.classList.add('fuera'); setTimeout(() => c.remove(), 650); }, espera);
+}
+
 async function inicio() {
   try { await document.fonts.ready; } catch { /* */ }
   await arrancar();
   registrarSW();
   const forzar = new URLSearchParams(location.search).get('pantalla'); // solo para pruebas
-  if (esIOS && !instalada && !sessionStorage.getItem('gofio-seguir-safari') && !forzar) { ir('instalar', {}, { modo: 'pestana' }); return; }
-  if (!ajuste('inicioHecho') && !forzar) { ir('bienvenida', {}, { modo: 'pestana' }); return; }
-  pedirPersistencia();
-  ir(forzar && PANTALLAS[forzar] ? forzar : 'hoy', {}, { modo: 'pestana' });
+  if (esIOS && !instalada && !sessionStorage.getItem('gofio-seguir-safari') && !forzar) ir('instalar', {}, { modo: 'pestana' });
+  else if (!ajuste('inicioHecho') && !forzar) ir('bienvenida', {}, { modo: 'pestana' });
+  else { pedirPersistencia(); ir(forzar && PANTALLAS[forzar] ? forzar : 'hoy', {}, { modo: 'pestana' }); }
+  quitarCortinilla();
 }
 window.addEventListener('hashchange', () => {
   const p = location.hash.slice(1);
   if (PANTALLAS[p] && PESTANAS.some(([id]) => id === p)) ir(p, {}, { modo: 'pestana' });
 });
 inicio().catch((e) => {
-  app.append(el(`<section class="pantalla"><h1 class="titular">Algo ha fallado al abrir Gofio</h1><p style="margin-top:12px">${String(e?.message ?? e)}</p><p class="texto-2" style="margin-top:12px">Tus datos siguen en el móvil. Prueba a cerrar y abrir la app.</p></section>`));
+  quitarCortinilla();
+  app.append(el(`<section class="pantalla"><h1 class="titular">Algo ha fallado.</h1><p style="margin-top:12px">${String(e?.message ?? e)}</p><p class="texto-2" style="margin-top:12px">Tus datos siguen en el móvil. Cierra y vuelve a abrir.</p></section>`));
   console.error(e);
 });
 export { estado };

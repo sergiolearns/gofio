@@ -250,3 +250,43 @@ test('Fechas · la semana va de lunes a domingo', () => {
   assert.equal(G.diaSemana('2026-11-22'), 6);
   assert.equal(G.diasEntre('2026-10-24', '2026-10-26'), 2); // cambio de hora de por medio
 });
+
+// ── R25 · Proponer rutina ──────────────────────────────────────────────────
+test('R25 · el reparto sigue a los días: 3 = cuerpo completo, 4 = torso y pierna, 6 = empujes, jalones y pierna', () => {
+  assert.deepEqual(G.proponerRutina({ dias: 3 }).dias.map((d) => d.nombre), ['Cuerpo completo A', 'Cuerpo completo B', 'Cuerpo completo C']);
+  assert.deepEqual(G.proponerRutina({ dias: 4 }).dias.map((d) => d.nombre), ['Torso A', 'Pierna A', 'Torso B', 'Pierna B']);
+  assert.equal(G.proponerRutina({ dias: 6 }).dias.length, 6);
+});
+
+test('R25 · cabe en el tiempo (≈ 3 min por serie) y respeta R10 en todas las combinaciones', () => {
+  for (const minutos of [45, 60, 75, 90]) for (let dias = 1; dias <= 6; dias++) {
+    const p = G.proponerRutina({ dias, minutos });
+    for (const d of p.dias) {
+      assert.ok(d.ejercicios.reduce((s, e) => s + e.series, 0) <= Math.floor(minutos / 3), `${dias} días, ${minutos} min, ${d.nombre}`);
+      assert.deepEqual(G.excesosSesion(d.ejercicios), [], `${dias} días, ${minutos} min, ${d.nombre}`);
+      assert.ok(d.ejercicios.every((e) => e.series >= 2 && e.series <= 5));
+    }
+  }
+});
+
+test('R25 · con 3 días o más y 60 minutos o más, los músculos principales cerca de la franja (≥ 8) y ninguno por encima de 20', () => {
+  const principales = ['pecho', 'dorsal', 'hombro-lateral', 'biceps', 'triceps', 'cuadriceps', 'isquios'];
+  for (const minutos of [60, 75, 90]) for (let dias = 3; dias <= 6; dias++) {
+    const v = G.porQueRutina(G.proponerRutina({ dias, minutos })).volumen;
+    for (const m of principales) assert.ok(v[m] >= 8, `${m} = ${v[m]} con ${dias} días y ${minutos} min`);
+    for (const m of G.IDS_MUSCULOS) assert.ok(v[m] <= 20, `${m} = ${v[m]}`);
+  }
+});
+
+test('R25 · objetivo fuerza: los dos primeros multiarticulares de cada día a 4-6 repeticiones', () => {
+  const p = G.proponerRutina({ dias: 4, objetivo: 'fuerza' });
+  assert.deepEqual([p.dias[0].ejercicios[0].repMin, p.dias[0].ejercicios[0].repMax], [4, 6]);
+  const h = G.proponerRutina({ dias: 4, objetivo: 'recomposicion' });
+  assert.deepEqual([h.dias[0].ejercicios[0].repMin, h.dias[0].ejercicios[0].repMax], [6, 8]);
+});
+
+test('R25 · la plantilla propuesta funciona con el planificador (R15)', () => {
+  const p = G.proponerRutina({ dias: 3, minutos: 60 });
+  const r = G.planificar({ plantilla: p, hoy: '2026-11-16', diasPorSemana: 3 });
+  assert.equal(r.diaId, 'g1');
+});

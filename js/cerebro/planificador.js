@@ -9,13 +9,13 @@ const r5 = (x) => Math.round(x * 2) / 2;
 
 /**
  * R15 · Media de sesiones por semana en las últimas 4 semanas completas (para estimar las que quedan).
- * Sin historial, 3 (a medio camino de lo que Sergio dice que va: 1-4). Diseño de Gofio (⚪).
+ * Sin historial, los días que dijo en el primer arranque (o 3). Diseño de Gofio (⚪).
  */
-export function mediaSemanal(fechas, hoy, semanas = 4) {
+export function mediaSemanal(fechas, hoy, semanas = 4, porDefecto = 3) {
   const lunes = lunesDe(hoy);
   const desde = sumarDias(lunes, -7 * semanas);
   const dias = new Set(fechas.filter((f) => f >= desde && f < lunes));
-  if (!fechas.some((f) => f < lunes)) return 3;
+  if (!fechas.some((f) => f < lunes)) return porDefecto;
   return dias.size / semanas;
 }
 
@@ -30,7 +30,7 @@ export function mediaSemanal(fechas, hoy, semanas = 4) {
  * @param {number|null} p.diasPorSemana  lo que Sergio cree que irá; null = su media (R15.4)
  * @param {number} p.minutos         duración de la sesión (R15.7: ≈ 3 min por serie)
  */
-export function planificar({ plantilla, series = [], sesiones = [], hoy, ahora, diasPorSemana = null, minutos, catalogo = CATALOGO }) {
+export function planificar({ plantilla, series = [], sesiones = [], hoy, ahora, diasPorSemana = null, diasPorDefecto = 3, minutos, catalogo = CATALOGO }) {
   const lunes = lunesDe(hoy);
   const semana = series.filter((s) => s.fecha >= lunes && s.fecha < hoy);
   const sesSemana = sesiones.filter((s) => s.fecha >= lunes && s.fecha < hoy);
@@ -54,7 +54,7 @@ export function planificar({ plantilla, series = [], sesiones = [], hoy, ahora, 
   const puntuaciones = Object.fromEntries(plantilla.dias.map((d) => [d.id, puntuar(aporteDia[d.id])]));
   // 4 · Sesiones que quedan esta semana (contando la de hoy).
   const hechas = new Set(sesSemana.map((s) => s.fecha)).size;
-  const esperadas = diasPorSemana ?? Math.max(1, Math.round(mediaSemanal(sesiones.map((s) => s.fecha), hoy)));
+  const esperadas = diasPorSemana ?? Math.max(1, Math.round(mediaSemanal(sesiones.map((s) => s.fecha), hoy, 4, diasPorDefecto)));
   const diasQuedan = 7 - diaSemana(hoy);
   const quedan = Math.max(1, Math.min(diasQuedan, esperadas - hechas));
   // Días de la plantilla que aún no se han hecho esta semana.

@@ -3,6 +3,7 @@
 
 /* ── Base y plataforma ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; } /* si no, .aviso y .pestanas (display:flex/grid) asomaban arriba */
 html {
   -webkit-tap-highlight-color: transparent; /* sin el destello gris al tocar */
   -webkit-text-size-adjust: 100%;
@@ -84,14 +85,56 @@ h1, h2, h3, p { margin: 0; }
 
 /* ── Botones ───────────────────────────────────────────────────── */
 .boton {
+  position: relative; overflow: hidden; isolation: isolate;
   display: flex; align-items: center; justify-content: center; gap: 12px;
   width: 100%; min-height: 60px; padding: 0 20px; border-radius: var(--radio);
   background: var(--almagre); color: var(--almagre-texto);
   font-size: 28px; letter-spacing: .01em;
-  box-shadow: 0 6px 18px -8px rgba(184, 66, 46, .7);
-  transition: transform .12s var(--curva-salida), filter .12s ease, box-shadow .12s ease;
+  box-shadow: 0 10px 30px -8px rgba(184, 66, 46, .85), 0 0 0 1px rgba(255, 246, 232, .06) inset;
+  transition: transform .14s var(--curva-salida), filter .14s ease, box-shadow .2s ease;
 }
-.boton:active { transform: scale(.97); filter: brightness(.94); box-shadow: 0 2px 8px -4px rgba(184, 66, 46, .7); }
+/* Resplandor almagre que se ve, y que se enciende al pulsar (G49). */
+.boton:active { transform: scale(.95); filter: brightness(1.08) saturate(1.1); box-shadow: 0 0 0 7px rgba(184, 66, 46, .28), 0 14px 40px -6px rgba(184, 66, 46, 1); }
+/* Brillo que cruza los botones rojos al aparecer y, de vez en cuando, después. */
+.boton:not(.plano):not(.oscuro):not(.millo)::before {
+  content: ""; position: absolute; z-index: -1; top: -20%; bottom: -20%; left: 0; width: 38%;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 236, 200, .0) 20%, rgba(255, 236, 200, .38) 50%, rgba(255, 236, 200, 0) 80%, transparent 100%);
+  transform: translateX(-140%) skewX(-18deg); animation: brillo 6.5s cubic-bezier(.4,0,.2,1) .5s infinite;
+}
+@keyframes brillo { 0% { transform: translateX(-140%) skewX(-18deg); } 16%, 100% { transform: translateX(330%) skewX(-18deg); } }
+.boton.oscuro:active { box-shadow: 0 0 0 6px rgba(27, 25, 23, .18), 0 12px 30px -8px rgba(0,0,0,.6); }
+.boton.millo:active { box-shadow: 0 0 0 7px rgba(227, 166, 43, .28), 0 14px 36px -8px rgba(227, 166, 43, .9); }
+/* La onda desde el dedo (ui.js) */
+.onda { position: absolute; z-index: 0; border-radius: 50%; pointer-events: none; background: currentColor; transform: scale(0); }
+.chip, .redondo, .rir-botones button, .opciones button, .lista-sesiones button, .lista-ejercicios li, .pestanas a, .tarjeta-eleccion, .icono-boton, .fila.tocable, .tocable { position: relative; overflow: hidden; }
+.lista-ejercicios li { cursor: pointer; transition: background-color .15s ease, transform .12s var(--curva-salida); border-radius: 10px; margin: 0 -8px; padding: 0 8px; }
+.lista-ejercicios li:active { background: var(--basalto-2); transform: scale(.985); }
+.lista-sesiones li button { transition: background-color .15s ease, transform .12s var(--curva-salida); border-radius: 10px; }
+.lista-sesiones li button:active { background: var(--harina-2); transform: scale(.985); }
+.fila.tocable:active { background: rgba(0,0,0,.03); }
+.chip[aria-pressed="true"] { box-shadow: 0 6px 18px -8px rgba(243, 234, 219, .6); }
+.rir-botones button[aria-pressed="true"] { box-shadow: 0 8px 22px -8px rgba(227, 166, 43, .9); }
+/* Tarjetas de elección (primer arranque) */
+.tarjeta-eleccion {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px; border-radius: var(--radio-grande);
+  background: var(--basalto-2); border: 2px solid transparent; transition: border-color .2s ease, background-color .2s ease, transform .14s var(--curva-salida);
+}
+.tarjeta-eleccion:active { transform: scale(.98); }
+.tarjeta-eleccion[aria-checked="true"] { border-color: var(--millo); background: color-mix(in srgb, var(--millo) 12%, var(--basalto-2)); }
+.tarjeta-eleccion .marca-el { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--basalto-3); display: grid; place-items: center; transition: border-color .2s ease, background-color .2s ease; }
+.tarjeta-eleccion[aria-checked="true"] .marca-el { border-color: var(--millo); background: var(--millo); color: var(--basalto); }
+.tarjeta-eleccion .marca-el svg { width: 16px; height: 16px; opacity: 0; transform: scale(.4); transition: opacity .2s ease, transform .3s var(--curva-muelle); }
+.tarjeta-eleccion[aria-checked="true"] .marca-el svg { opacity: 1; transform: none; }
+.tarjeta-eleccion b { display: block; font-size: 18px; }
+.tarjeta-eleccion span.d { font-size: 14px; color: var(--piedra); }
+.elecciones { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.fila-opciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.fila-opciones .chip { min-width: 52px; justify-content: center; height: 48px; font-size: 18px; font-family: var(--letra-titulo); font-stretch: var(--estrecha); font-weight: 800; }
+.pasos-arranque { display: flex; gap: 6px; margin-top: 8px; }
+.pasos-arranque .grano { width: 12px; height: 16px; }
+.vista-rutina { margin-top: 12px; padding: 14px 16px; border-radius: var(--radio); background: var(--basalto-2); font-size: 14px; line-height: 1.45; }
+.vista-rutina b { font-size: 15px; }
+.vista-rutina p + p { margin-top: 6px; }
 .boton .lado { margin-left: auto; font-family: var(--letra-texto); font-stretch: normal; font-weight: 600; font-size: 14px; opacity: .85; }
 .boton.oscuro { background: var(--basalto); color: var(--harina-texto); box-shadow: 0 6px 18px -10px rgba(0,0,0,.6); }
 .boton.millo { background: var(--millo); color: var(--basalto); box-shadow: 0 6px 18px -10px rgba(227,166,43,.7); }
@@ -287,7 +330,12 @@ h1, h2, h3, p { margin: 0; }
 .firma { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--tierra); text-decoration: none; opacity: .8; }
 
 /* ── BIENVENIDA ────────────────────────────────────────────────── */
-.bienvenida { padding: 0 24px calc(env(safe-area-inset-bottom, 0px) + 20px); overflow: hidden; }
+.bienvenida { padding: 0 24px calc(env(safe-area-inset-bottom, 0px) + 20px); overflow-x: hidden; overflow-y: auto; }
+.bienvenida:has(.bienvenida-disco) { overflow: hidden; } /* solo la portada recorta el disco */
+/* En los pasos, el botón se queda abajo y siempre a la vista, con un degradado que tapa lo que pasa por debajo. */
+.pie-fijo { position: sticky; bottom: 0; z-index: 2; margin: 0 -24px; padding: 28px 24px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  background: linear-gradient(to bottom, rgba(27,25,23,0), var(--basalto) 34%); }
+.bienvenida.con-pie { padding-bottom: 0; }
 .bienvenida-disco { position: absolute; left: 50%; top: -330px; width: 660px; height: 660px; margin-left: -330px; }
 .bienvenida-disco img { width: 100%; height: 100%; }
 .bienvenida-disco.arranca img { animation: arranca 1.4s cubic-bezier(.16,1,.3,1) both; }
@@ -374,3 +422,17 @@ h1, h2, h3, p { margin: 0; }
   .hoja.visible { opacity: 1; }
   .paso-bienvenida { animation: fundido .3s ease forwards; }
 }
+.boton .onda { z-index: -1; }
+@media (prefers-reduced-motion: reduce) { .boton::before { animation: none !important; display: none; } }
+
+/* ── Cortinilla de entrada ─────────────────────────────────────── */
+#cortinilla { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--basalto); transition: opacity .45s ease, transform .6s var(--curva-salida); }
+#cortinilla.fuera { opacity: 0; transform: scale(1.06); pointer-events: none; }
+.col { display: flex; flex-direction: column; flex: 1; }
+/* Botón principal de cada pantalla siempre a la vista al desplazar. */
+.pantalla > .boton:last-child { position: sticky; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); z-index: 2; flex: none; }
+.fila-opciones { flex-wrap: nowrap; }
+.fila-opciones .chip { flex: 1 1 0; min-width: 0; padding: 0; }
+.serie-herramientas .chip, .fila-chips .chip { flex: none; }
+.chip svg { flex: none; }

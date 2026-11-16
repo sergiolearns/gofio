@@ -169,3 +169,59 @@ export function contar(nodo, hasta, ms = 700) {
   };
   requestAnimationFrame(paso);
 }
+
+// ── Todo lo que se toca responde (G49) ─────────────────────────
+// Onda que sale desde el dedo: como una piedra en el agua. Sin ella con «Reducir movimiento».
+export const TOCABLES = '.boton, .chip, .redondo, .rir-botones button, .opciones button, .lista-sesiones button, .lista-ejercicios li, .pestanas a, .tarjeta-eleccion, .icono-boton, .fila.tocable, .tocable';
+document.addEventListener('pointerdown', (e) => {
+  const t = e.target.closest(TOCABLES);
+  if (!t || reduceMovimiento() || t.disabled) return;
+  const r = t.getBoundingClientRect();
+  const lado = Math.hypot(Math.max(e.clientX - r.left, r.right - e.clientX), Math.max(e.clientY - r.top, r.bottom - e.clientY)) * 2;
+  const o = document.createElement('span');
+  o.className = 'onda';
+  o.style.cssText = `width:${lado}px;height:${lado}px;left:${e.clientX - r.left - lado / 2}px;top:${e.clientY - r.top - lado / 2}px`;
+  t.append(o);
+  const a = o.animate([{ transform: 'scale(0)', opacity: 0.32 }, { transform: 'scale(1)', opacity: 0 }], { duration: 560, easing: 'cubic-bezier(.22,1,.36,1)' });
+  a.onfinish = () => o.remove();
+}, { passive: true });
+
+/** Granos de millo que saltan desde un botón (al guardar una serie). */
+export function estallidoGranos(boton, n = 9) {
+  if (reduceMovimiento()) return;
+  const r = boton.getBoundingClientRect();
+  const capa = document.createElement('div');
+  capa.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:70';
+  document.body.append(capa);
+  const x0 = r.left + r.width / 2, y0 = r.top + r.height / 2;
+  for (let i = 0; i < n; i++) {
+    const g = document.createElement('div');
+    g.innerHTML = grano(true);
+    g.style.cssText = `position:absolute;left:${x0 - 8}px;top:${y0 - 11}px;width:16px;height:22px`;
+    capa.append(g);
+    const ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.95;
+    const dist = 70 + Math.random() * 90;
+    const dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist;
+    const giro = (Math.random() - 0.5) * 540;
+    g.animate([
+      { transform: 'translate(0,0) rotate(0deg) scale(.4)', opacity: 1 },
+      { transform: `translate(${dx * 0.7}px,${dy}px) rotate(${giro / 2}deg) scale(1.1)`, opacity: 1, offset: 0.45 },
+      { transform: `translate(${dx}px,${dy + 90}px) rotate(${giro}deg) scale(.8)`, opacity: 0 },
+    ], { duration: 820 + Math.random() * 200, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' });
+  }
+  setTimeout(() => capa.remove(), 1200);
+}
+
+/** Entrada escalonada de una lista (filas que suben y aparecen). */
+export function escalonar(nodos, { retraso = 40, desde = 60 } = {}) {
+  if (reduceMovimiento()) return;
+  [...nodos].forEach((n, i) => n.animate(
+    [{ transform: 'translateY(12px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+    { duration: 420, delay: desde + i * retraso, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' }));
+}
+
+/** Un «pop» corto (selección, pestaña nueva). */
+export function pop(n, escala = 1.14) {
+  if (reduceMovimiento() || !n) return;
+  n.animate([{ transform: 'scale(1)' }, { transform: `scale(${escala})` }, { transform: 'scale(1)' }], { duration: 320, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+}
