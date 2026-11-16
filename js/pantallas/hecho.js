@@ -31,7 +31,7 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
   const nodo = el(`<section class="hecho" aria-labelledby="titulo-hecho">
     <p class="etiqueta" style="text-transform:none">${esc(cuando[0].toUpperCase() + cuando.slice(1))} · ${esc(s.nombre)}</p>
     <h1 class="titulo-gigante hecho-titulo" id="titulo-hecho">Molienda hecha.</h1>
-    <img class="sello" src="iconos/disco-sello-almagre.svg" alt="" width="230" height="230" style="transform:rotate(-12deg)">
+    <img class="sello" src="iconos/disco-sello-almagre.svg" alt="" width="250" height="250" style="transform:rotate(-90deg)">
     <div class="hecho-cifras">
       <div><span class="cifra" data-n="${r.series}">${r.series}</span><p class="etiqueta">series</p></div>
       <div><span class="cifra" data-n="${r.minutos}">${r.minutos}</span><p class="etiqueta">minutos</p></div>
