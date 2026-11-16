@@ -190,7 +190,8 @@ function quitarCortinilla() {
     const r = disco.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     const r0 = r.width * 0.12;                                   // el ojo de la muela (120 de 1000 en el SVG)
-    const r1 = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)) + 2;
+    const caja = c.getBoundingClientRect();
+    const r1 = Math.hypot(Math.max(cx - caja.left, caja.right - cx), Math.max(cy - caja.top, caja.bottom - cy)) + 2;
     const dur = 820, t0 = performance.now();
     const curva = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     c.classList.add('fuera');
@@ -213,6 +214,7 @@ function quitarCortinilla() {
 let altoMax = window.innerHeight;
 window.addEventListener('resize', () => { altoMax = Math.max(altoMax, window.innerHeight); });
 function curarVentana() {
+  window.gofioMedir?.();
   if (altoMax - window.innerHeight <= 4) return;
   const actual = pila[pila.length - 1]; const arriba = actual?.nodo.scrollTop ?? 0;
   app.style.display = 'none'; void app.offsetHeight; app.style.display = '';

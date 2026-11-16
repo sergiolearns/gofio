@@ -26,13 +26,38 @@
 <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="iconos/arranque/arranque-1242x2688.png">
 <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="iconos/arranque/arranque-828x1792.png">
 <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="iconos/arranque/arranque-750x1334.png">
+<script>
+// G60 · iOS 26 con la app instalada: la ventana mide lo que la pantalla menos la barra de estado, pero se pinta desde
+// arriba del todo, así que abajo quedaba una franja sin app (y la barra de pestañas, más alta de la cuenta). Se mide
+// cuánto falta y todo lo que va pegado abajo se estira esos píxeles. En Safari normal no se toca nada.
+(function () {
+  var raiz = document.documentElement;
+  function medir() {
+    if (!navigator.standalone) return;
+    var vertical = matchMedia('(orientation: portrait)').matches;
+    var alto = vertical ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+    var sonda = document.createElement('div');
+    sonda.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100%;visibility:hidden;pointer-events:none';
+    raiz.appendChild(sonda);
+    var mide = sonda.getBoundingClientRect().height;
+    sonda.remove();
+    var falta = alto - mide;
+    raiz.style.setProperty('--falta', (falta > 0 && falta < 140 ? falta : 0) + 'px');
+  }
+  medir();
+  addEventListener('resize', medir);
+  addEventListener('orientationchange', function () { setTimeout(medir, 300); });
+  addEventListener('pageshow', medir);
+  window.gofioMedir = medir;
+})();
+</script>
 <link rel="preload" href="letras/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="letras/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 /* Lo primero que se pinta (G58): el icono de la app abierto a pantalla completa, millo con la muela negra, igual que la
    imagen de arranque de iOS. Al estar lista, el ojo de la muela se abre y deja ver la app (sin repetir la portada). */
 html,body{background:#1B1917;margin:0}
-#cortinilla{--d:min(64vw,280px);position:fixed;inset:0;z-index:100;background:#E3A62B}
+#cortinilla{--d:min(64vw,280px);position:fixed;top:0;left:0;right:0;bottom:calc(-1 * var(--falta, 0px));z-index:100;background:#E3A62B}
 #cortinilla .c-disco{position:absolute;left:calc(50% - var(--d)/2);top:calc(50% - var(--d)/2);width:var(--d);height:var(--d)}
 #cortinilla .c-sub{position:absolute;left:0;right:0;top:calc(50% + var(--d)/2 + 30px);margin:0;text-align:center;color:#1B1917;font:700 15px/1 "Hanken Grotesk",system-ui,-apple-system,sans-serif;letter-spacing:.06em}
 </style>

@@ -452,3 +452,11 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 .pantalla.con-pestanas > .boton:last-child { bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
 /* «Guardar serie» va en su sitio, debajo de las herramientas: nunca encima de ellas. */
 .pantalla > .boton-guardar:last-child { position: relative; bottom: auto; }
+
+/* G60 · Pantalla completa en iOS 26 (app instalada): lo que va pegado abajo baja lo que falta (ver index.html). */
+#app, #capa-hojas { bottom: calc(-1 * var(--falta, 0px)); }
+#cortinilla { bottom: calc(-1 * var(--falta, 0px)); }
+.pestanas { bottom: calc(-1 * var(--falta, 0px)); }
+/* G60 · Nada dentro de una pantalla se encoge para caber: si no cabe, la pantalla se desplaza. (Las herramientas de
+   la serie se aplastaban a unos píxeles y «Guardar serie» parecía taparlas.) */
+.pantalla > * { flex-shrink: 0; }
