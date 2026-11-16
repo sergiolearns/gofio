@@ -104,7 +104,7 @@ export function hoyPantalla(_, nav) {
   });
 
   return {
-    nodo, pestana: 'hoy',
+    nodo, pestana: 'hoy', arriba: '#E3A62B',  // la cabecera de Hoy es millo: la barra de estado, también (G62)
     alEntrar({ refresco } = {}) {
       requestAnimationFrame(() => { ajustarTitulo(nodo.querySelector('.hoy-titulo'), { max: 132, min: 64, lineas: 2 }); colocarDisco(nodo); });
       if (!refresco) escalonar(nodo.querySelectorAll('.lista-ejercicios li, .acciones-hoy > *, .aviso-vuelta'), { desde: 260, retraso: 45 });

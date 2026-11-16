@@ -5,7 +5,7 @@ import { estado, ajuste, ponerAjuste, arrancar, DESCANSO_POR_DEFECTO } from '../
 import { el, esc, kg, mmss, icono, hoja, confirmar, avisar, vibrar, escalonar } from '../ui.js';
 
 const NOMBRE_EQUIPO = { barra: 'Barra', smith: 'Smith', mancuernas: 'Mancuernas', maquina: 'Máquinas', polea: 'Poleas', lastre: 'Lastre' };
-const VERSION = '0.1.6';
+const VERSION = '0.1.7';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {
@@ -141,7 +141,8 @@ export function ajustesPantalla(_, nav) {
     const cs = getComputedStyle(document.documentElement);
     const sonda = el('<div style="position:fixed;top:0;height:100%;width:1px;visibility:hidden"></div>');
     document.body.append(sonda); const alto = Math.round(sonda.getBoundingClientRect().height); sonda.remove();
-    med.textContent = `Pantalla ${screen.width}×${screen.height} · app ${innerWidth}×${alto} · falta ${cs.getPropertyValue('--falta').trim() || '0px'}${navigator.standalone ? ' · instalada' : ''}`;
+    const ar = window.gofioPantalla?.arriba;
+    med.textContent = `Pantalla ${screen.width}×${screen.height} · app ${innerWidth}×${alto} · falta ${cs.getPropertyValue('--falta').trim() || '0px'}${navigator.standalone ? ` · instalada · barra ${ar > 0 ? 'translúcida' : 'opaca'}` : ''}`;
   }
   return { nodo, clara: true, pestana: 'ajustes', alEntrar({ refresco } = {}) { if (!refresco) escalonar(nodo.querySelectorAll('.grupo'), { desde: 40, retraso: 50 }); } };
 }

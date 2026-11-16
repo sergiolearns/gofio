@@ -32,17 +32,19 @@ function montar(nombre, params) {
   return { nombre, params, nodo, r };
 }
 // G61 · Lo que iOS deja debajo de la app se pinta del color de lo que hay abajo (pestañas o pantalla), no de negro.
-function pintarFondo(color) {
-  window.gofioFondo = color;
-  if (!document.getElementById('cortinilla')) document.documentElement.style.backgroundColor = color;
+function pintarFondo(color, arriba = color) {
+  window.gofioFondo = color; window.gofioArriba = arriba;
+  if (document.getElementById('cortinilla')) return;
+  document.documentElement.style.backgroundColor = color;
+  document.querySelector('meta[name="theme-color"]').content = arriba;   // G62: con la barra opaca, iOS la pinta de este color
 }
 function aplicarCromo(entrada) {
   const { r } = entrada;
   nav.hidden = false;
   nav.classList.toggle('fuera', !r.pestana);
   if (r.pestana) pintarPestanas(r.pestana, r.clara);
-  document.querySelector('meta[name="theme-color"]').content = r.clara ? '#F1E6D2' : '#1B1917';
-  pintarFondo(r.clara ? '#F1E6D2' : '#1B1917');
+  const fondo = r.clara ? '#F1E6D2' : '#1B1917';
+  pintarFondo(fondo, r.arriba || fondo);
   entrada.r.alMostrar?.();
 }
 
@@ -182,7 +184,7 @@ const instalada = navigator.standalone === true || matchMedia('(display-mode: st
 /** La cortinilla se queda lo justo para que se vea la animación (≈1,4 s desde que se abre) y se va con un fundido. */
 function quitarCortinilla() {
   const c = document.getElementById('cortinilla');
-  const revelar = () => { if (window.gofioRevelada) return; window.gofioRevelada = true; document.documentElement.style.backgroundColor = window.gofioFondo || '#1B1917'; window.dispatchEvent(new Event('gofio:revelada')); };
+  const revelar = () => { if (window.gofioRevelada) return; window.gofioRevelada = true; document.documentElement.style.backgroundColor = window.gofioFondo || '#1B1917'; document.querySelector('meta[name="theme-color"]').content = window.gofioArriba || '#1B1917'; window.dispatchEvent(new Event('gofio:revelada')); };
   if (!c) { revelar(); return; }
   if (reduceMovimiento()) {
     c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).finished.then(() => c.remove());

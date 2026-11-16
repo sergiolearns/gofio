@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Gofio</title>
 <meta name="description" content="Gofio: entrenamiento con base científica. Proyecto personal; no es una app médica.">
-<meta name="theme-color" content="#1B1917">
+<meta name="theme-color" content="#E3A62B">
 <meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Gofio">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- G62 · Barra de estado opaca: iOS 26-27 recorta abajo la vista de las apps con «black-translucent» (WebKit 301108) y
+     pinta un degradado encima. Con «default», iOS pone su franja arriba (del color de theme-color) y la app llega al borde. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="iconos/favicon-32.png" sizes="32x32" type="image/png">
@@ -27,25 +29,34 @@
 <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="iconos/arranque/arranque-828x1792.png">
 <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="iconos/arranque/arranque-750x1334.png">
 <script>
-// G60 · iOS 26 con la app instalada: la ventana mide lo que la pantalla menos la barra de estado, pero se pinta desde
-// arriba del todo, así que abajo quedaba una franja sin app (y la barra de pestañas, más alta de la cuenta). Se mide
-// cuánto falta y todo lo que va pegado abajo se estira esos píxeles. En Safari normal no se toca nada.
+// G60-G62 · Si la app sigue instalada con la barra translúcida (instalaciones de antes de la 0.1.7), iOS 26-27 la pinta
+// desde arriba pero 59 px más corta: se mide lo que falta para no sumar dos veces el margen de abajo y centrar la
+// cortinilla en la pantalla entera. Con la barra opaca (instalaciones nuevas) no falta nada.
 (function () {
   var raiz = document.documentElement;
   function medir() {
-    if (!navigator.standalone) return;
-    var vertical = matchMedia('(orientation: portrait)').matches;
-    var alto = vertical ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
-    var sonda = document.createElement('div');
-    sonda.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100%;visibility:hidden;pointer-events:none';
-    raiz.appendChild(sonda);
-    var mide = sonda.getBoundingClientRect().height;
-    sonda.remove();
-    var falta = alto - mide;
-    raiz.style.setProperty('--falta', (falta > 0 && falta < 140 ? falta : 0) + 'px');
+    var falta = 0;
+    if (navigator.standalone) {
+      var sonda = document.createElement('div');
+      sonda.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100%;padding-top:env(safe-area-inset-top);box-sizing:content-box;visibility:hidden;pointer-events:none';
+      raiz.appendChild(sonda);
+      var r = sonda.getBoundingClientRect();
+      var arriba = parseFloat(getComputedStyle(sonda).paddingTop) || 0;
+      sonda.remove();
+      var vertical = matchMedia('(orientation: portrait)').matches;
+      var alto = vertical ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+      var mide = r.height - arriba;
+      var dif = alto - mide;
+      if (dif < 0 || dif > 140) dif = 0;
+      if (arriba > 0) falta = dif;                       // solo si la app se pinta bajo la barra de estado
+      // La imagen de arranque ocupa la pantalla entera: la muela de la cortinilla se centra en la pantalla, no en la app
+      // (más abajo si la app empieza arriba del todo; más arriba si empieza debajo de la barra opaca).
+      raiz.style.setProperty('--centro', (arriba > 0 ? dif / 2 : -dif / 2) + 'px');
+      window.gofioPantalla = { alto: alto, app: Math.round(mide), arriba: arriba };
+    }
+    raiz.style.setProperty('--falta', falta + 'px');
   }
-  // La franja que iOS deja abajo pinta el fondo de la página: mientras está la cortinilla, millo.
-  raiz.style.backgroundColor = '#E3A62B';
+  raiz.style.backgroundColor = '#E3A62B';                // mientras está la cortinilla
   medir();
   addEventListener('resize', medir);
   addEventListener('orientationchange', function () { setTimeout(medir, 300); });
@@ -59,7 +70,7 @@
 /* Lo primero que se pinta (G58): el icono de la app abierto a pantalla completa, millo con la muela negra, igual que la
    imagen de arranque de iOS. Al estar lista, el ojo de la muela se abre y deja ver la app (sin repetir la portada). */
 html,body{background:#1B1917;margin:0}
-#cortinilla{--d:min(64vw,280px);--c:calc(50% + var(--falta, 0px) / 2);position:fixed;inset:0;z-index:100;background:#E3A62B}
+#cortinilla{--d:min(64vw,280px);--c:calc(50% + var(--centro, 0px));position:fixed;inset:0;z-index:100;background:#E3A62B}
 #cortinilla .c-disco{position:absolute;left:calc(50% - var(--d)/2);top:calc(var(--c) - var(--d)/2);width:var(--d);height:var(--d)}
 #cortinilla .c-sub{position:absolute;left:0;right:0;top:calc(var(--c) + var(--d)/2 + 30px);margin:0;text-align:center;color:#1B1917;font:700 15px/1 "Hanken Grotesk",system-ui,-apple-system,sans-serif;letter-spacing:.06em}
 </style>
