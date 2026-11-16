@@ -29,19 +29,19 @@
 <link rel="preload" href="letras/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="letras/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-/* Lo primero que se pinta: fondo basalto (nada de pantalla gris) y una cortinilla quieta, idéntica a la imagen de arranque
-   de iOS, que se funde cuando la app está lista. El disco girando se queda para la portada (G53). */
+/* Lo primero que se pinta (G58): el icono de la app abierto a pantalla completa, millo con la muela negra, igual que la
+   imagen de arranque de iOS. Al estar lista, el ojo de la muela se abre y deja ver la app (sin repetir la portada). */
 html,body{background:#1B1917;margin:0}
-#cortinilla{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1B1917}
-#cortinilla .c-logo{width:min(56vw,240px);height:auto}
-#cortinilla .c-sub{margin:16px 0 0;color:#A89D8F;font:600 15px/1 "Hanken Grotesk",system-ui,-apple-system,sans-serif;letter-spacing:.04em}
+#cortinilla{--d:min(64vw,280px);position:fixed;inset:0;z-index:100;background:#E3A62B}
+#cortinilla .c-disco{position:absolute;left:calc(50% - var(--d)/2);top:calc(50% - var(--d)/2);width:var(--d);height:var(--d)}
+#cortinilla .c-sub{position:absolute;left:0;right:0;top:calc(50% + var(--d)/2 + 30px);margin:0;text-align:center;color:#1B1917;font:700 15px/1 "Hanken Grotesk",system-ui,-apple-system,sans-serif;letter-spacing:.06em}
 </style>
 <link rel="stylesheet" href="css/variables.css">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <div id="cortinilla" aria-hidden="true">
-  <img class="c-logo" src="iconos/gofio-logo-oscuro.svg" alt="" width="240" height="98">
+  <img class="c-disco" src="iconos/disco-negro-solo-gofio.svg" alt="" width="280" height="280">
   <p class="c-sub">Hecho en Canarias</p>
 </div>
 <div id="app" aria-live="polite"></div>

@@ -2,7 +2,7 @@
 import * as G from '../cerebro/index.js';
 import { estado, prescripcion, seriesDelHueco, siguienteHueco, guardarSerie, borrarSerie, guardarSesion, terminarSesion,
   escalonDe, descansoDe, ponerNota } from '../logica.js';
-import { el, esc, kg, mmss, icono, granos, ajustarTitulo, hoja, pedirNumero, confirmar, vibrar, reduceMovimiento, estallidoGranos, escalonar, pop } from '../ui.js';
+import { el, esc, kg, mmss, icono, grano, granos, ajustarTitulo, hoja, pedirNumero, confirmar, vibrar, reduceMovimiento, escalonar, pop } from '../ui.js';
 
 const sesionPorId = (id) => estado.sesiones.find((s) => s.id === id);
 const rango = (a, b) => (a === b ? `${a}` : `${a}-${b}`);
@@ -112,9 +112,10 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
   nodo.querySelector('[data-guardar]').onclick = async () => {
     if (peso == null) { await escribirPeso(); if (peso == null) return; }
     vibrar();
-    estallidoGranos(nodo.querySelector('[data-guardar]'));
+    // G58: nada de confeti. El grano de esta serie sale del botón y cae en su sitio, arriba; luego, el descanso.
+    const vuelo = volarGrano(nodo.querySelector('[data-guardar]'), nodo.querySelectorAll('.serie-cabeza .grano')[n]);
     await guardarSerie(s, i, { peso, reps, rir });
-    await new Promise((ok) => setTimeout(ok, reduceMovimiento() ? 0 : 160));
+    await vuelo;
     const sigMismo = seriesDelHueco(s, i).length < slot.series ? i : -1;
     const sig = sigMismo >= 0 ? i : siguienteHueco(s, (i + 1) % s.plan.length);
     if (sig === -1) {
@@ -124,7 +125,7 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
     }
     s.descanso = { hasta: Date.now() + descansoDe(slot.ej) * 1000, total: descansoDe(slot.ej), siguiente: sig, desde: i };
     await guardarSesion(s);
-    nav.reemplazar('descanso', { sesionId: s.id });
+    nav.reemplazar('descanso', { sesionId: s.id, entrada: true }, { duracion: 380 });
   };
 
   nodo.querySelector('[data-deshacer]')?.addEventListener('click', async () => {
@@ -187,7 +188,8 @@ function sugerencia(p, slot) {
 }
 
 // ── Descanso ───────────────────────────────────────────────────
-export function descansoPantalla({ sesionId }, nav) {
+export function descansoPantalla(params, nav) {
+  const { sesionId } = params;
   const s = sesionPorId(sesionId);
   const d = s?.descanso;
   if (!s || !d) return seriePantalla({ sesionId, i: s?.actual ?? 0 }, nav);
@@ -203,7 +205,7 @@ export function descansoPantalla({ sesionId }, nav) {
   const nodo = el(`<section aria-labelledby="titulo-descanso">
     <div class="serie-cabeza">
       <button class="volver" type="button" data-volver>${icono('atras')}Hoy</button>
-      ${granos(hechasDesde, desde.series, hechasDesde - 1)}
+      ${granos(hechasDesde, desde.series)}
     </div>
     <h1 class="titular grande" id="titulo-descanso" style="margin-top:12px">Descanso</h1>
     <p class="serie-sub">${esc(G.ejercicio(desde.ej).nombre)} · ${hechasDesde} de ${desde.series}</p>
@@ -251,7 +253,49 @@ export function descansoPantalla({ sesionId }, nav) {
   };
   return {
     nodo, pestana: null,
-    alEntrar() { mantenerEncendida(true); cancelAnimationFrame(raf); raf = requestAnimationFrame(cuadro); },
+    alEntrar(o = {}) {
+      mantenerEncendida(true); cancelAnimationFrame(raf); raf = requestAnimationFrame(cuadro);
+      if (params.entrada && !o.refresco && !quieto) {
+        params.entrada = false;
+        // La muela llega rodando desde abajo y se asienta; el tiempo y el pie aparecen detrás.
+        nodo.querySelector('.descanso-disco').animate([
+          { transform: 'translateY(46vh) rotate(-200deg) scale(.7)', opacity: 0 },
+          { opacity: 1, offset: 0.35 },
+          { transform: 'translateY(-10px) rotate(8deg) scale(1.02)', offset: 0.78 },
+          { transform: 'none', opacity: 1 },
+        ], { duration: 820, easing: 'cubic-bezier(.2,.8,.25,1)', fill: 'backwards' });
+        [tiempo, nodo.querySelector('[data-respira]'), nodo.querySelector('.descanso-pie'), nodo.querySelector('[data-ya]')].forEach((x, k) => x?.animate(
+          [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }],
+          { duration: 460, delay: 380 + k * 70, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' }));
+      }
+    },
     alSalir() { cancelAnimationFrame(raf); },
   };
+}
+
+/** El grano de la serie recién guardada vuela del botón a su hueco en la cabecera y se asienta (G58). */
+function volarGrano(boton, hueco) {
+  if (!boton || !hueco || reduceMovimiento()) { hueco?.querySelector('path')?.setAttribute('class', 'lleno'); return Promise.resolve(); }
+  const a = boton.getBoundingClientRect(), b = hueco.getBoundingClientRect();
+  const capa = document.createElement('div');
+  capa.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:70';
+  capa.innerHTML = `<div style="position:absolute;left:0;top:0;width:${b.width}px;height:${b.height}px">${grano(true)}</div>`;
+  document.body.append(capa);
+  const g = capa.firstElementChild; g.firstElementChild.style.cssText = 'width:100%;height:100%';
+  const x0 = a.left + a.width / 2 - b.width / 2, y0 = a.top + a.height / 2 - b.height / 2;
+  const dx = b.left - x0, dy = b.top - y0;
+  const marcos = [];
+  for (let k = 0; k <= 24; k++) {           // arco: sube por encima del hueco y cae en él
+    const t = k / 24, e = 1 - Math.pow(1 - t, 2.2);
+    const x = x0 + dx * e, y = y0 + dy * t - Math.sin(Math.PI * t) * 90;
+    const tam = t < 0.15 ? 0.4 + 6 * t : 1.6 - 0.6 * t;
+    marcos.push({ transform: `translate(${x}px,${y}px) rotate(${-200 * (1 - t)}deg) scale(${tam * 1.25})`, offset: t });
+  }
+  boton.animate([{ transform: 'scale(.97)' }, { transform: 'none' }], { duration: 260, easing: 'ease-out' });
+  return g.animate(marcos, { duration: 620, easing: 'cubic-bezier(.3,.1,.3,1)', fill: 'forwards' }).finished.then(() => {
+    hueco.querySelector('path')?.setAttribute('class', 'lleno');
+    hueco.animate([{ transform: 'scale(1.6,.6) translateY(4px)' }, { transform: 'scale(.9,1.15)', offset: 0.45 }, { transform: 'none' }], { duration: 300, easing: 'ease-out' });
+    vibrar(); capa.remove();
+    return new Promise((ok) => setTimeout(ok, 220));
+  });
 }

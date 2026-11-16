@@ -5,7 +5,7 @@ import { estado, ajuste, ponerAjuste, arrancar, DESCANSO_POR_DEFECTO } from '../
 import { el, esc, kg, mmss, icono, hoja, confirmar, avisar, vibrar, escalonar } from '../ui.js';
 
 const NOMBRE_EQUIPO = { barra: 'Barra', smith: 'Smith', mancuernas: 'Mancuernas', maquina: 'Máquinas', polea: 'Poleas', lastre: 'Lastre' };
-const VERSION = '0.1.2';
+const VERSION = '0.1.3';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {

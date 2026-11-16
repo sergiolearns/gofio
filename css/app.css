@@ -51,7 +51,7 @@ h1, h2, h3, p { margin: 0; }
   position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden;
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   background: var(--basalto); color: var(--harina-texto);
-  padding: calc(env(safe-area-inset-top, 0px) + 12px) 24px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding: calc(env(safe-area-inset-top, 0px) + 22px) 24px calc(env(safe-area-inset-bottom, 0px) + 24px);
   display: flex; flex-direction: column;
   will-change: auto; contain: paint;
 }
@@ -174,7 +174,7 @@ h1, h2, h3, p { margin: 0; }
 
 /* ── HOY ───────────────────────────────────────────────────────── */
 .hoy { padding: 0; }
-.hoy-cabeza { position: relative; color: var(--basalto); padding: calc(env(safe-area-inset-top, 0px) + 14px) 24px 26px; isolation: isolate; }
+.hoy-cabeza { position: relative; color: var(--basalto); padding: calc(env(safe-area-inset-top, 0px) + 22px) 24px 26px; isolation: isolate; }
 .hoy-disco { --r: 400px; position: absolute; z-index: -1; pointer-events: none; left: calc(72px - var(--r)); top: calc(84px - var(--r));
   width: calc(var(--r) * 2); height: calc(var(--r) * 2); border-radius: 50%; background: var(--millo); }
 /* El agujero del centro es la fecha; el hoyuelo, donde se apoyaba el palo del molino. */
@@ -242,7 +242,7 @@ h1, h2, h3, p { margin: 0; }
 .rir-botones button:active { transform: scale(.94); }
 .rir-botones button[aria-pressed="true"] { background: var(--millo); color: var(--basalto); }
 .rir-pie { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--piedra); }
-.serie-herramientas { display: flex; gap: 10px; margin: 22px -24px 0; padding: 2px 24px 6px; overflow-x: auto; scrollbar-width: none; }
+.serie-herramientas { display: flex; gap: 10px; margin: 22px -24px 0; padding: 2px 24px 6px; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; scrollbar-width: none; }
 .serie-herramientas::-webkit-scrollbar { display: none; }
 .nota-ejercicio { margin-top: 10px; font-size: 14px; color: var(--harina-texto); padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--basalto-3); }
 .boton-guardar { margin-top: 24px; }
@@ -265,7 +265,7 @@ h1, h2, h3, p { margin: 0; }
 /* ── MOLIENDA HECHA ────────────────────────────────────────────── */
 .hecho { overflow-x: hidden; }
 .hecho-titulo { position: relative; z-index: 1; margin-top: 18px; max-width: 250px; font-size: 104px; }
-.sello { position: absolute; z-index: 0; top: calc(env(safe-area-inset-top, 0px) + 66px); right: -64px; width: 220px; height: 220px; }
+.sello { position: absolute; z-index: 0; top: calc(env(safe-area-inset-top, 0px) + 138px); right: 16px; width: 148px; height: 148px; } /* entero, junto a «hecha.» (G58) */
 .sello.estampa { animation: estampa .62s cubic-bezier(.2,.9,.3,1.15) .25s both; }
 @keyframes estampa {
   0% { transform: scale(1.9) rotate(-28deg); opacity: 0; filter: blur(3px); }
@@ -428,8 +428,8 @@ h1, h2, h3, p { margin: 0; }
 
 /* ── Cortinilla de entrada ─────────────────────────────────────── */
 #cortinilla { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--basalto); transition: opacity .38s ease; }
-#cortinilla.fuera { opacity: 0; pointer-events: none; }
+  background: var(--millo); }
+#cortinilla.fuera { pointer-events: none; }
 .col { display: flex; flex-direction: column; flex: 1; }
 /* Botón principal de cada pantalla siempre a la vista al desplazar. */
 .pantalla > .boton:last-child { position: sticky; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); z-index: 2; flex: none; }
@@ -443,3 +443,12 @@ h1, h2, h3, p { margin: 0; }
 @media (prefers-reduced-motion: reduce) { .bienvenida-disco img { opacity: 1; } }
 .cabeza-paso { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
 .cabeza-paso .pasos-arranque { margin-top: 0; } .cabeza-paso .volver { margin-left: -6px; padding: 0 6px; }
+
+/* G58: iOS 26 difumina la franja de la barra de estado: el contenido empieza un poco más abajo. Nada de seleccionar
+   texto al mantener pulsado (es una app, no una web); en los campos, sí. */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+/* El botón fijo de las pantallas con pestañas se queda encima de la barra, no debajo. */
+.pantalla.con-pestanas > .boton:last-child { bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
+/* «Guardar serie» va en su sitio, debajo de las herramientas: nunca encima de ellas. */
+.pantalla > .boton-guardar:last-child { position: relative; bottom: auto; }

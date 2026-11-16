@@ -41,7 +41,7 @@ function aplicarCromo(entrada) {
 }
 
 /** Navega. modo: 'pestana' (cambia de sección), 'empuja' (entra encima), 'reemplaza' (misma altura). */
-export function ir(nombre, params = {}, { modo = 'empuja' } = {}) {
+export function ir(nombre, params = {}, { modo = 'empuja', duracion = 220 } = {}) {
   const nueva = montar(nombre, params);
   const vieja = pila[pila.length - 1];
   if (modo === 'pestana') pila.length = 0; else if (modo === 'reemplaza') pila.pop();
@@ -63,7 +63,7 @@ export function ir(nombre, params = {}, { modo = 'empuja' } = {}) {
     nueva.nodo.animate([{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], { duration: 440, easing: CURVA }).finished.then(() => { nueva.nodo.style.boxShadow = ''; nueva.nodo.style.willChange = ''; velo.remove(); quitar(); });
   } else {
     // Cambio de pestaña o reemplazo: fundido corto con un leve desplazamiento hacia arriba.
-    nueva.nodo.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' }).finished.then(quitar);
+    nueva.nodo.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: duracion, easing: 'cubic-bezier(.22,1,.36,1)' }).finished.then(quitar);
   }
   nueva.r.alEntrar?.();
 }
@@ -89,7 +89,7 @@ export function volver(desde = null) {
     .finished.then(() => { velo.remove(); actual.r.alSalir?.(); actual.nodo.remove(); });
   nueva.r.alEntrar?.();
 }
-export const reemplazar = (nombre, params) => ir(nombre, params, { modo: 'reemplaza' });
+export const reemplazar = (nombre, params, opc = {}) => ir(nombre, params, { modo: 'reemplaza', ...opc });
 /** Vuelve a pintar la pantalla actual sin animación (tras guardar algo). */
 export function refrescar() {
   const actual = pila[pila.length - 1]; if (!actual) return;
@@ -176,11 +176,51 @@ const instalada = navigator.standalone === true || matchMedia('(display-mode: st
 /** La cortinilla se queda lo justo para que se vea la animación (≈1,4 s desde que se abre) y se va con un fundido. */
 function quitarCortinilla() {
   const c = document.getElementById('cortinilla');
-  const revelar = () => { window.gofioRevelada = true; window.dispatchEvent(new Event('gofio:revelada')); };
+  const revelar = () => { if (window.gofioRevelada) return; window.gofioRevelada = true; window.dispatchEvent(new Event('gofio:revelada')); };
   if (!c) { revelar(); return; }
-  // Sin animación propia: es la misma imagen que enseña iOS al arrancar. Se funde y entra la app.
-  requestAnimationFrame(() => { c.classList.add('fuera'); setTimeout(revelar, 120); setTimeout(() => c.remove(), 500); });
+  if (reduceMovimiento()) {
+    c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).finished.then(() => c.remove());
+    revelar(); return;
+  }
+  // G58: se ve al menos un momento (es la continuación de la imagen de arranque de iOS) y luego el ojo de la muela
+  // se abre: la cortinilla se recorta desde el agujero del disco hacia fuera mientras la muela da un cuarto de vuelta.
+  const espera = Math.max(0, 900 - performance.now());
+  setTimeout(() => {
+    const disco = c.querySelector('.c-disco');
+    const r = disco.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const r0 = r.width * 0.12;                                   // el ojo de la muela (120 de 1000 en el SVG)
+    const r1 = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)) + 2;
+    const dur = 820, t0 = performance.now();
+    const curva = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    c.classList.add('fuera');
+    disco.animate([{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(90deg) scale(1.35)' }], { duration: dur, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+    c.querySelector('.c-sub')?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' });
+    setTimeout(revelar, 140);
+    const paso = (ahora) => {
+      const t = Math.min(1, (ahora - t0) / dur);
+      const rad = r0 + (r1 - r0) * curva(t);
+      const m = `radial-gradient(circle at ${cx}px ${cy}px, transparent ${rad}px, #000 ${rad + 1}px)`;
+      c.style.webkitMaskImage = m; c.style.maskImage = m;
+      if (t < 1) requestAnimationFrame(paso); else c.remove();
+    };
+    requestAnimationFrame(paso);
+  }, espera);
 }
+
+// iOS (app instalada) encoge la pantalla al abrir el teclado y no la devuelve: quedaba una franja negra abajo, la barra
+// de pestañas subía y los botones se montaban (G58). Se le obliga a medir de nuevo al cerrarlo.
+let altoMax = window.innerHeight;
+window.addEventListener('resize', () => { altoMax = Math.max(altoMax, window.innerHeight); });
+function curarVentana() {
+  if (altoMax - window.innerHeight <= 4) return;
+  const actual = pila[pila.length - 1]; const arriba = actual?.nodo.scrollTop ?? 0;
+  app.style.display = 'none'; void app.offsetHeight; app.style.display = '';
+  nav.style.display = 'none'; void nav.offsetHeight; nav.style.display = '';
+  if (actual) actual.nodo.scrollTop = arriba;
+}
+document.addEventListener('focusout', (e) => { if (e.target.matches?.('input, textarea')) { setTimeout(curarVentana, 140); setTimeout(curarVentana, 600); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(curarVentana, 100); });
 
 // iOS mueve la ventana entera al abrir el teclado y a veces no la devuelve: la app quedaba «elevada» (G53).
 document.addEventListener('focusin', (e) => {
