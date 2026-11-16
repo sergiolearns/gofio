@@ -36,7 +36,7 @@ function pintarFondo(color, arriba = color) {
   window.gofioFondo = color; window.gofioArriba = arriba;
   if (document.getElementById('cortinilla')) return;
   document.documentElement.style.backgroundColor = color;
-  document.querySelector('meta[name="theme-color"]').content = arriba;   // G62: con la barra opaca, iOS la pinta de este color
+  // G65: la barra de arriba es millo siempre (iOS fija su color al abrir la app y no lo cambia): theme-color no se toca.
 }
 function aplicarCromo(entrada) {
   const { r } = entrada;
@@ -184,7 +184,7 @@ const instalada = navigator.standalone === true || matchMedia('(display-mode: st
 /** La cortinilla se queda lo justo para que se vea la animación (≈1,4 s desde que se abre) y se va con un fundido. */
 function quitarCortinilla() {
   const c = document.getElementById('cortinilla');
-  const revelar = () => { if (window.gofioRevelada) return; window.gofioRevelada = true; document.documentElement.style.backgroundColor = window.gofioFondo || '#1B1917'; document.querySelector('meta[name="theme-color"]').content = window.gofioArriba || '#1B1917'; window.dispatchEvent(new Event('gofio:revelada')); };
+  const revelar = () => { if (window.gofioRevelada) return; window.gofioRevelada = true; document.documentElement.style.backgroundColor = window.gofioFondo || '#1B1917'; window.dispatchEvent(new Event('gofio:revelada')); };
   if (!c) { revelar(); return; }
   if (reduceMovimiento()) {
     c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).finished.then(() => c.remove());
