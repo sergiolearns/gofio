@@ -53,9 +53,14 @@ export function ir(nombre, params = {}, { modo = 'empuja' } = {}) {
   if (reduceMovimiento()) {
     nueva.nodo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 }).finished.then(quitar);
   } else if (modo === 'empuja') {
-    vieja.nodo.animate([{ transform: 'translateX(0)', filter: 'brightness(1)' }, { transform: 'translateX(-28%)', filter: 'brightness(.7)' }], { duration: 420, easing: CURVA, fill: 'forwards' });
+    // Solo transform y opacity (en el iPhone, animar filter en una pantalla entera da tirones y parece que salta).
+    const velo = el('<div class="velo"></div>');
+    app.insertBefore(velo, nueva.nodo);
+    vieja.nodo.style.willChange = nueva.nodo.style.willChange = 'transform';
+    vieja.nodo.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-28%)' }], { duration: 440, easing: CURVA, fill: 'forwards' });
+    velo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 440, easing: CURVA, fill: 'forwards' });
     nueva.nodo.style.boxShadow = '-12px 0 30px -12px rgba(0,0,0,.5)';
-    nueva.nodo.animate([{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], { duration: 420, easing: CURVA }).finished.then(() => { nueva.nodo.style.boxShadow = ''; quitar(); });
+    nueva.nodo.animate([{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], { duration: 440, easing: CURVA }).finished.then(() => { nueva.nodo.style.boxShadow = ''; nueva.nodo.style.willChange = ''; velo.remove(); quitar(); });
   } else {
     // Cambio de pestaña o reemplazo: fundido corto con un leve desplazamiento hacia arriba.
     nueva.nodo.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' }).finished.then(quitar);
@@ -75,10 +80,13 @@ export function volver(desde = null) {
   const x0 = desde ?? 0;
   const ancho = app.clientWidth;
   if (reduceMovimiento()) { actual.r.alSalir?.(); actual.nodo.remove(); nueva.r.alEntrar?.(); return; }
-  const dur = Math.max(160, 380 * (1 - x0 / ancho));
-  nueva.nodo.animate([{ transform: `translateX(${-28 + 28 * x0 / ancho}%)`, filter: `brightness(${0.7 + 0.3 * x0 / ancho})` }, { transform: 'translateX(0)', filter: 'brightness(1)' }], { duration: dur, easing: CURVA });
+  const dur = Math.max(180, 400 * (1 - x0 / ancho));
+  const velo = el('<div class="velo"></div>');
+  app.insertBefore(velo, actual.nodo);
+  velo.animate([{ opacity: 1 - x0 / ancho }, { opacity: 0 }], { duration: dur, easing: CURVA, fill: 'forwards' });
+  nueva.nodo.animate([{ transform: `translateX(${-28 + 28 * x0 / ancho}%)` }, { transform: 'translateX(0)' }], { duration: dur, easing: CURVA });
   actual.nodo.animate([{ transform: `translateX(${x0}px)` }, { transform: 'translateX(100%)' }], { duration: dur, easing: CURVA, fill: 'forwards' })
-    .finished.then(() => { actual.r.alSalir?.(); actual.nodo.remove(); });
+    .finished.then(() => { velo.remove(); actual.r.alSalir?.(); actual.nodo.remove(); });
   nueva.r.alEntrar?.();
 }
 export const reemplazar = (nombre, params) => ir(nombre, params, { modo: 'reemplaza' });
@@ -117,7 +125,7 @@ app.addEventListener('pointermove', (e) => {
     const f = gesto.dx / app.clientWidth;
     gesto.actual.nodo.style.transform = `translateX(${gesto.dx}px)`;
     gesto.prev.nodo.style.transform = `translateX(${-28 + 28 * f}%)`;
-    gesto.prev.nodo.style.filter = `brightness(${0.7 + 0.3 * f})`;
+    gesto.prev.nodo.style.opacity = String(0.75 + 0.25 * f);
   }
 });
 function finGesto() {
@@ -128,7 +136,7 @@ function finGesto() {
   const ancho = app.clientWidth;
   g.actual.nodo.style.boxShadow = '';
   if (g.dx > ancho * 0.35 || v > 0.5) {
-    g.prev.nodo.remove(); g.prev.nodo.style.transform = ''; g.prev.nodo.style.filter = '';
+    g.prev.nodo.remove(); g.prev.nodo.style.transform = ''; g.prev.nodo.style.opacity = '';
     g.actual.nodo.style.transform = '';
     volver(g.dx);
   } else {
@@ -167,10 +175,20 @@ const instalada = navigator.standalone === true || matchMedia('(display-mode: st
 
 /** La cortinilla se queda lo justo para que se vea la animación (≈1,4 s desde que se abre) y se va con un fundido. */
 function quitarCortinilla() {
-  const c = document.getElementById('cortinilla'); if (!c) return;
-  const espera = reduceMovimiento() ? 0 : Math.max(0, 1450 - performance.now());
-  setTimeout(() => { c.classList.add('fuera'); setTimeout(() => c.remove(), 650); }, espera);
+  const c = document.getElementById('cortinilla');
+  const revelar = () => { window.gofioRevelada = true; window.dispatchEvent(new Event('gofio:revelada')); };
+  if (!c) { revelar(); return; }
+  // Sin animación propia: es la misma imagen que enseña iOS al arrancar. Se funde y entra la app.
+  requestAnimationFrame(() => { c.classList.add('fuera'); setTimeout(revelar, 120); setTimeout(() => c.remove(), 500); });
 }
+
+// iOS mueve la ventana entera al abrir el teclado y a veces no la devuelve: la app quedaba «elevada» (G53).
+document.addEventListener('focusin', (e) => {
+  if (e.target.matches?.('input, textarea')) setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: reduceMovimiento() ? 'auto' : 'smooth' }), 320);
+});
+const devolver = () => setTimeout(() => { if (!document.activeElement?.matches?.('input, textarea, select')) window.scrollTo(0, 0); }, 60);
+document.addEventListener('focusout', devolver);
+window.visualViewport?.addEventListener('resize', devolver);
 
 async function inicio() {
   try { await document.fonts.ready; } catch { /* */ }

@@ -3,21 +3,25 @@
 import * as G from '../cerebro/index.js';
 import { ajuste, ponerAjuste } from '../logica.js';
 import { pedirPersistencia } from '../datos.js';
-import { el, esc, icono, vibrar, grano, escalonar, pop, avisar } from '../ui.js';
+import { el, esc, icono, vibrar, grano, escalonar, pop, avisar, cuandoRevelada } from '../ui.js';
 import { formularioCargas, guardarCargas, importarCopia } from './ajustes.js';
 
 const TOTAL = 5;
-const progreso = (paso) => `<div class="pasos-arranque" role="img" aria-label="Paso ${paso} de ${TOTAL}">${Array.from({ length: TOTAL }, (_, i) => grano(i < paso, i === paso - 1 ? 'cae' : '')).join('')}</div>`;
+const progresoGranos = (paso) => `<div class="pasos-arranque" role="img" aria-label="Paso ${paso} de ${TOTAL}">${Array.from({ length: TOTAL }, (_, i) => grano(i < paso, i === paso - 1 ? 'cae' : '')).join('')}</div>`;
+// Cabecera de cada paso: «‹ Atrás» (al inicio, o a Ajustes si vienes de ahí) y los granos de progreso (G53).
+let desdeAjustesActual = false;
+const progreso = (paso) => `<div class="cabeza-paso"><button class="volver" type="button" data-atras>${icono('atras')}${paso === 1 ? (desdeAjustesActual ? 'Ajustes' : 'Inicio') : 'Atrás'}</button>${progresoGranos(paso)}</div>`;
 const marca = `<span class="marca-el" aria-hidden="true">${icono('check')}</span>`;
 const rutinaGofio = () => G.proponerRutina({ dias: ajuste('diasDisponibles') ?? 3, minutos: ajuste('minutos'), objetivo: ajuste('objetivo') });
 
 export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav) {
   const perfil = ajuste('perfil');
+  desdeAjustesActual = desdeAjustes;
   const siguiente = (n) => nav.ir('bienvenida', { paso: n, desdeAjustes }, { modo: 'empuja' });
   let cuerpo = '';
 
   if (paso === 0) {
-    cuerpo = `<div class="bienvenida-disco arranca" aria-hidden="true"><img src="iconos/disco-millo.svg" alt="" width="660" height="660"></div>
+    cuerpo = `<div class="bienvenida-disco" aria-hidden="true"><img src="iconos/disco-millo.svg" alt="" width="660" height="660"></div>
       <div class="relleno"></div>
       <img class="bienvenida-logo" src="iconos/gofio-logo-oscuro.svg" alt="Gofio" width="220" height="90">
       <p class="titular bienvenida-lema">Tu gym, a tu ritmo.</p>
@@ -26,7 +30,7 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
   } else if (paso === 1) {
     const actual = ajuste('objetivo');
     cuerpo = `<div class="paso-bienvenida col">${progreso(1)}
-      <h1 class="titular grande" style="margin-top:14px">¿Qué buscas?</h1>
+      <h1 class="titular grande" style="margin-top:10px">¿Qué buscas?</h1>
       <div class="elecciones" role="radiogroup" aria-label="Objetivo">${Object.entries(G.OBJETIVOS).map(([id, o]) => `
         <button class="tarjeta-eleccion" type="button" role="radio" aria-checked="${id === actual}" data-objetivo="${id}">${marca}<span><b>${o.nombre}</b><span class="d">${o.texto}</span></span></button>`).join('')}</div>
       <p class="etiqueta" style="margin-top:12px">Lo cambias cuando quieras.</p>
@@ -35,7 +39,7 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
   } else if (paso === 2) {
     const dias = ajuste('diasDisponibles') ?? 3, min = ajuste('minutos');
     cuerpo = `<div class="paso-bienvenida col">${progreso(2)}
-      <h1 class="titular grande" style="margin-top:14px">¿Cuánto puedes venir?</h1>
+      <h1 class="titular grande" style="margin-top:10px">¿Cuánto puedes venir?</h1>
       <p class="fuerte" style="margin-top:22px">Días a la semana</p>
       <div class="fila-opciones" role="radiogroup" aria-label="Días a la semana">${[1, 2, 3, 4, 5, 6].map((d) => `<button class="chip" type="button" role="radio" aria-pressed="${d === dias}" aria-checked="${d === dias}" data-dias="${d}">${d}</button>`).join('')}</div>
       <p class="fuerte" style="margin-top:22px">Minutos por sesión</p>
@@ -49,7 +53,7 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
     const eleccion = actual.propuesta ? 'gofio' : 'tuya';
     const vista = vistaRutina(eleccion === 'gofio' ? propuesta : actual);
     cuerpo = `<div class="paso-bienvenida col">${progreso(3)}
-      <h1 class="titular grande" style="margin-top:14px">Tu rutina.</h1>
+      <h1 class="titular grande" style="margin-top:10px">Tu rutina.</h1>
       <div class="elecciones" role="radiogroup" aria-label="Rutina">
         <button class="tarjeta-eleccion" type="button" role="radio" aria-checked="${eleccion === 'gofio'}" data-rutina="gofio">${marca}<span><b>Que Gofio me proponga una</b><span class="d">${esc(G.REPARTOS[Math.min(6, Math.max(1, ajuste('diasDisponibles') ?? 3))].nombre)} · ${propuesta.dias.length} ${propuesta.dias.length === 1 ? 'día' : 'días'} · ${propuesta.minutos} min</span></span></button>
         <button class="tarjeta-eleccion" type="button" role="radio" aria-checked="${eleccion === 'tuya'}" data-rutina="tuya">${marca}<span><b>La mía</b><span class="d">${esc(G.PLANTILLA_SERGIO.nombre.replace('Rutina de Sergio · ', ''))}: ${G.PLANTILLA_SERGIO.dias.map((d) => esc(d.nombre)).join(', ')}</span></span></button>
@@ -59,7 +63,7 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
       <div class="pie-fijo"><button class="boton" type="button" data-sig>${desdeAjustes ? 'Guardar' : 'Seguir'}</button></div></div>`;
   } else if (paso === 4) {
     cuerpo = `<div class="paso-bienvenida col">${progreso(4)}
-      <h1 class="titular grande" style="margin-top:14px">Sobre ti.</h1>
+      <h1 class="titular grande" style="margin-top:10px">Sobre ti.</h1>
       <p class="texto-2" style="margin-top:10px">Opcional. Para la parte de comida, que llega pronto.</p>
       <div class="tarjeta" style="margin-top:16px">
         <label class="fila"><span class="que">Peso<small>kg</small></span><input class="campo" data-perfil="peso" inputmode="decimal" value="${perfil.peso ?? ''}"></label>
@@ -70,7 +74,7 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
       <div class="pie-fijo"><button class="boton" type="button" data-sig>Seguir</button></div></div>`;
   } else {
     cuerpo = `<div class="paso-bienvenida col">${progreso(5)}
-      <h1 class="titular grande" style="margin-top:14px">¿Sabes tus pesos?</h1>
+      <h1 class="titular grande" style="margin-top:10px">¿Sabes tus pesos?</h1>
       <p class="texto-2" style="margin-top:10px">Pon los que sepas. El resto, en tu primera serie.</p>
       <div class="tarjeta" style="margin-top:8px">${formularioCargas()}</div>
       <div style="height:20px"></div>
@@ -94,6 +98,8 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
   }));
   nodo.querySelector('[data-importar]')?.addEventListener('click', () => importarCopia(async () => { await ponerAjuste('inicioHecho', true); nav.ir('hoy', {}, { modo: 'pestana' }); }));
 
+  nodo.querySelector('[data-atras]')?.addEventListener('click', () => { vibrar(); nav.volver(); });
+
   nodo.querySelector('[data-sig]').onclick = async () => {
     vibrar();
     if (paso === 3) {
@@ -115,7 +121,11 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
   };
   return {
     nodo, pestana: null, sinGesto: paso === 0,
-    alEntrar() { escalonar(nodo.querySelectorAll('.tarjeta-eleccion, .fila-opciones .chip, .vista-rutina > *, .tarjeta .fila')); },
+    alEntrar() {
+      // El disco de la portada gira al entrar (también al volver del paso 1), pero nunca detrás de la cortinilla.
+      const disco = nodo.querySelector('.bienvenida-disco');
+      if (disco) cuandoRevelada(() => requestAnimationFrame(() => disco.classList.add('arranca')));
+      escalonar(nodo.querySelectorAll('.tarjeta-eleccion, .fila-opciones .chip, .vista-rutina > *, .tarjeta .fila')); },
   };
 }
 

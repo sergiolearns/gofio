@@ -20,6 +20,9 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && estado.sesiones.some((s) => s.estado === 'en-curso')) mantenerEncendida(true);
 });
 
+/** Peso con el que arrancan −/+ si aún no hay ninguno (barra olímpica vacía, mancuerna ligera…). No es una sugerencia. */
+const PESO_DE_PARTIDA = { barra: 20, smith: 20, mancuernas: 10, maquina: 20, polea: 10, lastre: 0 };
+
 export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
   const s = sesionPorId(sesionId);
   if (!s) return { nodo: el('<section><p>Esta sesión ya no existe.</p></section>') };
@@ -87,8 +90,10 @@ export function seriePantalla({ sesionId, i = 0, nueva = -1 }, nav) {
   nodo.querySelector('[data-volver]').onclick = () => nav.volver();
   nodo.querySelectorAll('[data-peso]').forEach((b) => b.addEventListener('click', async () => {
     const dir = Number(b.dataset.peso);
-    if (peso == null) { await escribirPeso(); return; }
-    peso = G.siguienteEscalon(peso, escalon, dir); pintarPeso(dir);
+    // −/+ siempre suman o restan el escalón de tu gym. Sin peso aún, arrancan en uno de partida según el material;
+    // el teclado solo sale al tocar el número (G53).
+    if (peso == null) { peso = PESO_DE_PARTIDA[lastre ? 'lastre' : ej.equipo] ?? 10; pintarPeso(dir); vibrar(); return; }
+    peso = Math.max(0, G.siguienteEscalon(peso, escalon, dir)); pintarPeso(dir); vibrar();
   }));
   async function escribirPeso() {
     const v = await pedirNumero({ titulo: lastre ? 'Lastre' : 'Peso', sub: lastre ? 'Kilos extra (0 sin lastre).' : ej.equipo === 'mancuernas' ? 'Kilos de cada mancuerna.' : 'Kilos en total.', valor: peso ?? '' });

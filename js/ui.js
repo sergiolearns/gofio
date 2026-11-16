@@ -225,3 +225,8 @@ export function pop(n, escala = 1.14) {
   if (reduceMovimiento() || !n) return;
   n.animate([{ transform: 'scale(1)' }, { transform: `scale(${escala})` }, { transform: 'scale(1)' }], { duration: 320, easing: 'cubic-bezier(.34,1.56,.64,1)' });
 }
+
+/** Ejecuta algo cuando la cortinilla ya se ha ido (para que las animaciones de entrada se vean, no detrás). */
+export function cuandoRevelada(fn) {
+  if (window.gofioRevelada) fn(); else window.addEventListener('gofio:revelada', fn, { once: true });
+}
