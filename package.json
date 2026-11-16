@@ -1,0 +1,8 @@
+{
+  "name": "gofio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Gofio: entrenamiento con base científica. Proyecto personal de Sergio Learns.",
+  "scripts": { "test": "node --test \"pruebas/*.test.js\"" }
+}

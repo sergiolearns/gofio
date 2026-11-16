@@ -1,0 +1,30 @@
+/* Gofio · identidad D «La muela» · variables definitivas (v0.1, 16 nov 2026)
+   Las letras van dentro de la app (licencia SIL OFL 1.1): nada se pide a Google ni a terceros. */
+@font-face{font-family:"Bricolage Grotesque";src:url("../letras/bricolage-grotesque-latin.woff2") format("woff2");
+  font-weight:200 800;font-stretch:75% 100%;font-display:swap}
+@font-face{font-family:"Hanken Grotesk";src:url("../letras/hanken-grotesk-latin.woff2") format("woff2");
+  font-weight:100 900;font-display:swap}
+:root{
+  /* Colores (G25) */
+  --basalto:#1B1917;      /* la piedra: fondo para entrenar */
+  --basalto-2:#25221F;    /* tarjetas y botones sobre basalto */
+  --basalto-3:#3A3531;    /* líneas y bordes sobre basalto */
+  --piedra:#A89D8F;       /* texto secundario sobre basalto */
+  --harina:#F1E6D2;       /* el gofio: fondo claro para la semana y casa */
+  --harina-texto:#F3EADB; /* texto sobre basalto */
+  --harina-2:#E6D8BF;     /* tarjetas y franjas sobre harina */
+  --tierra:#6E6357;       /* texto secundario sobre harina */
+  --millo:#E3A62B;        /* el grano tostado: marca, acento, granos */
+  --almagre:#B8422E;      /* el rojo de la Cueva Pintada: acción principal y sello */
+  --almagre-texto:#FFF6E8;
+  --mar:#1F4FA3;          /* solo para datos */
+  /* Letras */
+  --letra-titulo:"Bricolage Grotesque","Arial Narrow",system-ui,sans-serif; /* con font-stretch:75% y peso 800 */
+  --letra-texto:"Hanken Grotesk",system-ui,-apple-system,sans-serif;
+  --estrecha:75%;
+  /* Formas y movimiento */
+  --radio:14px; --radio-grande:22px;
+  --curva-salida:cubic-bezier(.22,1,.36,1);   /* entra rápido, se posa despacio */
+  --curva-muelle:cubic-bezier(.34,1.56,.64,1); /* rebote corto (sello, granos) */
+  --curva-ios:cubic-bezier(.32,.72,0,1);       /* hojas y pantallas, como iOS */
+}
