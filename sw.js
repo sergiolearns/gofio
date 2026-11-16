@@ -1,6 +1,6 @@
 // Service worker de Gofio: guarda la app para que funcione sin conexión (en el sótano del gimnasio).
 // Al publicar una versión nueva se cambia VERSION; la app avisa y el usuario decide cuándo actualizar.
-const VERSION = 'gofio-0.1.7';
+const VERSION = 'gofio-0.1.8';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/variables.css', 'css/app.css',
@@ -25,9 +25,12 @@ self.addEventListener('message', (e) => { if (e.data === 'saltar') self.skipWait
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  // Primero lo guardado (rápido y sin conexión); las páginas caen siempre en index.html.
-  e.respondWith(
-    caches.match(e.request, { ignoreSearch: e.request.mode === 'navigate' }).then((r) => r
-      || fetch(e.request).catch(() => (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error()))),
-  );
+  // La página (index.html), primero de la red: así lo que se instala desde Safari es siempre lo último (G63; iOS
+  // guarda la barra de estado y la imagen de arranque al instalar). Sin conexión, la guardada.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(fetch(e.request, { cache: 'no-cache' }).catch(() => caches.match('index.html')));
+    return;
+  }
+  // El resto, primero lo guardado (rápido y sin conexión en el sótano del gimnasio).
+  e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
 });

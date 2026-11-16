@@ -249,6 +249,10 @@ async function inicio() {
   else if (!ajuste('inicioHecho') && !forzar) ir('bienvenida', {}, { modo: 'pestana' });
   else { pedirPersistencia(); ir(forzar && PANTALLAS[forzar] ? forzar : 'hoy', {}, { modo: 'pestana' }); }
   quitarCortinilla();
+  // G63 · Si la instalación es de antes de la barra opaca, se avisa (una vez por apertura) de que hay que reinstalar.
+  if (navigator.standalone && (window.gofioPantalla?.arriba ?? 0) > 0 && ajuste('inicioHecho')) {
+    setTimeout(() => avisar('Reinstala Gofio para verla a pantalla completa', { texto: 'Cómo', hacer: () => ir('ajustes', {}, { modo: 'pestana' }) }), 2200);
+  }
 }
 window.addEventListener('hashchange', () => {
   const p = location.hash.slice(1);

@@ -5,7 +5,7 @@ import { estado, ajuste, ponerAjuste, arrancar, DESCANSO_POR_DEFECTO } from '../
 import { el, esc, kg, mmss, icono, hoja, confirmar, avisar, vibrar, escalonar } from '../ui.js';
 
 const NOMBRE_EQUIPO = { barra: 'Barra', smith: 'Smith', mancuernas: 'Mancuernas', maquina: 'Máquinas', polea: 'Poleas', lastre: 'Lastre' };
-const VERSION = '0.1.7';
+const VERSION = '0.1.8';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {
@@ -54,6 +54,9 @@ const leerEscalon = (t) => {
 };
 const verEscalon = (v) => (Array.isArray(v) ? v.map(kg).join('; ') : kg(v));
 
+/** G63 · La app instalada antes de la 0.1.7 conserva la barra translúcida (iOS la guarda al instalar). */
+export const instalacionVieja = () => !!navigator.standalone && (window.gofioPantalla?.arriba ?? 0) > 0;
+
 export function ajustesPantalla(_, nav) {
   const esc_ = ajuste('escalones');
   const perfil = ajuste('perfil');
@@ -66,6 +69,10 @@ export function ajustesPantalla(_, nav) {
   const objetivo = G.OBJETIVOS[ajuste('objetivo')]?.nombre ?? 'Recomposición';
   const nodo = el(`<section aria-labelledby="titulo-ajustes">
     <h1 class="titular grande" id="titulo-ajustes" style="margin-top:8px">Ajustes</h1>
+${instalacionVieja() ? `
+    <div class="grupo"><h2>Falta un paso</h2><div class="tarjeta">
+      <div class="fila"><span class="que">Vuelve a instalar Gofio<small>Tu iPhone guardó cómo se veía la app al instalarla. Para que llegue al borde de abajo:<br>1. Guarda una copia (abajo, en «Copia de seguridad»).<br>2. Quita Gofio de la pantalla de inicio.<br>3. En Safari, abre gofio.sergiolearns.com. Si sale «Hay versión nueva», toca «Actualizar».<br>4. Compartir → Añadir a pantalla de inicio.<br>5. Ábrela y toca «Tengo una copia».</small></span></div>
+    </div></div>` : ''}
 
     <div class="grupo"><h2>Tu plan</h2><div class="tarjeta">
       <button class="fila tocable" type="button" data-plan style="width:100%;text-align:left"><span class="que">${esc(plantilla.propuesta ? plantilla.nombre.replace('Propuesta de Gofio · ', 'De Gofio: ') : 'Tu rutina')}<small>${esc(objetivo)} · ${plantilla.dias.length} días · ${plantilla.dias.map((d) => esc(d.nombre)).join(', ')}</small></span><span class="enlace">Cambiar</span></button>
@@ -142,7 +149,8 @@ export function ajustesPantalla(_, nav) {
     const sonda = el('<div style="position:fixed;top:0;height:100%;width:1px;visibility:hidden"></div>');
     document.body.append(sonda); const alto = Math.round(sonda.getBoundingClientRect().height); sonda.remove();
     const ar = window.gofioPantalla?.arriba;
-    med.textContent = `Pantalla ${screen.width}×${screen.height} · app ${innerWidth}×${alto} · falta ${cs.getPropertyValue('--falta').trim() || '0px'}${navigator.standalone ? ` · instalada · barra ${ar > 0 ? 'translúcida' : 'opaca'}` : ''}`;
+    const barra = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.content;
+    med.textContent = `Pantalla ${screen.width}×${screen.height} · app ${innerWidth}×${alto} · falta ${cs.getPropertyValue('--falta').trim() || '0px'}${navigator.standalone ? ` · instalada · barra ${ar > 0 ? 'translúcida' : 'opaca'}` : ` · en Safari · al instalar, barra ${barra === 'default' ? 'opaca' : 'translúcida'}`}`;
   }
   return { nodo, clara: true, pestana: 'ajustes', alEntrar({ refresco } = {}) { if (!refresco) escalonar(nodo.querySelectorAll('.grupo'), { desde: 40, retraso: 50 }); } };
 }
