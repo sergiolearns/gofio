@@ -31,12 +31,18 @@ function montar(nombre, params) {
   if (r.pestana) nodo.classList.add('con-pestanas');
   return { nombre, params, nodo, r };
 }
+// G61 · Lo que iOS deja debajo de la app se pinta del color de lo que hay abajo (pestañas o pantalla), no de negro.
+function pintarFondo(color) {
+  window.gofioFondo = color;
+  if (!document.getElementById('cortinilla')) document.documentElement.style.backgroundColor = color;
+}
 function aplicarCromo(entrada) {
   const { r } = entrada;
   nav.hidden = false;
   nav.classList.toggle('fuera', !r.pestana);
   if (r.pestana) pintarPestanas(r.pestana, r.clara);
   document.querySelector('meta[name="theme-color"]').content = r.clara ? '#F1E6D2' : '#1B1917';
+  pintarFondo(r.clara ? '#F1E6D2' : '#1B1917');
   entrada.r.alMostrar?.();
 }
 
@@ -176,7 +182,7 @@ const instalada = navigator.standalone === true || matchMedia('(display-mode: st
 /** La cortinilla se queda lo justo para que se vea la animación (≈1,4 s desde que se abre) y se va con un fundido. */
 function quitarCortinilla() {
   const c = document.getElementById('cortinilla');
-  const revelar = () => { if (window.gofioRevelada) return; window.gofioRevelada = true; window.dispatchEvent(new Event('gofio:revelada')); };
+  const revelar = () => { if (window.gofioRevelada) return; window.gofioRevelada = true; document.documentElement.style.backgroundColor = window.gofioFondo || '#1B1917'; window.dispatchEvent(new Event('gofio:revelada')); };
   if (!c) { revelar(); return; }
   if (reduceMovimiento()) {
     c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).finished.then(() => c.remove());

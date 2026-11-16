@@ -5,7 +5,7 @@ import { estado, ajuste, ponerAjuste, arrancar, DESCANSO_POR_DEFECTO } from '../
 import { el, esc, kg, mmss, icono, hoja, confirmar, avisar, vibrar, escalonar } from '../ui.js';
 
 const NOMBRE_EQUIPO = { barra: 'Barra', smith: 'Smith', mancuernas: 'Mancuernas', maquina: 'Máquinas', polea: 'Poleas', lastre: 'Lastre' };
-const VERSION = '0.1.5';
+const VERSION = '0.1.6';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {
@@ -103,6 +103,7 @@ export function ajustesPantalla(_, nav) {
     <div class="creditos">
       <p>Gofio ${VERSION}. App de bienestar, no médica. Si notas dolor en el pecho, mareo fuerte o dolor en una articulación, para y consulta.</p>
       <p style="margin-top:8px">Letras: Bricolage Grotesque y Hanken Grotesk (licencia OFL).</p>
+      <p style="margin-top:8px" data-medidas></p>
       <a class="firma" href="https://sergiolearns.com" target="_blank" rel="noopener">hecho por Sergio Learns</a>
     </div>
     <button class="enlace" type="button" data-borrar style="margin-top:18px;align-self:flex-start">Borrar todo</button>
@@ -134,6 +135,14 @@ export function ajustesPantalla(_, nav) {
     if (!ok) return;
     await D.borrarTodo(); await arrancar(); nav.ir('bienvenida', {}, { modo: 'pestana' });
   };
+  // G61 · Medidas de la pantalla, por si algo no encaja: con una captura de esta línea se ve qué hace iOS.
+  const med = nodo.querySelector('[data-medidas]');
+  if (med) {
+    const cs = getComputedStyle(document.documentElement);
+    const sonda = el('<div style="position:fixed;top:0;height:100%;width:1px;visibility:hidden"></div>');
+    document.body.append(sonda); const alto = Math.round(sonda.getBoundingClientRect().height); sonda.remove();
+    med.textContent = `Pantalla ${screen.width}×${screen.height} · app ${innerWidth}×${alto} · falta ${cs.getPropertyValue('--falta').trim() || '0px'}${navigator.standalone ? ' · instalada' : ''}`;
+  }
   return { nodo, clara: true, pestana: 'ajustes', alEntrar({ refresco } = {}) { if (!refresco) escalonar(nodo.querySelectorAll('.grupo'), { desde: 40, retraso: 50 }); } };
 }
 

@@ -1,3 +1,5 @@
+/* G61 */
+:root { --abajo: max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--falta, 0px))); }
 /* Gofio v0.1 · estilos de la app (identidad D «La muela»).
    Reglas de plataforma de mobile-native (emilkowalski/skills, MIT) y de Impeccable (Apache 2.0), aplicadas a mano. */
 
@@ -10,6 +12,7 @@ html {
   overscroll-behavior: none;                /* sin el rebote de la página entera */
   background: var(--basalto);
   height: 100%;
+  transition: background-color .45s ease; /* la franja de abajo de iOS sigue al color de la pantalla (G61) */
 }
 body {
   margin: 0; height: 100%; overflow: hidden;
@@ -51,11 +54,11 @@ h1, h2, h3, p { margin: 0; }
   position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden;
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   background: var(--basalto); color: var(--harina-texto);
-  padding: calc(env(safe-area-inset-top, 0px) + 22px) 24px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding: calc(env(safe-area-inset-top, 0px) + 22px) 24px calc(var(--abajo) + 24px);
   display: flex; flex-direction: column;
   will-change: auto; contain: paint;
 }
-.pantalla.con-pestanas { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
+.pantalla.con-pestanas { padding-bottom: calc(var(--abajo) + 80px); }
 .pantalla.clara { background: var(--harina); color: var(--basalto); }
 .pantalla.sin-margen { padding-left: 0; padding-right: 0; }
 .relleno { flex: 1 1 auto; }
@@ -64,7 +67,7 @@ h1, h2, h3, p { margin: 0; }
 .pestanas {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-  height: calc(60px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(60px + var(--abajo)); padding-bottom: var(--abajo);
   background: color-mix(in srgb, var(--basalto) 92%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
   border-top: 1px solid var(--basalto-3);
@@ -330,10 +333,10 @@ h1, h2, h3, p { margin: 0; }
 .firma { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--tierra); text-decoration: none; opacity: .8; }
 
 /* ── BIENVENIDA ────────────────────────────────────────────────── */
-.bienvenida { padding: 0 24px calc(env(safe-area-inset-bottom, 0px) + 20px); overflow-x: hidden; overflow-y: auto; }
+.bienvenida { padding: 0 24px calc(var(--abajo) + 20px); overflow-x: hidden; overflow-y: auto; }
 .bienvenida:has(.bienvenida-disco) { overflow: hidden; } /* solo la portada recorta el disco */
 /* En los pasos, el botón se queda abajo y siempre a la vista, con un degradado que tapa lo que pasa por debajo. */
-.pie-fijo { position: sticky; bottom: 0; z-index: 2; margin: 0 -24px; padding: 28px 24px calc(env(safe-area-inset-bottom, 0px) + 14px);
+.pie-fijo { position: sticky; bottom: 0; z-index: 2; margin: 0 -24px; padding: 28px 24px calc(var(--abajo) + 14px);
   background: linear-gradient(to bottom, rgba(27,25,23,0), var(--basalto) 34%); }
 .bienvenida.con-pie { padding-bottom: 0; }
 .bienvenida-disco { position: absolute; left: 50%; top: -330px; width: 660px; height: 660px; margin-left: -330px; }
@@ -365,7 +368,7 @@ h1, h2, h3, p { margin: 0; }
 .hoja {
   position: absolute; left: 0; right: 0; bottom: 0; max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain;
   background: var(--basalto-2); color: var(--harina-texto); border-radius: 22px 22px 0 0;
-  padding: 8px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  padding: 8px 20px calc(var(--abajo) + 20px);
   transform: translateY(100%); transition: transform .42s var(--curva-ios); pointer-events: auto;
   box-shadow: 0 -10px 40px -10px rgba(0,0,0,.5);
 }
@@ -432,7 +435,7 @@ h1, h2, h3, p { margin: 0; }
 #cortinilla.fuera { pointer-events: none; }
 .col { display: flex; flex-direction: column; flex: 1; }
 /* Botón principal de cada pantalla siempre a la vista al desplazar. */
-.pantalla > .boton:last-child { position: sticky; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); z-index: 2; flex: none; }
+.pantalla > .boton:last-child { position: sticky; bottom: calc(var(--abajo) + 8px); z-index: 2; flex: none; }
 .fila-opciones { flex-wrap: nowrap; }
 .fila-opciones .chip { flex: 1 1 0; min-width: 0; padding: 0; }
 .serie-herramientas .chip, .fila-chips .chip { flex: none; }
@@ -449,14 +452,10 @@ h1, h2, h3, p { margin: 0; }
 body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 input, textarea { -webkit-user-select: text; user-select: text; }
 /* El botón fijo de las pantallas con pestañas se queda encima de la barra, no debajo. */
-.pantalla.con-pestanas > .boton:last-child { bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
+.pantalla.con-pestanas > .boton:last-child { bottom: calc(var(--abajo) + 78px); }
 /* «Guardar serie» va en su sitio, debajo de las herramientas: nunca encima de ellas. */
 .pantalla > .boton-guardar:last-child { position: relative; bottom: auto; }
 
-/* G60 · Pantalla completa en iOS 26 (app instalada): lo que va pegado abajo baja lo que falta (ver index.html). */
-#app, #capa-hojas { bottom: calc(-1 * var(--falta, 0px)); }
-#cortinilla { bottom: calc(-1 * var(--falta, 0px)); }
-.pestanas { bottom: calc(-1 * var(--falta, 0px)); }
 /* G60 · Nada dentro de una pantalla se encoge para caber: si no cabe, la pantalla se desplaza. (Las herramientas de
    la serie se aplastaban a unos píxeles y «Guardar serie» parecía taparlas.) */
 .pantalla > * { flex-shrink: 0; }
