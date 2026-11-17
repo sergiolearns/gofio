@@ -197,6 +197,35 @@ export function pararReanima() {
   try { n.stop(t + 0.3); o.stop(t + 0.3); } catch { /* ya parado */ }
 }
 
+// ── La brega (G115-G117): el tostador y Moliendo. Misma familia: madera, grano, piedra y aire ──
+// Un grano que salta en el tostador: un clic corto y agudo, muy bajo.
+function granito(t, fuerza = 1, f = 3600) {
+  const n = ctx.createBufferSource(); n.buffer = ruido(0.02);
+  const bp = filtro('bandpass', f, 3.5); const g = ctx.createGain(); env(g, t, 0.0006, 0.14 * fuerza, 0.014);
+  n.connect(bp); bp.connect(g); envia(g, 0.06); n.start(t); n.stop(t + 0.025);
+}
+// El palo de madera que remueve el grano: un roce grave y corto.
+function madera(t, fuerza = 1) {
+  const n = ctx.createBufferSource(); n.buffer = ruido(0.4, true);
+  const bp = filtro('bandpass', 700, 1.6); bp.frequency.setValueAtTime(900, t); bp.frequency.exponentialRampToValueAtTime(520, t + 0.32);
+  const g = ctx.createGain(); env(g, t, 0.05, 0.1 * fuerza, 0.25);
+  n.connect(bp); bp.connect(g); envia(g, 0.12); n.start(t); n.stop(t + 0.4);
+}
+let tostando = null;
+/** El tostador mientras tuestas: granos que saltan de vez en cuando y el palo que remueve. Muy bajo. */
+export function tostarOn() {
+  if (tostando || !activo || !ac()) return;
+  const paso = () => {
+    if (!tostando || !ctx) return;
+    const t = ctx.currentTime + 0.01;
+    granito(t, 0.35 + Math.random() * 0.35, 2800 + Math.random() * 1800);
+    if (Math.random() < 0.18) madera(t + 0.05, 0.6);
+    tostando.id = setTimeout(paso, 180 + Math.random() * 420);
+  };
+  tostando = { id: setTimeout(paso, 300) };
+}
+export function tostarOff() { if (tostando) { clearTimeout(tostando.id); tostando = null; } }
+
 // Los momentos (tabla del concepto, sección 5).
 const SON = {
   amoler(t) { rodar(t, 0.42, 0.75); impacto(t + 0.55, 0.55, 0.3); subida(t + 0.58, 0.62); impacto(t + 1.2, 1, 0.55); rodar(t + 1.25, 0.9, 0.6); },
@@ -210,6 +239,13 @@ const SON = {
   pestana(t) { golpecito(t, 210, 0.5); },
   muelaHoy(t) { rodar(t + 0.05, 0.9, 0.35); },
   hecho(t) { impacto(t + 0.2, 1, 0.6); impacto(t + 0.55, 0.45, 0.5); rodar(t + 0.6, 1.4, 0.7); },
+  // La brega: un puñado de granos que salta al sellar un movimiento; «Ya está tostado»; la piedra de Arrimar;
+  // Moliendo (la muela que empieza a girar) y «Hecha» (golpe de tambor, más suave que el del descanso).
+  punado(t) { for (let k = 0; k < 7; k++) granito(t + k * 0.03 + Math.random() * 0.02, 0.7, 2600 + Math.random() * 2000); golpecito(t + 0.18, 230, 0.35); },
+  tostado(t) { madera(t, 1); golpecito(t + 0.2, 170, 0.8); impacto(t + 0.32, 0.4, 0.4); },
+  piedra(t, peso = 0.5) { golpecito(t, 220 - 110 * peso, 0.6 + 0.5 * peso); rodar(t + 0.04, 0.25, 0.25); },
+  moliendo(t) { rodar(t, 0.9, 0.45); },
+  hecha(t) { tambor(t, 0.6); },
 };
 
 /** Un momento: 'amoler', 'guardar', 'rodar', 'sube', 'chacara', 'tambor', 'marca' o 'hecho'. */

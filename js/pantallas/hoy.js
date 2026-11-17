@@ -5,6 +5,7 @@ import { estado, ajuste, hoy, planDeHoy, porQue, prescripcion, vueltaHoy, sesion
   siguienteHueco, seriesDelHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste } from '../logica.js';
 import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada, avisar, contar } from '../ui.js';
 import { aMoler } from '../amoler.js';
+import { tocaTostar } from './tostar.js';
 import { toque } from '../sonidos.js';
 import * as S from '../sonidos.js';
 
@@ -22,7 +23,9 @@ export function hoyPantalla(params = {}, nav) {
   let enCurso = sesionEnCurso();
   // Una molienda empezada sin ninguna serie guardada no cuenta: se deshace al volver a casa (no se pierde nada).
   const mantener = params.mantener; delete params.mantener;   // la que acaba de abrir el primer arranque
-  if (enCurso && enCurso.id !== mantener && !seriesDe(enCurso.id).length && !enCurso.descanso) { descartarSesion(enCurso); enCurso = null; }
+  // G117: tampoco se deshace si ya tostaste, arrimaste alguna piedra o estabas moliendo la primera (iOS pudo recargar la app).
+  const empezada = (x) => seriesDe(x.id).length || x.descanso || x.moliendo || x.tostado || x.tostados?.length || x.calentamientos?.length;
+  if (enCurso && enCurso.id !== mantener && !empezada(enCurso)) { descartarSesion(enCurso); enCurso = null; }
   const hechaHoy = sesionesHechas().filter((s) => s.fecha === fecha).at(-1);
   const mostrarHecho = !!hechaHoy && !enCurso && !eleccion && !diaMaloActivo;
   const plan = planDeHoy(fecha);
@@ -154,11 +157,13 @@ export function hoyPantalla(params = {}, nav) {
     const i = Math.max(0, siguienteHueco(s, s.actual ?? 0));
     const total = s.plan.reduce((a, x) => a + x.series, 0);
     const hechas = seriesDe(s.id).length;
-    if (enCurso) { nav.ir('serie', { sesionId: s.id, i }); return; }
-    // «A moler» (G84, G89): la muela de Hoy rueda y crece, cae la pequeña, se abre el ojo y entra la primera serie.
+    // R30 · Tostar (G117): antes de la primera serie, si está encendido y no lo has hecho ni saltado en esta molienda.
+    const destino = tocaTostar(s) ? ['tostar', { sesionId: s.id }] : ['serie', { sesionId: s.id, i }];
+    if (enCurso) { nav.ir(...destino); return; }
+    // «A moler» (G84, G89): la muela de Hoy rueda y crece, cae la pequeña, se abre el ojo y entra Tostar o la primera serie.
     await aMoler({
       muela: nodo.querySelector('.hoy-muela'), apartar: [...nodo.querySelectorAll('.hoy-cabeza, .hoy-cuerpo'), document.getElementById('pestanas')],
-      total, hechas, alCambiar: () => nav.ir('serie', { sesionId: s.id, i }, { sinAnimacion: true }),
+      total, hechas, alCambiar: () => nav.ir(destino[0], destino[1], { sinAnimacion: true }),
     });
   });
 

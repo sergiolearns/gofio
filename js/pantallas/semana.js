@@ -52,9 +52,9 @@ export function semanaPantalla(_, nav) {
   }).join('');
   const era = `<svg viewBox="0 0 300 300" role="img" aria-label="La era de la semana: ${dias.filter((d) => d.granos).map((d) => `${G.NOMBRE_DIA[dias.indexOf(d)]} ${d.granos} granos`).join(', ') || 'aún sin granos'}">
     ${trozos}
-    <g class="centro"><circle cx="150" cy="150" r="56" fill="#1B1917"/><circle cx="150" cy="150" r="49" fill="none" stroke="#E3A62B" stroke-width="2"/>
-    <circle cx="150" cy="122" r="3" fill="#E3A62B"/></g>
-    <text x="150" y="160" text-anchor="middle" class="cifra" font-size="40" fill="#E3A62B" data-total>${totalGranos}</text>
+    <g class="centro"><circle cx="150" cy="150" r="56" fill="#1B1917"/><circle cx="150" cy="150" r="49" fill="none" stroke="#D4922B" stroke-width="2"/>
+    <circle cx="150" cy="122" r="3" fill="#D4922B"/></g>
+    <text x="150" y="160" text-anchor="middle" class="cifra" font-size="40" fill="#D4922B" data-total>${totalGranos}</text>
     <text x="150" y="180" text-anchor="middle" font-family="Hanken Grotesk" font-weight="700" font-size="10" fill="#A89D8F">GRANOS</text></svg>`;
 
   // Dos frases que dicen lo importante (G85), sin culpa: el puntal (la mayor marca nueva, R11) y lo que va corto (R9).

@@ -23,7 +23,7 @@
 .pestanas a { gap: 4px; }
 
 /* ── Granos ── */
-.grano .ahora { fill: rgba(227,166,43,.25); stroke: var(--millo); stroke-width: 16; }
+.grano .ahora { fill: rgba(212,146,43,.25); stroke: var(--millo); stroke-width: 16; }
 .grano.late { animation: late 1.6s ease-in-out infinite; transform-origin: 50% 50%; }
 @keyframes late { 50% { transform: scale(1.18); } }
 .granos.millo .vacio { stroke: var(--millo); stroke-width: 16; }
@@ -250,7 +250,7 @@
 .volador { position: fixed; z-index: 75; left: 0; top: 0; width: 30px; height: 36px; margin: -18px 0 0 -15px; pointer-events: none; }
 .volador .grano { width: 30px; height: 36px; }
 .destello { position: fixed; z-index: 74; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(227,166,43,.6), transparent 70%); pointer-events: none; }
+  background: radial-gradient(circle, rgba(212,146,43,.6), transparent 70%); pointer-events: none; }
 
 /* Hojas de la serie: «Otra maña» y «Chacho, ¿lo dejas aquí?» */
 .hoja .opciones .flecha-der { margin-left: auto; width: 18px; height: 18px; color: var(--millo); flex: none; }
@@ -263,7 +263,7 @@
 .pantalla.descanso { background: #161412; transition: background-color .6s ease; overflow: hidden; }
 .pantalla.descanso.reanima { background: var(--basalto); }
 .descanso .luz { position: absolute; left: 50%; top: calc(var(--arriba) + 262px); width: 640px; height: 640px; margin: -320px 0 0 -320px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(227,166,43,.4) 0%, rgba(227,166,43,.12) 40%, transparent 68%); opacity: 0; transition: opacity .8s ease; pointer-events: none; }
+  background: radial-gradient(circle, rgba(212,146,43,.4) 0%, rgba(212,146,43,.12) 40%, transparent 68%); opacity: 0; transition: opacity .8s ease; pointer-events: none; }
 .descanso.reanima .luz { opacity: 1; }
 .descanso .serie-cabeza { position: relative; z-index: 1; }
 .muela-descanso { position: relative; z-index: 1; width: min(300px, 72vw); height: min(300px, 72vw); margin: 18px auto 0; will-change: transform; }
@@ -286,7 +286,7 @@
 .descanso-pie .boton::before { display: none; }
 .descanso.mira .descanso-pie .boton { background: #4A2A22; color: #E8B8AA; }
 .descanso.reanima .descanso-pie .boton, .descanso.ya .descanso-pie .boton { background: var(--almagre); color: var(--almagre-texto);
-  box-shadow: 0 0 0 4px rgba(227,166,43,.35), 0 8px 28px rgba(184,66,46,.5); }
+  box-shadow: 0 0 0 4px rgba(212,146,43,.35), 0 8px 28px rgba(184,66,46,.5); }
 .descanso.ya .descanso-pie .boton { box-shadow: 0 8px 28px rgba(184,66,46,.55); }
 .descanso .relleno { min-height: 16px; }
 
@@ -338,13 +338,13 @@
 .molido-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 34px; }
 .molido-cab h2 { font-size: 16px; font-weight: 700; }
 .molido-cab span { font-size: 12px; color: var(--tierra); text-align: right; }
-.molido-cab mark { background: rgba(227,166,43,.35); color: inherit; padding: 1px 4px; border-radius: 3px; }
+.molido-cab mark { background: rgba(212,146,43,.35); color: inherit; padding: 1px 4px; border-radius: 3px; }
 .molido { margin-top: 10px; padding: 8px 14px; border-radius: 16px; background: #EDE0C8; list-style: none; }
 .molido li { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 30px; }
 .molido .m { font-size: 13px; font-weight: 600; width: 92px; flex: none; }
 .molido .fila-granos { display: flex; flex: none; }
 .molido .fila-granos span { display: inline-flex; width: 11px; justify-content: center; padding: 2px 0; }
-.molido .fila-granos span.franja { background: rgba(227,166,43,.28); }
+.molido .fila-granos span.franja { background: rgba(212,146,43,.28); }
 .molido .fila-granos .grano { width: 8px; height: 10px; }
 .molido .grano .lleno { fill: var(--basalto); }
 .molido .grano .vacio { stroke: #B9A98F; stroke-width: 14; }
@@ -517,3 +517,251 @@
 .opciones-como button[aria-pressed="true"] { background: var(--basalto); color: var(--harina-texto); }
 .como-te-dejo small { display: block; margin-top: 10px; font-size: 12px; line-height: 1.4; color: var(--tierra); }
 .hoy .fila-titulo .cruza { background: var(--basalto); color: var(--harina-texto); padding: 3px 8px; margin: -3px 0 -3px -8px; border-radius: 8px; }
+
+/* ════════════════════════ v0.2.16 · LA BREGA (G115-G117; lienzo: tableros 14-16) ════════════════════════ */
+/* La regla del vistazo (G116): en fuerza, solo lo que necesitas sudando, en grande, grueso y en millo. */
+
+/* ── Los tiempos de la serie: Ahora → Moliendo → ¿Cómo fue? ── */
+.moliendo-solo { display: none !important; }
+.serie[data-momento="moliendo"] .moliendo-solo { display: flex !important; }
+.serie[data-momento="moliendo"] .ahora-solo:not(.moliendo-tambien), .serie[data-momento="moliendo"] .como-solo { display: none !important; }
+.serie[data-momento="moliendo"] > .relleno { display: none; }
+.serie[data-momento="moliendo"] .serie-titulo { text-align: center; align-self: stretch; }
+.moliendo { margin: auto 0; padding: 12px 0; flex-direction: column; align-items: center; text-align: center; }
+.moliendo-etiqueta { order: 0; font-size: 14px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--millo); }
+.moliendo-muela { order: 1; width: min(230px, 58vw, 28dvh); height: min(230px, 58vw, 28dvh); margin-top: min(18px, 2dvh); will-change: transform; }
+.moliendo-muela img { width: 100%; height: 100%; }
+.moliendo-que { order: 2; margin: min(20px, 2.4dvh) 0 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.moliendo-que .cifra { display: block; font-size: min(76px, 9.5dvh); line-height: .9; }
+.moliendo-que span { font-size: 18px; font-weight: 800; color: var(--millo); }
+.moliendo-animo { order: 3; margin: min(18px, 2dvh) 0 0; max-width: 320px; font-size: 30px; line-height: 1.02; color: var(--harina-texto); }
+.moliendo-pista { order: 4; margin: 12px 0 0; max-width: 280px; font-size: 14px; color: var(--piedra); }
+.moliendo-pie { justify-content: center; }
+.moliendo-pie .enlace { min-height: 44px; color: var(--piedra); }
+.serie > .boton-hecha.moliendo-solo { margin-top: 10px; }
+.boton-brega { justify-content: center; min-height: 72px; font-size: 38px; letter-spacing: .02em; }
+@media (max-height: 720px) { .boton-brega { min-height: 62px; font-size: 32px; } .moliendo-animo { font-size: 26px; } }
+
+/* ── Arrimar: las piedras del levantamiento (R28) ── */
+.piedras { display: flex; align-items: flex-end; justify-content: center; gap: 8px; margin-top: 14px; flex-wrap: nowrap; }
+.piedra { position: relative; flex: none; width: var(--w); height: var(--h); display: grid; place-items: center; transition: transform .3s var(--curva-muelle); }
+.piedra svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.piedra path { fill: var(--basalto-2); stroke: var(--basalto-3); stroke-width: 2; transition: fill .3s ease, stroke .3s ease; }
+.piedra line { stroke: var(--piedra); stroke-width: 2; stroke-linecap: round; }
+.pd-txt { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.pd-txt b { font-size: max(13px, calc(var(--h) * .36)); color: var(--harina-texto); }
+.pd-txt small { margin-top: 1px; font-size: max(10px, calc(var(--h) * .22)); font-weight: 700; color: var(--piedra); }
+.piedra.pd-hecha path { fill: var(--basalto-3); stroke: var(--basalto-3); }
+.piedra.pd-hecha .pd-txt b, .piedra.pd-hecha .pd-txt small { color: var(--piedra); }
+.piedra.pd-ahora path { fill: var(--millo); stroke: var(--millo); }
+.piedra.pd-ahora .pd-txt b, .piedra.pd-ahora .pd-txt small { color: var(--basalto); }
+.piedra.pd-ahora { animation: piedra-late 1.8s ease-in-out infinite; }
+@keyframes piedra-late { 0%, 100% { filter: drop-shadow(0 0 0 rgba(212,146,43,0)); } 50% { filter: drop-shadow(0 0 10px rgba(212,146,43,.55)); } }
+.piedra.pd-trabajo path { fill: var(--almagre); stroke: var(--almagre); }
+.piedra.pd-trabajo .pd-txt b, .piedra.pd-trabajo .pd-txt small { color: var(--almagre-texto); }
+.piedra.pd-saltada path { fill: none; stroke: var(--piedra); stroke-dasharray: 4 4; }
+.piedras-flecha { align-self: center; font-size: 20px; font-weight: 800; color: var(--piedra); margin: 0 -2px; }
+.serie.arrimando .ahora-etiqueta { color: var(--millo); }
+.serie.arrimando .ahora { padding-top: 14px; }
+.senal-fuerte { margin-top: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.senal-fuerte b { font-size: 44px; line-height: .95; color: var(--millo); }
+.senal-fuerte span { font-size: 18px; font-weight: 700; color: var(--harina-texto); }
+.senal-fuerte .enlace { padding: 6px 0; font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .piedra.pd-ahora { animation: none; filter: drop-shadow(0 0 8px rgba(212,146,43,.5)); } }
+
+/* ── La libreta (hoja de harina) ── */
+.libreta h2 { font-size: 34px; line-height: 1; }
+.libreta .sub { margin-top: 4px; }
+.lb-pestanas { display: flex; gap: 6px; margin: 14px -24px 0; padding: 0 24px 2px; overflow-x: auto; scrollbar-width: none; }
+.lb-pestanas::-webkit-scrollbar { display: none; }
+.lb-pestanas button { flex: none; height: 38px; padding: 0 14px; border-radius: 19px; background: var(--harina-2); color: var(--basalto); font-size: 14px; font-weight: 700; transition: background-color .2s ease, color .2s ease; }
+.lb-pestanas button[aria-selected="true"] { background: var(--basalto); color: var(--harina-texto); }
+.lb-pagina { margin-top: 16px; min-height: 150px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.45; }
+.lb-pagina p { margin: 0; }
+.lb-pagina b { color: var(--almagre); }
+.lb-grande { font-family: var(--letra-titulo); font-stretch: var(--estrecha); font-weight: 800; font-size: 26px; line-height: 1.08; }
+.lb-fuente { font-size: 13px; color: var(--tierra); }
+.libreta-boton { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--piedra); transition: background-color .15s ease, transform .12s var(--curva-salida); }
+.libreta-boton:active { background: var(--basalto-2); transform: scale(.92); }
+.libreta-boton svg { width: 22px; height: 22px; }
+
+/* ── El descanso: la corona de granos, la siguiente preparada y la pintadera ── */
+.muela-descanso .corona-granos { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.descanso .muela-descanso img { position: absolute; inset: 11%; width: 78%; height: 78%; }
+.cg { fill: var(--millo); stroke: var(--basalto-3); stroke-width: 0; transition: fill .5s ease, stroke-width .5s ease; }
+.cg.cg-molido { fill: rgba(212,146,43,0); stroke-width: 16; }
+.descanso.reanima .cg:not(.cg-molido) { fill: #F0B04A; }
+.descanso .muela-descanso { width: min(272px, 66vw, calc(100dvh - 560px)); height: min(272px, 66vw, calc(100dvh - 560px)); min-width: 140px; min-height: 140px; margin-top: 18px; }
+.descanso .muela-descanso img { will-change: transform; }
+.descanso-reloj { margin-top: min(18px, 2dvh); font-size: min(96px, 11.5dvh); }
+.descanso-frase { margin-top: 10px; font-size: 26px; }
+.tarjeta-sig { position: relative; z-index: 1; margin-top: 16px; padding: 12px 14px 12px; border-radius: 20px; background: var(--basalto-2); border: 2px solid transparent; transition: border-color .5s ease, box-shadow .5s ease; }
+.descanso.reanima .tarjeta-sig { border-color: var(--millo); box-shadow: 0 0 24px -6px rgba(212,146,43,.5); }
+.ts-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ts-etiqueta { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--piedra); }
+.ts-senal { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 16px; font-size: 15px; font-weight: 800; background: var(--basalto-3); color: var(--harina-texto); }
+.ts-senal svg { width: 16px; height: 16px; }
+.ts-senal.senal-sube, .ts-senal.senal-mas { background: var(--millo); color: var(--basalto); }
+.ts-senal.senal-baja { background: #3A2620; color: #E8B8AA; }
+.ts-numeros { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 10px; }
+.ts-grupo + .ts-grupo { border-left: 1px solid var(--basalto-3); padding-left: 12px; margin-left: 12px; }
+.ts-grupo { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; column-gap: 4px; }
+.ts-grupo .mini { width: 40px; height: 40px; border-radius: 50%; background: var(--basalto-3); display: grid; place-items: center; transition: transform .12s var(--curva-salida); }
+.ts-grupo .mini:active { transform: scale(.88); }
+.ts-grupo .mini svg { width: 16px; height: 16px; }
+.ts-num { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.ts-num b { font-size: min(44px, 5.4dvh); transition: color .2s ease; }
+.ts-num b.cambiado { color: var(--millo); }
+.ts-num small { margin-top: 2px; font-size: 12px; color: var(--piedra); }
+.ts-pie { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.ts-pie .ahora-deja { margin-top: 0; padding: 7px 14px; font-size: 14px; }
+.ts-gofio { font-size: 13px; color: var(--piedra); }
+.lo-que-viene { position: relative; z-index: 1; margin-top: 16px; padding: 12px 16px 14px; border-radius: 20px; background: var(--basalto-2); display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.lqv-nombre { font-size: 28px; line-height: .98; }
+.lqv-que { margin: 4px 0 0; font-size: 30px; color: var(--millo); }
+.lo-que-viene .piedras { margin-top: 8px; align-self: stretch; justify-content: flex-start; }
+.boton-pintadera { position: relative; flex: none; width: 68px; height: 68px; border-radius: 50%; display: grid; place-items: center; transition: transform .12s var(--curva-salida); }
+.boton-pintadera:active { transform: scale(.93); }
+.pintadera { width: 100%; height: 100%; overflow: visible; }
+.pt-fondo { fill: var(--basalto-2); }
+.pt-aro { fill: none; stroke: var(--millo); stroke-width: 1.8; }
+.pt-aro.fino { stroke-width: 1.1; stroke-opacity: .7; }
+.pt-tri path { fill: var(--millo); }
+.pintadera text { font-family: var(--letra-titulo); font-stretch: var(--estrecha); font-weight: 800; font-size: 25px; fill: var(--harina-texto); }
+.pt-huella { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--millo); pointer-events: none; }
+.descanso-pie { align-items: center; }
+/* Lo molido: el ejercicio acabado, en resumen (G115) */
+.molido-reloj { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 10px; }
+.lo-molido .muela-descanso.chica { width: 92px; height: 92px; min-width: 0; min-height: 0; margin: 0; }
+.lo-molido .molido-reloj .descanso-reloj { margin: 0; font-size: 64px; }
+.molido-cuerpo { position: relative; z-index: 1; margin-top: 14px; display: flex; flex-direction: column; align-items: flex-start; }
+.molido-titulo { font-size: 46px; line-height: .95; color: var(--millo); }
+.molido-ej { margin: 4px 0 0; font-size: 17px; font-weight: 700; color: var(--harina-texto); }
+.molido-granos { margin-top: 10px; }
+.molido-granos .grano { width: 18px; height: 22px; }
+.molido-datos { margin: 12px 0 0; align-self: stretch; display: flex; flex-direction: column; }
+.md-fila { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--basalto-3); }
+.md-fila dt { font-size: 14px; color: var(--piedra); }
+.md-fila dd { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 800; }
+.md-fila dd svg { width: 16px; height: 16px; color: var(--millo); }
+.md-fila.sube dd { color: var(--millo); }
+.nyapa { margin-top: 14px; gap: 10px; font-size: 24px; }
+.nyapa svg { width: 18px; height: 22px; color: var(--millo); }
+.lo-molido .descanso-frase { display: none; } /* en Lo molido el mensaje es el resumen */
+@media (max-height: 720px) {
+  .tarjeta-sig { margin-top: 10px; padding: 10px 12px; }
+  .descanso-frase { font-size: 22px; margin-top: 6px; }
+  .molido-titulo { font-size: 38px; }
+  .md-fila { padding: 5px 0; }
+}
+
+/* ── Tostar (R30): el tostador y los seis movimientos ── */
+.tostar { display: flex; flex-direction: column; }
+.tostador-caja { display: flex; justify-content: center; margin-top: 4px; }
+.tostador { width: min(230px, 60vw); height: auto; overflow: visible; }
+.tt-plato { fill: #A93C28; }
+.tt-sombra { fill: #000; opacity: .35; }
+.tt-pared { fill: #3E140D; opacity: .7; }
+.tt-borde-atras { fill: none; stroke: #B5513B; stroke-width: 2.4; }
+.tt-brillo { fill: none; stroke: #E07A62; stroke-width: 2.5; stroke-linecap: round; opacity: .45; }
+
+.tt-borde { fill: none; stroke: #DA6B52; stroke-width: 3.2; stroke-linecap: round; }
+.tt-granos path { fill: var(--millo); }
+.tt-granos .tg-0 path { fill: #A87122; } /* al fondo, en la sombra del plato */
+.tt-granos .tg-1 path { fill: #C2852A; }
+.tg { transform-box: fill-box; transform-origin: center; }
+.tt-palo { transform-box: fill-box; transform-origin: 100% 0; }
+.tt-palo path { stroke: #8C6B4A; stroke-width: 6; stroke-linecap: round; fill: none; }
+.tt-humo path { fill: none; stroke: var(--piedra); stroke-width: 2; stroke-linecap: round; opacity: 0; transform-box: fill-box; }
+.tostar-titulo { margin-top: 14px; font-size: 52px; line-height: .95; }
+.tostar-sub { margin: 8px 0 0; font-size: 18px; line-height: 1.3; color: var(--piedra); }
+.tostar-sub b { color: var(--millo); }
+.segmentado { position: relative; display: flex; margin-top: 14px; padding: 4px; border-radius: 14px; background: var(--basalto-2); }
+.segmentado button { position: relative; z-index: 1; flex: 1; height: 38px; border-radius: 11px; font-size: 14px; font-weight: 700; color: var(--harina-texto); transition: color .2s ease; }
+.segmentado button[aria-checked="true"] { color: var(--basalto); font-weight: 800; }
+.seg-fondo { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 11px; background: var(--millo); }
+.tostar-lista { list-style: none; margin: 10px 0 0; padding: 0; }
+.tt-fila { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; text-align: left; border-bottom: 1px solid var(--basalto-3); transition: background-color .2s ease, border-color .2s ease; }
+.tostar-lista li.tt-ahora .tt-fila { background: var(--basalto-2); border: 2px solid var(--millo); border-radius: 14px; padding: 0 12px; margin: 4px -14px; width: calc(100% + 28px); }
+.tt-marca { position: relative; flex: none; width: 26px; height: 26px; display: grid; place-items: center; }
+.tt-marca > * { grid-area: 1 / 1; }
+.tt-aro { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--basalto-3); box-sizing: border-box; }
+.tt-marca .grano { width: 18px; height: 22px; display: none; }
+.tt-sello { width: 26px; height: 26px; display: none; }
+.tostar-lista li.tt-ahora .tt-marca .grano { display: block; }
+.tostar-lista li.tt-ahora .tt-aro, .tostar-lista li.tt-hecho .tt-aro { display: none; }
+.tostar-lista li.tt-hecho .tt-sello { display: block; }
+.tt-nombre { flex: 1; font-size: 16px; font-weight: 600; color: var(--harina-texto); transition: color .2s ease; }
+.tostar-lista li.tt-hecho .tt-nombre { color: var(--piedra); text-decoration: line-through; text-decoration-color: #6E6357; }
+.tt-cuenta { font-size: 20px; color: var(--millo); }
+.tt-dosis { font-size: 14px; font-weight: 700; color: var(--piedra); white-space: nowrap; }
+.tostar-pista { margin: 10px 0 0; text-align: center; font-size: 14px; color: var(--piedra); }
+.tostar-saltar { align-self: center; min-height: 44px; color: var(--piedra); }
+.boton-tostado { justify-content: center; gap: 12px; margin-top: 6px; font-size: 30px; transition: box-shadow .4s ease, transform .14s var(--curva-salida); }
+.boton-tostado.listo { box-shadow: 0 0 0 4px rgba(212,146,43,.35), 0 10px 30px -8px rgba(184,66,46,.9); }
+.sello-tri .st-c { fill: var(--millo); }
+.sello-tri .st-v { fill: var(--basalto); }
+.st-boton { width: 28px; height: 28px; }
+.st-boton .st-c { fill: var(--almagre-texto); }
+.st-boton .st-v { fill: var(--almagre); }
+@media (max-height: 720px) { .tostador { width: min(170px, 46vw); } .tostar-titulo { font-size: 42px; } .tt-fila { min-height: 46px; } }
+
+/* ── Más nuestra (tablero 16): interruptores con grano, agarradera de tres granos, calado ── */
+.interruptor i { background: var(--harina-2); box-shadow: inset 0 0 0 2px #CDBEA3; transition: background-color .2s ease, box-shadow .2s ease; }
+.interruptor i::after { top: 4px; left: 6px; width: 20px; height: 24px; border-radius: 0; box-shadow: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-80 -92 160 184'%3E%3Cpath transform='rotate%28-14%29' d='M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z' fill='none' stroke='%238C7B66' stroke-width='14'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: transform .3s var(--curva-muelle), background-image .2s ease; }
+.interruptor input:checked + i { background: var(--basalto); box-shadow: inset 0 0 0 2px var(--millo); }
+.interruptor input:checked + i::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-80 -92 160 184'%3E%3Cpath transform='rotate%28-14%29' d='M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z' fill='%23D4922B' stroke='none' stroke-width='0'/%3E%3C/svg%3E"); transform: translateX(20px) rotate(20deg); }
+.pantalla:not(.clara) .interruptor i { background: var(--basalto-2); box-shadow: inset 0 0 0 2px var(--basalto-3); }
+.pantalla:not(.clara) .interruptor input:checked + i { background: #3A2E18; box-shadow: inset 0 0 0 2px var(--millo); }
+.hoja .asa { width: 46px; height: 14px; border-radius: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-270 -92 540 184'%3E%3Cpath transform='translate%28-190 0%29 rotate%28-14%29 scale%28.9%29' d='M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z' fill='%235A534C'/%3E%3Cpath transform='translate%280 0%29 rotate%28-14%29 scale%28.9%29' d='M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z' fill='%235A534C'/%3E%3Cpath transform='translate%28190 0%29 rotate%28-14%29 scale%28.9%29' d='M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z' fill='%235A534C'/%3E%3C/svg%3E") center / contain no-repeat; }
+.hoja.clara .asa { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-270 -92 540 184'%3E%3Cpath transform='translate%28-190 0%29 rotate%28-14%29 scale%28.9%29' d='M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z' fill='%23BBA987'/%3E%3Cpath transform='translate%280 0%29 rotate%28-14%29 scale%28.9%29' d='M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z' fill='%23BBA987'/%3E%3Cpath transform='translate%28190 0%29 rotate%28-14%29 scale%28.9%29' d='M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z' fill='%23BBA987'/%3E%3C/svg%3E") center / contain no-repeat; }
+.ajustes .grupo + .grupo::before { content: ""; display: block; width: 120px; height: 12px; margin: 0 0 22px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12'%3E%3Crect x='0.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M0 0L12 12L0 12Z' fill='%23B8422E'/%3E%3Crect x='12.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M12 12L24 0L24 12Z' fill='%23B8422E'/%3E%3Crect x='24.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M24 0L36 12L24 12Z' fill='%23B8422E'/%3E%3Crect x='36.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M36 12L48 0L48 12Z' fill='%23B8422E'/%3E%3Crect x='48.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M48 0L60 12L48 12Z' fill='%23B8422E'/%3E%3Crect x='60.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M60 12L72 0L72 12Z' fill='%23B8422E'/%3E%3Crect x='72.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M72 0L84 12L72 12Z' fill='%23B8422E'/%3E%3Crect x='84.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M84 12L96 0L96 12Z' fill='%23B8422E'/%3E%3Crect x='96.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M96 0L108 12L96 12Z' fill='%23B8422E'/%3E%3Crect x='108.6' y='.6' width='10.8' height='10.8' fill='none' stroke='%231B1917' stroke-width='1.2'/%3E%3Cpath d='M108 12L120 0L120 12Z' fill='%23B8422E'/%3E%3C/svg%3E") left / contain no-repeat; opacity: .8; }
+
+/* Aire (G117): la cabecera nunca se monta (Hoy, granos y libreta con su hueco) */
+.serie-cabeza { gap: 16px; }
+.serie-cabeza .cabeza-granos { flex: 0 1 auto; min-width: 0; overflow: hidden; justify-content: center; }
+.serie-cabeza .volver, .serie-cabeza .libreta-boton { flex: none; }
+
+/* Pies que no se pierden (G117): en un iPhone bajo, si hay que desplazar, el botón sigue a la vista sobre un degradado. */
+.descanso { --fondo: #161412; }
+.descanso.reanima { --fondo: var(--basalto); }
+.descanso-pie { position: sticky; bottom: calc(var(--abajo) + 8px); margin: 0 -24px; padding: 22px 24px 0;
+  background: linear-gradient(to bottom, rgba(22,20,18,0), var(--fondo) 42%); }
+.tostar-pie { position: sticky; bottom: calc(var(--abajo) + 8px); z-index: 2; margin: 0 -24px; padding: 18px 24px 0; display: flex; flex-direction: column;
+  background: linear-gradient(to bottom, rgba(27,25,23,0), var(--basalto) 38%); }
+.tostar-pie .boton-tostado { margin-top: 2px; }
+@media (max-height: 720px) {
+  /* El tostador, a la derecha del título: la lista entera y el botón caben sin desplazar. */
+  .tostar-cabeza { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: end; margin-top: 4px; }
+  .tostar-cabeza .tostador-caja { grid-column: 2; grid-row: 1 / span 2; margin: 0; align-self: center; }
+  .tostador { width: min(140px, 38vw); }
+  .tostar-titulo { grid-column: 1; margin-top: 0; font-size: 42px; }
+  .tostar-sub { grid-column: 1; }
+  .molido-granos { display: none; }
+  .tostar-sub { margin-top: 4px; font-size: 16px; }
+  .segmentado { margin-top: 10px; }
+  .segmentado button { height: 34px; }
+  .tt-fila { min-height: 42px; }
+  .tostar-pista { margin-top: 6px; }
+  .tostar-saltar { min-height: 36px; padding: 4px 0; }
+  .boton-tostado { min-height: 58px; font-size: 26px; }
+  .serie[data-momento="moliendo"] .serie-titulo { font-size: 32px; margin-top: 4px; }
+  .moliendo { padding: 4px 0; }
+  .moliendo-muela { width: min(150px, 21dvh); height: min(150px, 21dvh); margin-top: 8px; }
+  .moliendo-que .cifra { font-size: min(64px, 9dvh); }
+  .moliendo-pista { margin-top: 6px; }
+  .moliendo-pie .enlace { min-height: 36px; padding: 4px 0; }
+  .lo-molido .muela-descanso.chica { width: 72px; height: 72px; }
+  .lo-molido .molido-reloj .descanso-reloj { font-size: 52px; }
+  .molido-cuerpo { margin-top: 8px; }
+  .molido-titulo { font-size: 34px; }
+  .molido-granos { margin-top: 6px; }
+  .molido-datos { margin-top: 6px; }
+  .md-fila dd { font-size: 18px; }
+  .nyapa { margin-top: 10px; min-height: 48px; font-size: 22px; }
+  .lo-que-viene { margin-top: 10px; padding: 10px 14px 12px; }
+  .lqv-nombre { font-size: 24px; }
+  .descanso-pie { padding-top: 16px; }
+  .boton-pintadera { width: 60px; height: 60px; }
+}

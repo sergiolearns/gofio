@@ -123,7 +123,7 @@ function otraMana(ej, nav) {
 /** El hueco honesto mientras no hay datos (G86). */
 function vacio() {
   const nodo = el(`<section class="hueco-pantalla"><h1 class="titular grande">Progreso</h1>
-    <div class="hueco-dibujo"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#3A3531" d="M3 9.5L12 3l9 6.5v2.6L12 5.6l-9 6.5zM3 14.7l9-6.5l9 6.5v2.6l-9-6.5l-9 6.5z"/><path class="sube" fill="#E3A62B" d="M3 19.9l9-6.5l9 6.5V22.5l-9-6.5l-9 6.5z"/></svg></div>
+    <div class="hueco-dibujo"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#3A3531" d="M3 9.5L12 3l9 6.5v2.6L12 5.6l-9 6.5zM3 14.7l9-6.5l9 6.5v2.6l-9-6.5l-9 6.5z"/><path class="sube" fill="#D4922B" d="M3 19.9l9-6.5l9 6.5V22.5l-9-6.5l-9 6.5z"/></svg></div>
     <div class="hueco-texto"><h2 class="titular" style="color:var(--millo)">Aún moliendo.</h2><p>Aquí verás cómo le coges el jeito a cada ejercicio: tu fuerza, con su gráfica. Con tu primera molienda ya sale.</p></div></section>`);
   return { nodo, pestana: 'progreso', alEntrar() { escalonar(nodo.querySelectorAll('.hueco-texto > *'), { desde: 120, retraso: 80 }); } };
 }
@@ -148,10 +148,10 @@ export function ejercicioPantalla({ ej }, nav) {
     const py = (v) => H - 24 - (v - lo) / (hi - lo || 1) * (H - 50);
     const lineas = [lo, (lo + hi) / 2, hi].map((v) => `<line x1="26" x2="${W - 10}" y1="${py(v).toFixed(1)}" y2="${py(v).toFixed(1)}" stroke="#3A3531"/><text x="0" y="${(py(v) + 4).toFixed(1)}" font-size="10" fill="#A89D8F">${Math.round(v)}</text>`).join('');
     const marcasX = [...new Set([0, Math.floor((ses.length - 1) / 2), ses.length - 1])].map((i) => `<text x="${px(i).toFixed(1)}" y="${H - 4}" text-anchor="middle" font-size="10" fill="#A89D8F">${fechaCorta(ses[i].fecha)}</text>`).join('');
-    const puntos = ses.map((s, i) => `<g class="punto" transform="translate(${px(i).toFixed(1)} ${py(s.e1rm).toFixed(1)}) scale(${i === ses.length - 1 ? 0.11 : 0.075})"><path transform="rotate(-14)" fill="#E3A62B" d="${GRANO}"/></g>`).join('');
+    const puntos = ses.map((s, i) => `<g class="punto" transform="translate(${px(i).toFixed(1)} ${py(s.e1rm).toFixed(1)}) scale(${i === ses.length - 1 ? 0.11 : 0.075})"><path transform="rotate(-14)" fill="#D4922B" d="${GRANO}"/></g>`).join('');
     grafica = `<svg class="grafica" viewBox="0 0 ${W} ${H}" role="img" aria-label="Fuerza estimada en ${esc(nombre.toLowerCase())}: ${vals.map((v) => Math.round(v)).join(', ')} kg">
-      ${lineas}<polyline points="${ses.map((s, i) => `${px(i).toFixed(1)},${py(s.e1rm).toFixed(1)}`).join(' ')}" fill="none" stroke="#E3A62B" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${puntos}
-      <text x="${(px(ses.length - 1) - 8).toFixed(1)}" y="${(py(vals.at(-1)) - 14).toFixed(1)}" text-anchor="middle" class="cifra" font-size="18" fill="#E3A62B">${ahora}</text>${marcasX}</svg>`;
+      ${lineas}<polyline points="${ses.map((s, i) => `${px(i).toFixed(1)},${py(s.e1rm).toFixed(1)}`).join(' ')}" fill="none" stroke="#D4922B" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${puntos}
+      <text x="${(px(ses.length - 1) - 8).toFixed(1)}" y="${(py(vals.at(-1)) - 14).toFixed(1)}" text-anchor="middle" class="cifra" font-size="18" fill="#D4922B">${ahora}</text>${marcasX}</svg>`;
   }
   const ultimas = (f?.todas ?? []).slice(-3).reverse().map((s) => {
     const xs = estado.series.filter((x) => x.sesionId === s.sesionId && x.ejercicioId === ej).sort((a, b) => a.ts - b.ts);

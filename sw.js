@@ -1,6 +1,6 @@
 // Service worker de Gofio: guarda la app para que funcione sin conexión (en el sótano del gimnasio).
 // Al publicar una versión nueva se cambia VERSION; la app avisa y el usuario decide cuándo actualizar.
-const VERSION = 'gofio-0.2.15';
+const VERSION = 'gofio-0.2.16';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/variables.css', 'css/app.css',
@@ -10,10 +10,11 @@ const ARCHIVOS = [
   'iconos/disco-millo.svg', 'iconos/disco-negro.svg', 'iconos/disco-negro-solo-gofio.svg', 'iconos/disco-sello-almagre.svg', 'iconos/gofio-logo-oscuro.svg', 'iconos/gofio-logo-claro.svg',
   'css/alma.css', 'js/app.js', 'js/datos.js', 'js/logica.js', 'js/ui.js', 'js/sonidos.js', 'js/avisos.js', 'js/amoler.js',
   'js/pantallas/index.js', 'js/pantallas/hoy.js', 'js/pantallas/serie.js', 'js/pantallas/hecho.js', 'js/pantallas/semana.js',
-  'js/pantallas/ajustes.js', 'js/pantallas/bienvenida.js', 'js/pantallas/progreso.js',
+  'js/pantallas/ajustes.js', 'js/pantallas/bienvenida.js', 'js/pantallas/progreso.js', 'js/pantallas/tostar.js', 'js/pantallas/libreta.js',
   'js/cerebro/index.js', 'js/cerebro/musculos.js', 'js/cerebro/fechas.js', 'js/cerebro/ejercicios.js', 'js/cerebro/plantilla.js',
   'js/cerebro/volumen.js', 'js/cerebro/esfuerzo.js', 'js/cerebro/progresion.js', 'js/cerebro/vuelta.js', 'js/cerebro/planificador.js',
   'js/cerebro/dia-malo.js', 'js/cerebro/sustituciones.js', 'js/cerebro/constancia.js', 'js/cerebro/generador.js', 'js/cerebro/fuerza.js', 'js/cerebro/marcha.js',
+  'js/cerebro/molinero.js', 'js/cerebro/animos.js', 'js/cerebro/tostar.js',
 ];
 self.addEventListener('install', (e) => {
   // Cada archivo, pedido de nuevo a la red y no a la caché del navegador: GitHub Pages deja los archivos 10 minutos en
@@ -50,13 +51,16 @@ self.addEventListener('push', (e) => {
   try { d = e.data ? e.data.json() : {}; } catch { d = { titulo: e.data?.text?.() }; }
   e.waitUntil(self.registration.showNotification(d.titulo || 'Gofio', {
     body: d.cuerpo || '', tag: 'gofio-descanso', renotify: true,
-    icon: 'iconos/icono-192.png', badge: 'iconos/icono-192.png', data: { url: './' },
+    icon: 'iconos/icono-192.png', badge: 'iconos/icono-192.png', data: { url: './', ir: d.ir ?? null },
   }));
 });
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
+  // G117 · El aviso abre el paso exacto: «¿Hecha?» → «¿Cómo fue?». Con la app abierta se le dice por mensaje; si no, por la URL.
+  const ir = ['como', 'serie'].includes(e.notification.data?.ir) ? e.notification.data.ir : null;
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ws) => {
     const w = ws.find((c) => 'focus' in c);
-    return w ? w.focus() : self.clients.openWindow('./');
+    if (w) { if (ir) w.postMessage({ gofioIr: ir }); return w.focus(); }
+    return self.clients.openWindow(ir ? `./?ir=${ir}` : './');
   }));
 });

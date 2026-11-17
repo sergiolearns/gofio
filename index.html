@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Gofio</title>
 <meta name="description" content="Gofio: entrenamiento con base científica. Proyecto personal; no es una app médica.">
-<meta name="theme-color" content="#E3A62B">
+<meta name="theme-color" content="#D4922B">
 <meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -63,7 +63,7 @@
     var pb = /[?&]prueba-barra=(\d+)/.exec(location.search);
     if (pb) { raiz.style.setProperty('--barra', pb[1] + 'px'); window.gofioPantalla = { alto: innerHeight + +pb[1], app: innerHeight, arriba: 0, barra: +pb[1] }; }
   }
-  raiz.style.backgroundColor = '#E3A62B';                // mientras está la cortinilla
+  raiz.style.backgroundColor = '#D4922B';                // mientras está la cortinilla
   medir();
   addEventListener('resize', medir);
   addEventListener('orientationchange', function () { setTimeout(medir, 300); });
@@ -98,7 +98,7 @@
 /* Lo primero que se pinta (G58): el icono de la app abierto a pantalla completa, millo con la muela negra, igual que la
    imagen de arranque de iOS. Al estar lista, el ojo de la muela se abre y deja ver la app (sin repetir la portada). */
 html,body{background:#1B1917;margin:0}
-#cortinilla{--d:min(64vw,280px);--c:calc(50% + var(--centro, 0px));position:fixed;inset:0;z-index:100;background:#E3A62B}
+#cortinilla{--d:min(64vw,280px);--c:calc(50% + var(--centro, 0px));position:fixed;inset:0;z-index:100;background:#D4922B}
 #cortinilla .c-disco{position:absolute;left:calc(50% - var(--d)/2);top:calc(var(--c) - var(--d)/2);width:var(--d);height:var(--d)}
 #cortinilla .c-sub{position:absolute;left:0;right:0;top:calc(var(--c) + var(--d)/2 + 30px);margin:0;text-align:center;color:#1B1917;font:700 15px/1 "Hanken Grotesk",system-ui,-apple-system,sans-serif;letter-spacing:.06em}
 </style>
@@ -111,7 +111,7 @@ html,body{background:#1B1917;margin:0}
   <img class="c-disco" src="iconos/disco-negro-solo-gofio.svg" alt="" width="280" height="280">
   <p class="c-sub">Hecho en Canarias</p>
 </div>
-<div id="cinta" aria-hidden="true"><svg width="100%" height="9"><defs><pattern id="sierra-cinta" width="12" height="9" patternUnits="userSpaceOnUse"><path d="M0 0L6 8L12 0Z" fill="#E3A62B"/></pattern></defs><rect width="100%" height="9" fill="url(#sierra-cinta)"/></svg></div>
+<div id="cinta" aria-hidden="true"><svg width="100%" height="9"><defs><pattern id="sierra-cinta" width="12" height="9" patternUnits="userSpaceOnUse"><path d="M0 0L6 8L12 0Z" fill="#D4922B"/></pattern></defs><rect width="100%" height="9" fill="url(#sierra-cinta)"/></svg></div>
 <div id="app" aria-live="polite"></div>
 <nav id="pestanas" class="pestanas" aria-label="Secciones" hidden></nav>
 <div id="capa-hojas"></div>

@@ -19,6 +19,8 @@ export const ajuste = (clave) => {
     case 'cargasIniciales': return a.cargasIniciales ?? {};
     case 'perfil': return a.perfil ?? {};
     case 'recordatorio': return a.recordatorio ?? true;
+    case 'tostar': return a.tostar ?? true;            // R30: Tostar antes de moler (G115)
+    case 'tostarModo': return a.tostarModo ?? 'cuerpo';
     default: return a[clave];
   }
 };
@@ -268,3 +270,24 @@ export async function cambiarRango(ej, { repMin, repMax }) {
 export const rangoEnPlantilla = (ej) => ajuste('plantilla').dias.flatMap((d) => d.ejercicios).find((e) => e.ej === ej) ?? null;
 /** El hueco de plantilla de un ejercicio, para pedir su prescripción (R12) desde Progreso. */
 export const huecoDe = (ej) => { const e = rangoEnPlantilla(ej); return e ? { ...e } : { ej, series: 3, repMin: 8, repMax: 12 }; };
+
+// ── La brega (G115-G117): lo que el molinero necesita saber de tu historial ──
+/** Tu jeito al arrimar: las últimas 3 moliendas hechas con ese ejercicio, con su peso de trabajo y sus piedras. */
+export function historialArrimar(ejId, sesionId = null) {
+  const out = [];
+  for (const s of [...sesionesHechas()].reverse()) {
+    if (s.id === sesionId) continue;
+    const k = (s.plan ?? []).findIndex((p) => p.ej === ejId);
+    if (k < 0) continue;
+    const trabajo = seriesDe(s.id).filter((x) => x.slot === k).sort((a, b) => a.ts - b.ts)[0]?.peso;
+    if (!(trabajo > 0)) continue;
+    out.push({ trabajo, piedras: (s.calentamientos ?? []).filter((c) => c.i === k).map((c) => ({ peso: c.peso, reps: c.reps })) });
+    if (out.length >= 3) break;
+  }
+  return out;
+}
+/** Ley 7 · Tu mejor fuerza estimada con ese ejercicio en las últimas 6 semanas (0 si no hay). */
+export function mejorReciente(ejId, hoyF = hoy()) {
+  const desde = G.sumarDias(hoyF, -42);
+  return estado.series.filter((x) => x.ejercicioId === ejId && x.fecha >= desde).reduce((m, x) => Math.max(m, G.e1rm(x.peso, x.reps, x.rir)), 0);
+}

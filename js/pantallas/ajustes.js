@@ -7,7 +7,7 @@ import * as S from '../sonidos.js';
 import { SERVIDOR, avisosPosibles, avisosActivos, encenderAvisos, apagarAvisos } from '../avisos.js';
 
 const NOMBRE_EQUIPO = { barra: 'Barra', smith: 'Smith', mancuernas: 'Mancuernas', maquina: 'Máquinas', polea: 'Poleas', lastre: 'Lastre' };
-export const VERSION = '0.2.15';
+export const VERSION = '0.2.16';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {
@@ -71,7 +71,7 @@ export function ajustesPantalla(_, nav) {
   const copiaTxt = haceCopia == null ? 'sin copia aún' : haceCopia === 0 ? 'copia de hoy' : haceCopia === 1 ? 'copia de ayer' : `copia hace ${haceCopia} días`;
   const sonidos = ajuste('sonidos') !== false, tictac = ajuste('tictac') !== false;
   const avisosOn = avisosActivos();
-  const avisosSub = !SERVIDOR ? 'Pronto: falta montar el servidor' : !avisosPosibles() ? 'Solo con la app instalada en el iPhone' : 'Si sales, te aviso al acabar';
+  const avisosSub = !SERVIDOR ? 'Pronto: falta montar el servidor' : !avisosPosibles() ? 'Solo con la app instalada en el iPhone' : 'Al acabar el descanso y, si sales a mitad de una serie, «¿Hecha?»';
   const interruptor = (dato, on, extra = '') => `<span class="interruptor"><input type="checkbox" role="switch" ${dato} ${on ? 'checked' : ''} ${extra}><i></i></span>`;
   const resumenEsc = `Mancuernas ${verEscalon(esc_.mancuernas)} · discos ${verEscalon(esc_.barra)}`;
 
@@ -95,7 +95,7 @@ ${instalacionVieja() ? `
     <div class="grupo"><h2>Sonidos</h2><div class="tarjeta">
       <label class="fila"><span class="que">Sonidos<small>Piedra, madera y aire. Solo en lo importante.</small></span>${interruptor('data-sonidos', sonidos)}</label>
       <label class="fila"><span class="que">Tic-tac en el descanso<small>Reloj y la muela de fondo, muy bajo</small></span>${interruptor('data-tictac', tictac, sonidos ? '' : 'disabled')}</label>
-      <label class="fila"><span class="que">Avisos al salir del descanso<small data-avisos-sub>${esc(avisosSub)}</small></span>${interruptor('data-avisos', avisosOn, avisosPosibles() ? '' : 'disabled')}</label>
+      <label class="fila"><span class="que">Avisos al salir de la app<small data-avisos-sub>${esc(avisosSub)}</small></span>${interruptor('data-avisos', avisosOn, avisosPosibles() ? '' : 'disabled')}</label>
     </div></div>
 
     <div class="grupo"><h2>Entreno</h2><div class="tarjeta">
@@ -106,6 +106,7 @@ ${instalacionVieja() ? `
       <button class="fila tocable" type="button" data-desc="aislamiento" style="width:100%;text-align:left"><span class="que">Descanso corto<small>Ejercicios pequeños</small></span><span class="valor-caja">${mmss(desc.aislamiento)}</span></button>
       <button class="fila tocable" type="button" data-escalones style="width:100%;text-align:left"><span class="que">Escalones del gimnasio<small>${esc(resumenEsc)}</small></span><span class="valor-caja">Ver</span></button>
       <button class="fila tocable" type="button" data-cargas style="width:100%;text-align:left"><span class="que">Pesos de partida<small>${Object.keys(ajuste('cargasIniciales')).length} con peso · el resto, en la primera serie</small></span><span class="valor-caja">Ver</span></button>
+      <label class="fila"><span class="que">Tostar antes de moler<small>Movilidad del día, 5-8 min. Se salta con un toque.</small></span>${interruptor('data-tostar', ajuste('tostar') !== false)}</label>
     </div></div>
 
     <div class="grupo"><h2>Sobre ti</h2><div class="tarjeta">
@@ -134,6 +135,10 @@ ${instalacionVieja() ? `
     S.configurar({ sonidos: e.target.checked, tictacDescanso: ajuste('tictac') !== false });
     $('[data-tictac]').disabled = !e.target.checked;
     if (e.target.checked) S.toque(1);
+  };
+  $('[data-tostar]').onchange = async (e) => {
+    vibrar(); await ponerAjuste('tostar', e.target.checked);
+    if (e.target.checked) { await ponerAjuste('tostarSaltos', 0); await ponerAjuste('tostarPreguntado', false); }
   };
   $('[data-tictac]').onchange = async (e) => { vibrar(); await ponerAjuste('tictac', e.target.checked); S.configurar({ sonidos: ajuste('sonidos') !== false, tictacDescanso: e.target.checked }); };
   $('[data-avisos]').onchange = async (e) => {

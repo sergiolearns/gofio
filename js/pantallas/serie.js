@@ -1,13 +1,16 @@
-// «La serie: el terrero» (lienzo: Serie.dc.html, SerieDos.dc.html y SobreLaMarcha.dc.html; G78, G105: «Ahora» y «¿Cómo fue?»; G106: sobre la marcha) y «El descanso» (Descanso.dc.html; G79).
+// «La serie: el terrero» (lienzo: Serie, SerieDos, SobreLaMarcha y La brega, tableros 14-16; G78, G105, G106, G115-G117:
+// Arrimar → «¡A la brega!» → Moliendo → «Hecha» → «¿Cómo fue?») y «El descanso» (Descanso y Brega; G79, G115).
 // Basalto, números grandes y pocas palabras. Guardar una serie: los números se hacen grano, el grano vuela a su hueco
 // y la muela del descanso llega rodando (storyboard y prototipo v5). Sonidos: G83.
 import * as G from '../cerebro/index.js';
 import { estado, prescripcion, seriesDelHueco, siguienteHueco, guardarSerie, borrarSerie, guardarSesion, terminarSesion,
-  escalonDe, descansoDe, ponerNota, musculoCorto } from '../logica.js';
-import { el, esc, kg, mmss, icono, grano, granos, ajustarTitulo, hoja, pedirNumero, vibrar, reduceMovimiento, escalonar, pop, avisar } from '../ui.js';
+  escalonDe, descansoDe, ponerNota, musculoCorto, ajuste, ponerAjuste, historialArrimar, mejorReciente } from '../logica.js';
+import { el, esc, kg, mmss, icono, grano, granos, ajustarTitulo, hoja, pedirNumero, vibrar, reduceMovimiento, escalonar, pop, avisar,
+  pintadera, coronaGranos, piedra, vibrarTambor } from '../ui.js';
 import * as S from '../sonidos.js';
-import { descansoEnCurso } from '../avisos.js';
+import { descansoEnCurso, molienda } from '../avisos.js';
 import { aLaBrega } from '../amoler.js';
+import { abrirLibreta } from './libreta.js';
 
 const sesionPorId = (id) => estado.sesiones.find((s) => s.id === id);
 const rango = (a, b) => (a === b ? `${a}` : `${a}-${b}`);
@@ -64,7 +67,19 @@ export function porqueDe(p, slot) {
   }
 }
 
-export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima = false, pesoTrabajo = null }, nav) {
+/** Lo que va en la libreta, en «Por qué», para la serie que toca (la teoría; en pantalla, solo la señal). */
+function porqueSerie({ p, slot, arrimando, vasFuerte, piedrasHechas, trabajo, ar }) {
+  const f = [];
+  if (arrimando || piedrasHechas.length) {
+    f.push(`<b>Arrimar la piedra (R28):</b> antes de la primera serie, ${ar.plan.length === 1 ? 'una ligera' : `${ar.plan.length} más ligeras`} hasta el peso de trabajo, ${kg(trabajo)} kg. Al subir el peso, menos reps. No cuentan para nada.`);
+    if (vasFuerte) f.push(`<b>¡Vas fuerte!</b> Levantaste ${kg(Math.max(...piedrasHechas.map((x) => x.peso)))} kg: la siguiente piedra ya no puede pesar menos (ley 1) y, como estás cerca del peso de trabajo, toca la de trabajo.`);
+  }
+  f.push(`<b>${esc(porqueDe(p, slot))}</b>`);
+  return f;
+}
+
+export function seriePantalla(params, nav) {
+  const { sesionId, i = 0, arr, anima = false, pesoTrabajo = null } = params;
   const s = sesionPorId(sesionId);
   if (!s) return { nodo: el('<section><p>Esta sesión ya no existe.</p></section>') };
   if (s.actual !== i) { s.actual = i; guardarSesion(s); }
@@ -75,58 +90,86 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
   const p = prescripcion(slot);
   const total = slot.series;
   const ultimaHoy = hechas.at(-1);
-  // pesoTrabajo: el que dijiste al pedir calentar sin peso conocido (G108).
-  let peso = ultimaHoy?.peso ?? p.peso ?? pesoTrabajo;
-  let reps = p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin;
-  let rir = null;   // G105: la reserva no viene marcada; la eliges al acabar la serie
-  let fallo = false; // R27 (G106): al fallo, solo esta serie y solo si lo eliges tú
   const escalon = escalonDe(slot.ej);
   const lastre = !!ej.lastre;
-  // R26 · Calentar (G106): solo antes de la primera serie de trabajo del ejercicio. No cuenta: se guarda en la sesión.
-  const calHechos = (s.calentamientos ?? []).filter((c) => c.i === i);
-  const listaCal = n === 0 ? G.calentamiento(peso, escalon, { lastre }) : [];
-  const calentando = cal != null && n === 0;
-  const totalCal = calentando ? Math.max(calN ?? listaCal.length, 1) : 0;
-  if (calentando) {
-    const c = listaCal[Math.min(cal, listaCal.length - 1)] ?? { peso, reps: 8 };
-    peso = c.peso; reps = c.reps;
-  }
+  // La siguiente, preparada en el descanso (R29, G115): lo que dejes ahí es lo que sale aquí.
+  const prep = s.prep && s.prep.i === i && s.prep.n === n ? s.prep : null;
+  // pesoTrabajo: el que dijiste al pedir arrimar sin peso conocido (G108).
+  let peso = prep?.peso ?? ultimaHoy?.peso ?? p.peso ?? pesoTrabajo;
+  let reps = prep?.reps ?? p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin;
+  let rir = null;   // G105: la reserva no viene marcada; la eliges al acabar la serie
+  let fallo = !!prep?.fallo; // R27 (G106): al fallo, solo esta serie y solo si lo eliges tú
+  // Moliendo a medias (iOS recargó la app a mitad de la serie) o pedido desde un aviso («¿Hecha?» abre «¿Cómo fue?»).
+  const enMolienda = s.moliendo && s.moliendo.i === i && s.moliendo.n === n ? s.moliendo : null;
+  if (enMolienda) { peso = enMolienda.peso; reps = enMolienda.reps; fallo = !!enMolienda.fallo; }
+  const momento0 = params.momento ?? (enMolienda ? (window.gofioIr === 'como' ? 'como' : 'moliendo') : 'ahora');
+  window.gofioIr = null;
+  // R28 · Arrimar (G115): las piedras antes de la primera serie de trabajo, recalculadas con lo que ya levantaste.
+  const trabajo = peso;
+  const repsTrabajo = reps;
+  const piedrasHechas = (s.calentamientos ?? []).filter((c) => c.i === i);
+  const estilo = n === 0 ? G.estiloArrimar(historialArrimar(slot.ej, s.id)) : null;
+  // Si tu jeito es no arrimar aquí, Gofio no lo propone; pero si lo pides tú («Arrimar»), salen las piedras de siempre.
+  const estiloUsado = arr === true && estilo?.n === 0 ? null : estilo;
+  const ar = n === 0 && trabajo != null ? G.arrimar({ trabajo, escalon, tipo: ej.tipo, repsObjetivo: repsTrabajo, lastre, hechas: piedrasHechas, estilo: estiloUsado }) : { piedras: [], plan: [], vasFuerte: false };
+  const sePuedeArrimar = n === 0 && !piedrasHechas.length && (trabajo == null || G.arrimar({ trabajo, escalon, tipo: ej.tipo, repsObjetivo: repsTrabajo, lastre }).plan.length > 0);
+  const saltado = (s.arrimarSaltado ?? []).includes(i);
+  const arrimando = momento0 === 'ahora' && n === 0 && !saltado && arr !== false && ar.piedras.length > 0
+    && (arr === true || piedrasHechas.length > 0 || estilo?.n !== 0);
+  const totalPiedras = piedrasHechas.length + ar.piedras.length;
+  if (arrimando) { peso = ar.piedras[0].peso; reps = ar.piedras[0].reps; }
+  const vasFuerte = !arrimando && n === 0 && ar.vasFuerte && piedrasHechas.length > 0;
   const repsMeta = reps, pesoMeta = peso;
   const aviso = avisoDe(p, slot, n);
   const record = mejorAntes(slot.ej, s.id);
   const restoTotal = s.plan.reduce((acc, _, k) => acc + Math.max(0, s.plan[k].series - seriesDelHueco(s, k).length), 0);
   const esUltima = restoTotal === 1;
+  const ultimaDelEj = n === slot.series - 1;
+  const animoTxt = G.animo(slot.ej, 'moliendo', { ultima: ultimaDelEj && n > 0 });
 
-  // G105 · Dos momentos en la misma pantalla: «Ahora» (lo que toca, en grande) y, al tocar «Hecha», «¿Cómo fue?».
   const rep = rango(slot.repMin, slot.repMax);
   const unidad = lastre ? 'kg de lastre' : 'kg';
   // G106 · En «Ahora» todo se toca: − y + con tu escalón (o una rep), y el número abre el teclado. Solo esta serie.
   const mini = (que, dir) => `<button class="mini" type="button" data-a="${que}" data-dir="${dir}" data-son="${dir}" aria-label="${que === 'peso' ? (dir > 0 ? 'Sumar el escalón' : 'Restar el escalón') : (dir > 0 ? 'Una rep más' : 'Una rep menos')}">${icono(dir > 0 ? 'mas' : 'menos')}</button>`;
   const ahoraNumeros = peso == null
-    ? `<b class="titular ahora-texto">Un peso que te deje ${rep}</b><p class="ahora-pista">El peso que pongas lo apuntas al acabar.</p>`
+    ? `<b class="titular ahora-texto">Un peso que te deje ${rep}</b><p class="ahora-pista">Lo apuntas al acabar.</p>`
     : `<div class="ahora-fila">${mini('peso', -1)}<button class="ahora-num" type="button" data-escribir-peso-a data-son="0" aria-label="Escribir el peso"><b class="cifra ahora-peso num" data-ahora-peso>${kg(peso)}</b></button>${mini('peso', 1)}</div><span class="unidad">${unidad}</span>
        <div class="ahora-fila">${mini('reps', -1)}<button class="ahora-num" type="button" data-escribir-reps-a data-son="0" aria-label="Escribir las reps"><b class="cifra ahora-reps num" data-ahora-reps><i class="por" aria-hidden="true">×</i><span data-ahora-reps-v>${reps}</span></b></button>${mini('reps', 1)}</div><span class="unidad">reps</span>`;
   const dejaTxt = deja(p.rir).replace(/^d/, 'D');
-  const punto = (lleno) => `<i class="punto${lleno ? ' lleno' : ''}"></i>`;
-  const puntos = calentando
-    ? Array.from({ length: totalCal }, (_, k) => punto(k < calHechos.length)).join('')
-    : calHechos.map(() => punto(true)).join('');
-  const avisoCal = totalCal === 1 ? 'Primero, una ligera' : totalCal === 2 ? 'Primero, dos ligeras' : `Primero, ${totalCal} ligeras`;
-  const nodo = el(`<section class="serie" data-momento="ahora" aria-labelledby="titulo-serie">
+  // Las piedras de Arrimar, de la chica a la grande (levantamiento de la piedra, Turismo de Gran Canaria).
+  const esc_ = (w) => 0.78 + 0.4 * Math.min(1, w / (trabajo || 1));
+  const filaPiedras = arrimando ? `<div class="piedras" role="img" aria-label="Arrimar: piedra ${piedrasHechas.length + 1} de ${totalPiedras}, y luego ${kg(trabajo)} kg">
+      ${piedrasHechas.map((c) => piedra(kg(c.peso), `× ${c.reps}`, 'hecha', esc_(c.peso))).join('')}
+      ${ar.piedras.map((c, k) => piedra(kg(c.peso), `× ${c.reps}`, k === 0 ? 'ahora' : 'luego', esc_(c.peso))).join('')}
+      <span class="piedras-flecha" aria-hidden="true">→</span>${piedra(kg(trabajo), `× ${repsTrabajo}`, 'trabajo', 1.18)}</div>` : '';
+  const cabezaAviso = arrimando
+    ? `<button class="aviso-serie ahora-solo" type="button" data-aviso aria-label="Arrimar: ${totalPiedras} piedras. Ver por qué">${icono('piedra')}<span><b>Arrimar</b> · ${totalPiedras === 1 ? '1 piedra' : `${totalPiedras} piedras`}</span></button>`
+    : vasFuerte
+      ? `<div class="senal-fuerte ahora-solo"><b class="titular">¡Vas fuerte!</b><span>Directo a la de trabajo.</span><button class="enlace" type="button" data-aviso>¿Por qué?</button></div>`
+      : `<button class="aviso-serie ahora-solo" type="button" data-aviso aria-label="${esc(aviso.texto)}. Ver por qué">${icono(aviso.icono)}<span data-aviso-txt>${esc(aviso.corto)}</span></button>`;
+  const nodo = el(`<section class="serie${arrimando ? ' arrimando' : ''}" data-momento="${momento0}" aria-labelledby="titulo-serie">
     <div class="serie-cabeza">
       <button class="volver" type="button" data-volver>${icono('atras')}Hoy</button>
-      <span class="cabeza-granos">${puntos ? `<span class="puntos-cal" role="img" aria-label="${calentando ? `Calentar ${Math.min(cal + 1, totalCal)} de ${totalCal}` : 'Calentamiento hecho'}">${puntos}</span>` : ''}${granos(n, total, -1, { ahora: !calentando, clase: 'millo-tenue' })}</span>
+      <span class="cabeza-granos">${granos(n, total, -1, { ahora: !arrimando, clase: 'millo-tenue' })}</span>
     </div>
-    <h1 class="titular serie-titulo ahora-solo" id="titulo-serie">${esc(ej.nombre)}</h1>
-    <button class="aviso-serie ahora-solo" type="button" data-aviso aria-label="${esc(calentando ? avisoCal : aviso.texto)}. Ver por qué">${icono(calentando ? 'calentar' : aviso.icono)}<span data-aviso-txt>${esc(calentando ? avisoCal : aviso.corto)}</span></button>
-    <div class="ahora ahora-solo${calentando ? ' calentando' : ''}" data-ahora>
-      <span class="ahora-etiqueta">${calentando ? `Calentar · ${cal + 1} de ${totalCal}` : 'Ahora'}</span>
+    <h1 class="titular serie-titulo ahora-solo moliendo-tambien" id="titulo-serie">${esc(ej.nombre)}</h1>
+    ${cabezaAviso}
+    ${filaPiedras}
+    <div class="ahora ahora-solo" data-ahora>
+      <span class="ahora-etiqueta">${arrimando ? `Piedra ${piedrasHechas.length + 1} de ${totalPiedras}` : 'Ahora'}</span>
       ${ahoraNumeros}
-      ${calentando ? '<p class="ahora-pista">Suave y con jeito. No cuenta.</p>' : `<p class="ahora-cambio" data-ahora-cambio hidden></p><button class="ahora-deja" type="button" data-deja data-son="pop" aria-label="Reserva: ${esc(dejaTxt)}. Cambiar">${esc(dejaTxt)}</button>`}
+      ${arrimando ? '' : `<p class="ahora-cambio" data-ahora-cambio hidden></p><button class="ahora-deja${fallo ? ' fallo' : ''}" type="button" data-deja data-son="pop" aria-label="Reserva: ${esc(fallo ? 'al fallo' : dejaTxt)}. Cambiar">${esc(fallo ? 'Al fallo' : dejaTxt)}</button>`}
+    </div>
+    <div class="moliendo moliendo-solo" aria-live="polite">
+      <p class="moliendo-que"><b class="cifra num" data-mol-que>${peso == null ? rep : `${kg(peso)} × ${reps}`}</b><span data-mol-deja>${fallo ? 'al fallo' : esc(deja(p.rir))}</span></p>
+      <span class="moliendo-etiqueta">Moliendo</span>
+      <div class="moliendo-muela" aria-hidden="true"><img src="iconos/disco-millo.svg" alt="" width="240" height="240" draggable="false"></div>
+      <p class="titular moliendo-animo" data-animo>${esc(animoTxt)}</p>
+      ${ajuste('pistaMoliendo') ? '' : '<p class="moliendo-pista">Apaga el móvil si quieres: al volver, «Hecha».</p>'}
     </div>
     <div class="como-cabeza como-solo">
       <h2 class="titular">¿Cómo fue?</h2>
-      <p>${esc(ej.nombre)} · si cambió algo, tócalo</p>
+      <p>${esc(ej.nombre)}</p>
     </div>
     <div class="numeros como-solo" data-numeros>
       <div class="contador">
@@ -147,54 +190,57 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     </div>
     <div class="relleno"></div>
     <div class="como-pie como-solo">
-      <p data-como-pista>${esUltima ? 'Tocas una y se guarda: la última.' : 'Tocas una y se guarda: empieza el descanso.'}</p>
+      <p data-como-pista></p>
       <button class="enlace" type="button" data-aun-no>‹ Aún no la he hecho</button>
     </div>
-    <div class="serie-herramientas ahora-solo">${calentando ? `
-      <button class="chip" type="button" data-otra-ligera>${icono('mas')}Otra ligera</button>
-      <button class="chip" type="button" data-al-terrero>Al terrero</button>` : `
-      ${n === 0 && !calHechos.length && (listaCal.length || peso == null) ? `<button class="chip" type="button" data-calentar>${icono('calentar')}Calentar</button>` : ''}
-      <button class="chip" type="button" data-una-mas>${icono('grano')}Una serie más</button>
+    <div class="moliendo-pie moliendo-solo"><button class="enlace" type="button" data-aun-no-mol>Aún no</button></div>
+    <div class="serie-herramientas ahora-solo">${arrimando ? `
+      <button class="chip" type="button" data-saltar-piedras>Saltar las piedras</button>
+      <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>` : `
+      ${sePuedeArrimar ? `<button class="chip" type="button" data-arrimar>${icono('piedra')}Arrimar</button>` : ''}
+      <button class="chip" type="button" data-una-mas>${icono('grano')}La ñapa</button>
       <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
       <button class="chip" type="button" data-nota>${icono('nota')}Nota</button>
       <button class="chip" type="button" data-lista>${icono('lista')}Ejercicios</button>
       <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>
       ${n > 0 ? '<button class="chip" type="button" data-deshacer>Borrar la última</button>' : ''}`}
     </div>
-    <button class="boton boton-guardar boton-hecha ahora-solo" type="button" data-hecha data-son="none">${icono('check')}Hecha</button>
+    ${arrimando
+      ? `<button class="boton boton-guardar boton-hecha ahora-solo" type="button" data-hecha-piedra data-son="none">${icono('check')}Hecha</button>`
+      : `<button class="boton boton-guardar boton-brega ahora-solo" type="button" data-brega data-son="none">¡A la brega!</button>`}
+    <button class="boton boton-guardar boton-hecha moliendo-solo" type="button" data-hecha data-son="none">${icono('check')}Hecha</button>
   </section>`);
 
   const vPeso = nodo.querySelector('[data-v-peso]');
   const vReps = nodo.querySelector('[data-v-reps]');
-  const av = nodo.querySelector('[data-aviso]');
   const avTxt = nodo.querySelector('[data-aviso-txt]');
+  const molQue = nodo.querySelector('[data-mol-que]');
   const bote = (x) => { if (!reduceMovimiento()) x.animate([{ transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'cubic-bezier(.22,1,.36,1)' }); };
   // «¡Fuerte marca!» (G78): si lo que vas a guardar supera tu mejor fuerza estimada en este ejercicio (R11).
   let marca = false;
   function mirarMarca() {
     vReps.classList.toggle('cambiado', reps !== repsMeta); vPeso.classList.toggle('cambiado', pesoMeta != null && peso !== pesoMeta);
     const ahora = peso != null && record > 0 && G.e1rm(peso, reps, rir ?? 0) > record + 0.01;
-    // En «Ahora» aún no has levantado nada: la marca se celebra al guardar, no antes (G106).
-    if (nodo.dataset.momento !== 'como') return;
-    if (ahora) avTxt.textContent = `¡Fuerte marca! ${kg(peso)} × ${reps}`;
-    if (ahora === marca) return;
+    // En «Ahora» y en Moliendo aún no has levantado nada: la marca se celebra al guardar, no antes (G106).
+    if (nodo.dataset.momento !== 'como' || ahora === marca) return;
     marca = ahora;
-    av.classList.toggle('marca', marca); vReps.classList.toggle('marca', marca);
-    av.querySelector('svg').outerHTML = icono(marca ? 'marca' : aviso.icono);
-    if (!marca) avTxt.textContent = aviso.texto;
-    else if (!reduceMovimiento()) av.animate([{ transform: 'scale(.94)' }, { transform: 'scale(1.04)' }, { transform: 'scale(1)' }], { duration: 320, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+    vReps.classList.toggle('marca', marca);
+    const pista = nodo.querySelector('[data-como-pista]');
+    pista.innerHTML = marca ? `${icono('marca')}¡Fuerte marca!` : '';
+    pista.classList.toggle('marca', marca);
+    if (marca && !reduceMovimiento()) pista.animate([{ transform: 'scale(.9)', opacity: 0 }, { transform: 'scale(1.04)', opacity: 1 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: 'cubic-bezier(.34,1.56,.64,1)' });
   }
   const ahoraPesoEl = nodo.querySelector('[data-ahora-peso]'), ahoraRepsV = nodo.querySelector('[data-ahora-reps-v]');
   const cambioEl = nodo.querySelector('[data-ahora-cambio]');
-  // Lo cambiado en «Ahora» se ve en millo, con lo que decía Gofio debajo (G106).
+  // La regla del vistazo (G116): lo cambiado, en millo; lo que decía Gofio, tachado al lado. Sin frases.
   function pintarCambio() {
     const cp = pesoMeta != null && peso !== pesoMeta, cr = reps !== repsMeta;
     ahoraPesoEl?.classList.toggle('cambiado', cp); nodo.querySelector('[data-ahora-reps]')?.classList.toggle('cambiado', cr);
+    if (molQue) molQue.textContent = peso == null ? rep : `${kg(peso)} × ${reps}`;
     if (!cambioEl) return;
-    const txt = cp && cr ? `Hoy, ${kg(peso)} × ${reps}. Gofio decía ${kg(pesoMeta)} × ${repsMeta}.`
-      : cp ? `Hoy, ${kg(peso)}. Gofio decía ${kg(pesoMeta)}.` : cr ? `Hoy, ${reps} reps. Gofio decía ${repsMeta}.` : '';
+    const txt = cp && cr ? `${kg(pesoMeta)} × ${repsMeta}` : cp ? `${kg(pesoMeta)} kg` : cr ? `× ${repsMeta}` : '';
     const antes = !cambioEl.hidden;
-    cambioEl.textContent = txt; cambioEl.hidden = !txt;
+    cambioEl.innerHTML = txt ? `Gofio: <s>${esc(txt)}</s>` : ''; cambioEl.hidden = !txt;
     if (txt && !antes && !reduceMovimiento()) cambioEl.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.22,1,.36,1)' });
   }
   const pintarPeso = () => {
@@ -207,27 +253,13 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     if (ahoraRepsV) { ahoraRepsV.textContent = reps; bote(ahoraRepsV); }
     pintarCambio(); mirarMarca();
   };
-  // −/+ : un toque, un escalón (o una rep); mantenido, repite y, al rato, de cuatro en cuatro (G106: «para el que lo ve claro»).
+  // −/+ : un toque, un escalón (o una rep); mantenido, repite y, al rato, de cuatro en cuatro (G106).
   function pasoPeso(dir, veces = 1) {
-    // Sin peso aún, arrancan en uno de partida (G53).
     if (peso == null) peso = PESO_DE_PARTIDA[lastre ? 'lastre' : ej.equipo] ?? 10;
     else for (let k = 0; k < veces; k++) peso = Math.max(0, G.siguienteEscalon(peso, escalon, dir));
     pintarPeso();
   }
   function pasoReps(dir, veces = 1) { reps = Math.max(0, Math.min(60, reps + dir * veces)); pintarReps(); }
-  function repetir(b, paso) {
-    let t = null, k = 0;
-    const parar = () => { clearTimeout(t); clearInterval(t); t = null; };
-    b.addEventListener('pointerdown', () => {
-      parar(); k = 0;
-      t = setTimeout(() => { b.dataset.repetido = '1'; t = setInterval(() => { k++; paso(k > 8 ? 4 : 1); S.toque(Number(b.dataset.dir ?? b.dataset.peso ?? b.dataset.reps) > 0 ? 1 : -1); }, 110); }, 420);
-    });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => b.addEventListener(ev, parar));
-    b.addEventListener('click', (e) => {
-      if (b.dataset.repetido) { delete b.dataset.repetido; e.stopImmediatePropagation(); return; }
-      paso(1); vibrar();
-    });
-  }
 
   nodo.querySelector('[data-volver]').onclick = () => nav.volver();
   nodo.querySelectorAll('[data-peso]').forEach((b) => repetir(b, (v) => pasoPeso(Number(b.dataset.peso), v)));
@@ -247,19 +279,18 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
   // R27 · La píldora de la reserva: deja lo de Gofio o al fallo, solo esta serie.
   const pildora = nodo.querySelector('[data-deja]');
   pildora?.addEventListener('click', () => {
-    const nota = G.falloBienVisto(slot.ej)
-      ? 'Al fallo no hace falta para crecer, ni resta. Donde mejor va: la última, en máquina o aislamiento.'
-      : 'Al fallo no hace falta para crecer, ni resta. En libres pesados, mejor con alguien que te ayude.';
+    const nota = G.falloBienVisto(slot.ej) ? 'Donde mejor va: la última, en máquina o aislamiento.' : 'En libres pesados, mejor con alguien que te ayude.';
     const { nodo: h, cerrar } = hoja(`<h2>¿Hasta dónde?</h2><p class="sub">Solo esta serie.</p>
       <ul class="opciones elegir">
         <li><button type="button" data-f="0" aria-pressed="${!fallo}"><span class="que"><b>${esc(dejaTxt)}</b><span>Lo que dice Gofio</span></span></button></li>
         <li><button type="button" data-f="1" aria-pressed="${fallo}"><span class="que"><b>Al fallo</b><span>Hasta que no salga ni un fisco más</span></span></button></li>
-      </ul><p class="sub nota-hoja">${nota}</p>`);
+      </ul><p class="sub nota-hoja">Al fallo no hace falta para crecer, ni resta. ${nota}</p>`);
     escalonar(h.querySelectorAll('.opciones li'), { desde: 100, retraso: 40 });
     h.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => {
       fallo = b.dataset.f === '1';
       pildora.textContent = fallo ? 'Al fallo' : dejaTxt; pildora.classList.toggle('fallo', fallo);
       pildora.setAttribute('aria-label', `Reserva: ${fallo ? 'al fallo' : dejaTxt}. Cambiar`);
+      const md = nodo.querySelector('[data-mol-deja]'); if (md) md.textContent = fallo ? 'al fallo' : deja(p.rir);
       vibrar(); cerrar(); setTimeout(() => pop(pildora, 1.12), 180);
     }));
   });
@@ -273,15 +304,36 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     mirarMarca();
     await guardar();
   }));
-  // «Hecha» → «¿Cómo fue?»: los números grandes bajan y encogen hasta los contadores (FLIP, solo transform y opacity).
+
+  // ── Los tiempos de la serie (G115): Ahora → «¡A la brega!» → Moliendo → «Hecha» → «¿Cómo fue?» ──
   const ahoraPeso = nodo.querySelector('[data-ahora-peso]'), ahoraReps = nodo.querySelector('[data-ahora-reps]');
+  const muelaMol = nodo.querySelector('.moliendo-muela');
+  let giro = null;
+  function girarMuela(si) {
+    giro?.cancel(); giro = null;
+    if (si && !reduceMovimiento()) giro = muelaMol.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], { duration: 14000, iterations: Infinity });
+  }
+  async function entrarMolienda() {
+    s.moliendo = { i, n, peso, reps, fallo, desde: s.moliendo?.desde ?? Date.now() };
+    delete s.prep;
+    await guardarSesion(s);
+    molienda({ hasta: Date.now() + 180000, titulo: '¿Hecha? Apunta cómo fue.', cuerpo: `${ej.nombre}, serie ${n + 1} · ${peso == null ? rep : `${kg(peso)} × ${reps}`}` });
+  }
+  async function salirMolienda() {
+    molienda(null);
+    if (s.moliendo) { delete s.moliendo; await guardarSesion(s); }
+  }
   function aMomento(m) {
     const desdeP = ahoraPeso?.getBoundingClientRect(), desdeR = ahoraReps?.getBoundingClientRect();
+    const de = nodo.dataset.momento;
     nodo.dataset.momento = m;
     nodo.scrollTop = 0;
+    girarMuela(m === 'moliendo');
+    if (m === 'moliendo') entrarMolienda(); else if (de === 'moliendo') salirMolienda();
     if (reduceMovimiento()) return;
     const curva = 'cubic-bezier(.22,1,.36,1)';
     nodo.querySelector('[data-rir="0"]')?.classList.toggle('sugerida', m === 'como' && fallo);
+    const aparece = (els, desde, y = 10) => els.filter(Boolean).forEach((x, k) => x.animate([{ opacity: 0, transform: `translateY(${y}px)` }, { opacity: 1, transform: 'none' }], { duration: 360, delay: desde + k * 40, easing: curva, fill: 'backwards' }));
     if (m === 'como') {
       const flip = (desde, hacia) => {
         if (!desde || !hacia || !desde.height) return;
@@ -289,73 +341,92 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
         const dx = desde.left + desde.width / 2 - (r.left + r.width / 2), dy = desde.top + desde.height / 2 - (r.top + r.height / 2);
         hacia.animate([{ transform: `translate(${dx}px,${dy}px) scale(${desde.height / r.height})` }, { transform: 'none' }], { duration: 480, easing: curva });
       };
-      flip(desdeP, vPeso); flip(desdeR, vReps);
-      const aparece = (els, desde, y = 10) => els.forEach((x, k) => x.animate([{ opacity: 0, transform: `translateY(${y}px)` }, { opacity: 1, transform: 'none' }], { duration: 360, delay: desde + k * 40, easing: curva, fill: 'backwards' }));
+      if (de === 'ahora') { flip(desdeP, vPeso); flip(desdeR, vReps); } else aparece([vPeso, vReps], 60, 18);
       aparece([...nodo.querySelectorAll('.como-cabeza > *')], 0, -10);
       aparece([...nodo.querySelectorAll('.contador .redondo, .contador .unidad')], 200, 0);
       aparece([nodo.querySelector('.rir h3'), ...nodo.querySelectorAll('.rir-botones button'), nodo.querySelector('.rir-pie')], 260, 16);
       aparece([...nodo.querySelectorAll('.como-pie > *')], 420, 8);
+    } else if (m === 'moliendo') {
+      aparece([nodo.querySelector('.moliendo-que'), nodo.querySelector('.moliendo-etiqueta')], 0, -8);
+      muelaMol.animate([{ opacity: 0, transform: 'scale(.6) rotate(-90deg)' }, { opacity: 1, transform: 'none' }], { duration: 560, easing: 'cubic-bezier(.34,1.3,.64,1)', fill: 'backwards' });
+      aparece([nodo.querySelector('.moliendo-animo'), nodo.querySelector('.moliendo-pista'), nodo.querySelector('.moliendo-pie'), nodo.querySelector('[data-hecha]')], 260, 14);
     } else {
-      escalonar(nodo.querySelectorAll('.serie-titulo, .aviso-serie, .ahora > *, .serie-herramientas, .boton-hecha'), { desde: 0, retraso: 35 });
+      escalonar(nodo.querySelectorAll('.serie-titulo, .aviso-serie, .senal-fuerte, .piedras, .ahora > *, .serie-herramientas, .boton-brega, .boton-hecha:not(.moliendo-solo)'), { desde: 0, retraso: 35 });
     }
   }
+  // «¡A la brega!» (G115): la cortinilla de la serie y, detrás, Moliendo.
+  nodo.querySelector('[data-brega]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget; if (b.dataset.va) return; b.dataset.va = '1';
+    S.suena('tambor'); vibrarTambor();
+    await aLaBrega({ hechas: n, total: slot.series, alCambiar: () => { aMomento('moliendo'); S.suena('moliendo', 0.1); } });
+    delete b.dataset.va;
+  });
+  // «Hecha» → «¿Cómo fue?». La primera vez se aprende y la pista de Moliendo ya no vuelve.
   nodo.querySelector('[data-hecha]').onclick = () => {
-    vibrar(); S.toque('piedra');
-    if (calentando) hechaCalentar(); else aMomento('como');
+    S.suena('hecha'); vibrarTambor();
+    if (!ajuste('pistaMoliendo')) { ponerAjuste('pistaMoliendo', true); nodo.querySelector('.moliendo-pista')?.remove(); }
+    aMomento('como');
   };
-  // R26 · Una ligera hecha: punto lleno y a la siguiente (o a la primera de trabajo). Sin descanso ni «¿Cómo fue?».
-  async function hechaCalentar() {
+  nodo.querySelector('[data-aun-no-mol]').onclick = () => { S.toque(-1); aMomento('ahora'); };
+  // «‹ Aún no la he hecho»: si venías de Moliendo, a Moliendo; si no, a «Ahora».
+  nodo.querySelector('[data-aun-no]').onclick = () => { S.toque(-1); aMomento(s.moliendo ? 'moliendo' : 'ahora'); };
+  // Un aviso «¿Hecha?» tocado con la app ya abierta en Moliendo: a «¿Cómo fue?».
+  const alAviso = (e) => {
+    if (e.detail !== 'como' || !nodo.isConnected) return;
+    if (nodo.dataset.momento === 'moliendo') aMomento('como');
+    if (nodo.dataset.momento === 'como') { e.preventDefault(); window.gofioIr = null; }
+  };
+  window.addEventListener('gofio:ir', alAviso);
+
+  // R28 · Una piedra hecha: se guarda en la sesión (no cuenta) y el molinero recalcula las que quedan.
+  nodo.querySelector('[data-hecha-piedra]')?.addEventListener('click', async () => {
     if (guardando) return; guardando = true;
     s.calentamientos = [...(s.calentamientos ?? []), { i, peso, reps, ts: Date.now() }];
     await guardarSesion(s);
-    const pto = nodo.querySelectorAll('.puntos-cal .punto')[cal];
-    pto?.classList.add('lleno');
-    if (pto && !reduceMovimiento()) await pto.animate([{ transform: 'scale(1.8)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'cubic-bezier(.34,1.56,.64,1)' }).finished;
-    else await espera(120);
-    if (cal + 1 < totalCal) nav.reemplazar('serie', { sesionId: s.id, i, cal: cal + 1, calN: totalCal, anima: true, pesoTrabajo }, { sinAnimacion: true });
-    else nav.reemplazar('serie', { sesionId: s.id, i, anima: true, pesoTrabajo }, { sinAnimacion: true });
-  }
-  nodo.querySelector('[data-calentar]')?.addEventListener('click', async () => {
-    let w = peso, lista = listaCal;
-    // Sin peso conocido (primera vez), las ligeras salen del que vayas a mover en las de trabajo (G108).
+    S.suena('piedra', 0, Math.min(1, (peso ?? 0) / (trabajo || 1))); vibrar();
+    const ahoraP = nodo.querySelector('.piedra.pd-ahora');
+    if (ahoraP && !reduceMovimiento()) {
+      ahoraP.classList.replace('pd-ahora', 'pd-hecha');
+      await ahoraP.animate([{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(-14px) scale(1.12)', offset: 0.45 }, { transform: 'translateY(0) scale(1)' }], { duration: 300, easing: 'cubic-bezier(.34,1.56,.64,1)' }).finished;
+    } else await espera(120);
+    nav.reemplazar('serie', { sesionId: s.id, i, arr: true, anima: true, pesoTrabajo: trabajo }, { sinAnimacion: true });
+  });
+  nodo.querySelector('[data-saltar-piedras]')?.addEventListener('click', async () => {
+    s.arrimarSaltado = [...new Set([...(s.arrimarSaltado ?? []), i])];
+    await guardarSesion(s); S.toque('aire');
+    nav.reemplazar('serie', { sesionId: s.id, i, arr: false, anima: true, pesoTrabajo: trabajo }, { sinAnimacion: true });
+  });
+  nodo.querySelector('[data-arrimar]')?.addEventListener('click', async () => {
+    let w = trabajo;
+    // Sin peso conocido (primera vez), las piedras salen del que vayas a mover en las de trabajo (G108).
     if (w == null) {
-      const v = await pedirNumero({ titulo: '¿Con cuánto vas?', sub: 'El peso de las series de trabajo. Con eso salen las ligeras.', valor: '' });
+      const v = await pedirNumero({ titulo: '¿Con cuánto vas?', sub: 'El peso de las series de trabajo.', valor: '' });
       if (v == null) return;
-      w = v; lista = G.calentamiento(w, escalon, { lastre });
-      if (!lista.length) { avisar('Con ese peso no hace falta calentar.'); return; }
+      w = v;
+      if (!G.arrimar({ trabajo: w, escalon, tipo: ej.tipo, repsObjetivo: repsTrabajo, lastre }).piedras.length) { avisar('Con ese peso no hace falta arrimar.'); return; }
     }
-    S.toque('aire'); nav.reemplazar('serie', { sesionId: s.id, i, cal: 0, calN: lista.length, anima: true, pesoTrabajo: w }, { sinAnimacion: true });
+    s.arrimarSaltado = (s.arrimarSaltado ?? []).filter((x) => x !== i);
+    await guardarSesion(s);
+    S.toque('aire'); nav.reemplazar('serie', { sesionId: s.id, i, arr: true, anima: true, pesoTrabajo: w }, { sinAnimacion: true });
   });
-  nodo.querySelector('[data-otra-ligera]')?.addEventListener('click', () => {
-    S.toque('pop'); nav.reemplazar('serie', { sesionId: s.id, i, cal, calN: totalCal + 1, anima: true, pesoTrabajo }, { sinAnimacion: true });
-  });
-  nodo.querySelector('[data-al-terrero]')?.addEventListener('click', () => {
-    S.toque('aire'); nav.reemplazar('serie', { sesionId: s.id, i, anima: true, pesoTrabajo }, { sinAnimacion: true });
-  });
-  // «Una serie más»: un grano más para este ejercicio, hoy.
+  // «La ñapa» (G115): una serie más, de regalo, para este ejercicio y solo hoy.
   nodo.querySelector('[data-una-mas]')?.addEventListener('click', async () => {
     slot.series += 1; slot.extra = (slot.extra ?? 0) + 1;
     await guardarSesion(s);
     const cab = nodo.querySelector('.serie-cabeza .granos');
     if (cab) cab.outerHTML = granos(n, slot.series, -1, { ahora: true, clase: 'millo-tenue' });
-    const nuevo = [...nodo.querySelectorAll('.serie-cabeza .grano')].at(-1);
-    nuevo?.classList.add('cae');
-    const pista = nodo.querySelector('[data-como-pista]'); if (pista) pista.textContent = 'Tocas una y se guarda: empieza el descanso.';
-    S.toque('pop'); vibrar(); avisar('Un grano más.');
+    [...nodo.querySelectorAll('.serie-cabeza .grano')].at(-1)?.classList.add('cae');
+    S.suena('punado'); vibrar(); avisoTope();
   });
-  nodo.querySelector('[data-aun-no]').onclick = () => { S.toque(-1); aMomento('ahora'); };
-  // El historial y el porqué, al tocar el aviso (G78).
-  av.onclick = () => {
-    const nota = estado.notas[slot.ej]?.texto;
-    const { nodo: h } = hoja(`<h2>${esc(ej.nombre)}</h2><p class="sub">${esc(porqueDe(p, slot))}</p>
-      <ul class="opciones">
-        <li><button type="button" tabindex="-1"><span class="que"><b class="num">${p.otraVez ? `${kg(p.otraVez.peso)} kg × ${p.otraVez.series.map((x) => x.reps).join(' · ')}` : 'Aún nada'}</b><span>La última vez</span></span></button></li>
-        <li><button type="button" tabindex="-1"><span class="que"><b class="num">${rango(slot.repMin, slot.repMax)} reps · ${deja(p.rir)}</b><span>Lo que toca</span></span></button></li>
-        ${slot.original ? `<li><button type="button" tabindex="-1"><span class="que"><b>${esc(G.ejercicio(slot.original).nombre)}</b><span>Hoy lo cambias por este</span></span></button></li>` : ''}
-        ${nota ? `<li><button type="button" tabindex="-1"><span class="que"><b>${esc(nota)}</b><span>Tu nota</span></span></button></li>` : ''}
-      </ul>`);
-    escalonar(h.querySelectorAll('.opciones li'), { desde: 120, retraso: 40 });
-  };
+  function avisoTope() {
+    const v = G.volumen(s.plan);
+    const m = Object.entries(ej.musculos).find(([, f]) => f === 1)?.[0];
+    if (m && v[m] > G.TOPE_SESION) avisar(`${musculoCorto(m).replace(/^./, (c) => c.toUpperCase())}: ya van ${String(v[m]).replace('.', ',')} hoy.`);
+  }
+  // El porqué y el historial, en la libreta (G115-G116).
+  nodo.querySelectorAll('[data-aviso]').forEach((b) => b.addEventListener('click', () => abrirLibreta({
+    ejId: slot.ej, porque: porqueSerie({ p, slot, arrimando, vasFuerte, piedrasHechas, trabajo, ar }),
+  })));
 
   async function guardar() {
     if (guardando) return;
@@ -365,15 +436,17 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     S.suena('guardar');
     if (marca) S.suena('marca', 0.45);
     const fueMarca = marca;
-    if (fueMarca) {   // «¡Fuerte marca!» en el pie, un momento, antes de que vuele el grano
-      const pista = nodo.querySelector('[data-como-pista]');
-      pista.innerHTML = `${icono('marca')}¡Fuerte marca! ${esc(kg(peso))} × ${reps}`; pista.classList.add('marca');
-      if (!reduceMovimiento()) pista.animate([{ transform: 'scale(.9)', opacity: 0 }, { transform: 'scale(1.04)', opacity: 1 }, { transform: 'none', opacity: 1 }], { duration: 340, easing: 'cubic-bezier(.34,1.56,.64,1)' });
-      await espera(520);
-    }
+    if (fueMarca) await espera(520);
     // Storyboard «guardar serie»: los números se hacen grano, el grano vuela a su hueco y cae con un destello.
     const vuelo = hacerseGrano(nodo.querySelector('[data-numeros]'), nodo.querySelectorAll('.serie-cabeza .grano')[n]);
+    molienda(null); delete s.moliendo;
     await guardarSerie(s, i, { peso, reps, rir });
+    // R29 · La siguiente del mismo ejercicio, ya preparada con la que acabas de hacer (se cambia en el descanso).
+    if (n + 1 < slot.series) {
+      const objetivo = p.reps[Math.min(n + 1, p.reps.length - 1)] ?? slot.repMin;
+      const r = G.siguienteSerie({ hecha: { peso, reps, rir }, repsObjetivo: objetivo, repMin: slot.repMin, repMax: slot.repMax, tipo: ej.tipo, escalon, mejorReciente: mejorReciente(slot.ej) });
+      s.prep = { i, n: n + 1, peso: r.peso, reps: r.reps, fallo: false, senal: r.senal, gofio: { peso: r.peso, reps: r.reps } };
+    } else delete s.prep;
     await vuelo;
     const sig = seriesDelHueco(s, i).length < slot.series ? i : siguienteHueco(s, (i + 1) % s.plan.length);
     if (sig === -1) {
@@ -388,7 +461,7 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
 
   nodo.querySelector('[data-deshacer]')?.addEventListener('click', async () => {
     const ok = await confirmarHoja({ titulo: '¿Borrar la última?', texto: `${kg(ultimaHoy.peso)} kg × ${ultimaHoy.reps}, te quedaban ${ultimaHoy.rir === 4 ? '4 o más' : ultimaHoy.rir}.`, si: 'Borrar', no: 'Dejarla' });
-    if (ok) { await borrarSerie(ultimaHoy); nav.refrescar(); }
+    if (ok) { await borrarSerie(ultimaHoy); delete s.prep; await guardarSesion(s); nav.refrescar(); }
   });
   const _nota = nodo.querySelector('[data-nota]'); if (_nota) _nota.onclick = () => {
     const nota = estado.notas[slot.ej]?.texto;
@@ -400,13 +473,16 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
   const _cambiar = nodo.querySelector('[data-cambiar]'); if (_cambiar) _cambiar.onclick = () => {
     const sust = G.sustitutos(slot.original ?? slot.ej);
     const lista = [...sust.filter((x) => x.id !== slot.ej), ...(slot.original ? [{ ...G.ejercicio(slot.original), vuelta: true }] : [])];
-    const { nodo: h, cerrar } = hoja(`<h2>Otra maña</h2><p class="sub">¿Máquina ocupada? Mismo trabajo, mismas series y reps.</p>
+    const { nodo: h, cerrar } = hoja(`<h2>Otra maña</h2><p class="sub">¿Máquina ocupada? Mismo trabajo.</p>
       <ul class="opciones">${lista.map((x) => `<li><button type="button" data-ej="${x.id}"><span class="que"><b>${esc(x.vuelta ? 'El de tu rutina' : x.nombre)}</b><span>${x.vuelta ? esc(x.nombre) : x.mismoPatron ? 'Mismo movimiento' : 'Mismo músculo'}</span></span>${icono('sigue', 'class="flecha-der"')}</button></li>`).join('')}</ul>`);
     escalonar(h.querySelectorAll('.opciones li'), { desde: 120, retraso: 30 });
     h.querySelectorAll('[data-ej]').forEach((b) => b.addEventListener('click', async () => {
       slot.original = slot.original ?? slot.ej;
       slot.ej = b.dataset.ej;
       if (slot.ej === slot.original) delete slot.original;
+      // Otro ejercicio: lo preparado y las piedras eran del de antes.
+      if (s.prep?.i === i) delete s.prep;
+      s.calentamientos = (s.calentamientos ?? []).filter((c) => c.i !== i);
       await guardarSesion(s); cerrar(); vibrar(); nav.refrescar();
     }));
   };
@@ -431,6 +507,7 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
       si: 'Sí, a casa', no: 'Sigo moliendo',
     });
     if (!ok) return;
+    molienda(null); delete s.moliendo; delete s.prep;
     const r = await terminarSesion(s); mantenerEncendida(false);
     if (r) nav.reemplazar('hecho', { sesionId: s.id }); else nav.ir('hoy', {}, { modo: 'pestana' });
   };
@@ -440,10 +517,31 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     alEntrar() {
       mantenerEncendida(true);
       requestAnimationFrame(() => ajustarTitulo(nodo.querySelector('.serie-titulo'), { max: 42, min: 30, lineas: 2, alto: 0.95 }));
-      // Al entrar o salir de calentar, lo de «Ahora» entra escalonado (sin cortinilla: es la misma pantalla).
-      if (anima) escalonar(nodo.querySelectorAll('.aviso-serie, .ahora > *, .serie-herramientas .chip, .boton-hecha'), { desde: 0, retraso: 35 });
+      if (momento0 === 'moliendo') { girarMuela(true); entrarMolienda(); }
+      if (anima) escalonar(nodo.querySelectorAll('.aviso-serie, .senal-fuerte, .piedras, .ahora > *, .serie-herramientas .chip, .boton-brega, .boton-hecha:not(.moliendo-solo)'), { desde: 0, retraso: 35 });
+      if (vasFuerte && !reduceMovimiento()) {
+        const sf = nodo.querySelector('.senal-fuerte b');
+        sf?.animate([{ transform: 'scale(1.4)', opacity: 0 }, { transform: 'scale(.96)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' });
+        S.suena('marca');
+      }
     },
+    alSalir() { girarMuela(false); window.removeEventListener('gofio:ir', alAviso); },
   };
+}
+
+/** −/+ que se mantienen: repiten y, al rato, de cuatro en cuatro (G106: «para el que lo ve claro»). */
+function repetir(b, paso) {
+  let t = null, k = 0;
+  const parar = () => { clearTimeout(t); clearInterval(t); t = null; };
+  b.addEventListener('pointerdown', () => {
+    parar(); k = 0;
+    t = setTimeout(() => { b.dataset.repetido = '1'; t = setInterval(() => { k++; paso(k > 8 ? 4 : 1); S.toque(Number(b.dataset.dir ?? b.dataset.peso ?? b.dataset.reps) > 0 ? 1 : -1); }, 110); }, 420);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => b.addEventListener(ev, parar));
+  b.addEventListener('click', (e) => {
+    if (b.dataset.repetido) { delete b.dataset.repetido; e.stopImmediatePropagation(); return; }
+    paso(1); vibrar();
+  });
 }
 
 /** Hoja de sí/no con la voz de Gofio (los dos botones grandes del lienzo). */
@@ -522,12 +620,27 @@ async function hacerseGrano(numeros, hueco) {
   await espera(160);
 }
 
-// ── El descanso: soltar, mirar la siguiente y reanimarse (G79) ────────────────────
-const F1 = ['Respira.', 'Suelta los brazos.', 'Agua y aire.', 'Despacio se muele fino.'];
+// ── El descanso (G79, G115-G117): soltar, preparar la siguiente y reanimarse ──────
 const F3 = ['Embúllate.', 'Arriba, que vuelve la piedra.', 'Al terrero.'];
 let ultimaFrase = '';
 /** Una frase al azar, nunca la misma dos veces seguidas. */
 const elige = (l) => { let f; do { f = l[Math.floor(Math.random() * l.length)]; } while (f === ultimaFrase && l.length > 1); ultimaFrase = f; return f; };
+/** La señal de la siguiente (R29), con la regla del vistazo: una palabra y una flecha. */
+const SENALES = { igual: ['igual', 'Igual'], sube: ['sube', 'Sube'], baja: ['baja', 'Baja'], mas: ['mas', 'Una más'] };
+const NG = 24; // granos de la corona
+
+/** El porqué de la señal, para la libreta (la teoría de R29; en pantalla solo va la palabra). */
+function porqueSenal(prep, ultima) {
+  const qued = ultima ? (ultima.rir === 4 ? '4 o más' : ultima.rir) : null;
+  const de = ultima ? `Hiciste ${kg(ultima.peso)} × ${ultima.reps} y te quedaban ${qued}.` : '';
+  const t = {
+    sube: `<b>Sube (R29):</b> ${de} Te sobró margen y ya estás arriba del rango: un escalón más, sin pasar de un 10 % sobre tu mejor fuerza reciente (ley 7).`,
+    mas: `<b>Una más (R29):</b> ${de} Te sobró margen, pero aún no estás arriba del rango: mismo peso y una rep más.`,
+    baja: `<b>Baja (R29):</b> ${de} Costó más de lo que tocaba: un escalón menos para que la serie salga con buena técnica.`,
+    igual: `<b>Igual (R29):</b> ${de} Fue justo lo que tocaba: repite.`,
+  };
+  return [t[prep?.senal ?? 'igual'], 'Lo que dejes aquí es lo que sale al empezar. Solo esta serie.'];
+}
 
 export function descansoPantalla(params, nav) {
   const { sesionId } = params;
@@ -535,51 +648,117 @@ export function descansoPantalla(params, nav) {
   const d = s?.descanso;
   if (!s || !d) return seriePantalla({ sesionId, i: s?.actual ?? 0 }, nav);
   const desde = s.plan[d.desde], sig = s.plan[d.siguiente];
+  const ejDesde = G.ejercicio(desde.ej), ejSig = G.ejercicio(sig.ej);
   const mismo = d.siguiente === d.desde;
   const hechasDesde = seriesDelHueco(s, d.desde);
   const hechasSig = seriesDelHueco(s, d.siguiente).length;
   const pSig = prescripcion(sig);
   const ultima = hechasDesde.at(-1);
-  const pesoSig = (mismo ? ultima?.peso : seriesDelHueco(s, d.siguiente).at(-1)?.peso) ?? pSig.peso;
-  const repsSig = pSig.reps[Math.min(hechasSig, pSig.reps.length - 1)] ?? sig.repMin;
-  const nombreSig = G.ejercicio(sig.ej).nombre;
-  const queSig = `${pesoSig != null ? `${kg(pesoSig)} × ` : ''}${repsSig}`;
-  const lineaSig = `${mismo ? `Serie ${hechasSig + 1}` : esc(nombreSig)} · <b class="cifra">${queSig}</b>`;
+  const escSig = escalonDe(sig.ej);
+  const lastreSig = !!ejSig.lastre;
+  const objetivoSig = pSig.reps[Math.min(hechasSig, pSig.reps.length - 1)] ?? sig.repMin;
+  // «Lo molido» (G115): acabas un ejercicio. Resumen, la ñapa y lo que viene.
+  const molido = !mismo && hechasDesde.length >= desde.series;
+
+  // R29 · La siguiente del mismo ejercicio, preparada (la dejó guardar(); si no está, se calcula ahora).
+  let prep = null;
+  if (mismo) {
+    prep = s.prep && s.prep.i === d.siguiente && s.prep.n === hechasSig ? s.prep : null;
+    if (!prep && ultima) {
+      const r = G.siguienteSerie({ hecha: ultima, repsObjetivo: objetivoSig, repMin: sig.repMin, repMax: sig.repMax, tipo: ejSig.tipo, escalon: escSig, mejorReciente: mejorReciente(sig.ej) });
+      prep = s.prep = { i: d.siguiente, n: hechasSig, peso: r.peso, reps: r.reps, fallo: false, senal: r.senal, gofio: { peso: r.peso, reps: r.reps } };
+      guardarSesion(s);
+    }
+    if (prep && !prep.gofio) prep.gofio = { peso: prep.peso, reps: prep.reps };
+  }
+  // Lo que viene, si es otro ejercicio: su peso y, si toca arrimar (R28, con tu jeito), sus piedras.
+  const pesoOtro = seriesDelHueco(s, d.siguiente).at(-1)?.peso ?? pSig.peso;
+  const arOtro = !mismo && hechasSig === 0 && pesoOtro != null ? (() => {
+    const estilo = G.estiloArrimar(historialArrimar(sig.ej, s.id));
+    const a = G.arrimar({ trabajo: pesoOtro, escalon: escSig, tipo: ejSig.tipo, repsObjetivo: objetivoSig, lastre: lastreSig, hechas: (s.calentamientos ?? []).filter((c) => c.i === d.siguiente), estilo });
+    return estilo?.n === 0 || (s.arrimarSaltado ?? []).includes(d.siguiente) ? { piedras: [] } : a;
+  })() : { piedras: [] };
+  const queSig = () => (mismo && prep ? `${kg(prep.peso)} × ${prep.reps}` : `${pesoOtro != null ? `${kg(pesoOtro)} × ` : ''}${objetivoSig}`);
+
   // Las frases del segundo tramo, solo si son verdad (concepto, sección 2).
   const F2 = ['La siguiente, con jeito.'];
-  if (mismo && ultima && pesoSig === ultima.peso) F2.push('Misma maña, mismo peso.');
-  if (mismo && ultima && ultima.rir >= 1 && ultima.rir <= 3) F2.push(`${ultima.rir === 1 ? 'Te quedaba 1' : `Te quedaban ${ultima.rir}`}. Busca lo mismo.`);
+  if (mismo && ultima && prep?.senal === 'igual') F2.push('Misma maña, mismo peso.');
+  if (mismo && ultima && ultima.rir >= 1 && ultima.rir <= 3 && prep?.senal === 'igual') F2.push(`${ultima.rir === 1 ? 'Te quedaba 1' : `Te quedaban ${ultima.rir}`}. Busca lo mismo.`);
   if (mismo && ultima) {
     const record = mejorAntes(sig.ej, s.id);
     if (record > 0 && G.e1rm(ultima.peso, ultima.reps, ultima.rir) <= record && G.e1rm(ultima.peso, ultima.reps + 1, ultima.rir) > record) F2.push('Un fisco más y es marca.');
   }
+  if (!mismo) F2.push('Ve preparando la máquina.');
 
-  const nodo = el(`<section class="descanso" aria-labelledby="titulo-descanso">
+  // ── Piezas ──
+  const muelaHTML = (clase = '') => `<div class="muela-descanso ${clase}" aria-hidden="true">${coronaGranos(NG)}<img src="iconos/disco-millo.svg" alt="" width="300" height="300" draggable="false"></div>`;
+  const relojHTML = `<p class="cifra descanso-reloj num" data-reloj role="timer" aria-label="Tiempo de descanso">${mmss(d.total)}</p>`;
+  const mini = (que, dir) => `<button class="mini" type="button" data-ts="${que}" data-dir="${dir}" data-son="${dir}" aria-label="${que === 'peso' ? (dir > 0 ? 'Sumar el escalón' : 'Restar el escalón') : (dir > 0 ? 'Una rep más' : 'Una rep menos')}">${icono(dir > 0 ? 'mas' : 'menos')}</button>`;
+  const [senalIco, senalTxt] = SENALES[prep?.senal ?? 'igual'];
+  const tarjetaMismo = prep ? `<div class="tarjeta-sig" data-tarjeta>
+      <div class="ts-cabeza"><span class="ts-etiqueta">Serie ${hechasSig + 1}</span>
+        <button class="ts-senal senal-${prep.senal}" type="button" data-senal aria-label="${senalTxt}. Ver por qué">${icono(senalIco === 'mas' ? 'sube' : senalIco)}${senalTxt}</button></div>
+      <div class="ts-numeros">
+        <div class="ts-grupo">${mini('peso', -1)}<button class="ts-num" type="button" data-ts-peso data-son="0" aria-label="Escribir el peso"><b class="cifra num" data-v>${kg(prep.peso)}</b><small>${lastreSig ? 'lastre' : 'kg'}</small></button>${mini('peso', 1)}</div>
+        <div class="ts-grupo">${mini('reps', -1)}<button class="ts-num" type="button" data-ts-reps data-son="0" aria-label="Escribir las reps"><b class="cifra num" data-v>${prep.reps}</b><small>reps</small></button>${mini('reps', 1)}</div>
+      </div>
+      <div class="ts-pie"><button class="ahora-deja${prep.fallo ? ' fallo' : ''}" type="button" data-ts-deja data-son="pop">${prep.fallo ? 'Al fallo' : esc(deja(pSig.rir).replace(/^d/, 'D'))}</button><span class="ts-gofio" data-ts-gofio hidden></span></div>
+    </div>` : '';
+  const filaPiedrasOtro = arOtro.piedras.length
+    ? `<div class="piedras chicas" role="img" aria-label="Arrimar con ${arOtro.piedras.length === 1 ? 'una piedra' : `${arOtro.piedras.length} piedras`} y luego ${kg(pesoOtro)} kg">${arOtro.piedras.map((c) => piedra(kg(c.peso), `× ${c.reps}`, 'luego', 0.62 + 0.3 * c.peso / pesoOtro)).join('')}<span class="piedras-flecha" aria-hidden="true">→</span>${piedra(kg(pesoOtro), `× ${objetivoSig}`, 'trabajo', 0.98)}</div>`
+    : `<p class="lqv-que cifra">${esc(queSig())}</p>`;
+  const loQueViene = `<div class="lo-que-viene" data-lqv><span class="ts-etiqueta">Lo que viene</span><b class="titular lqv-nombre">${esc(ejSig.nombre)}</b>${filaPiedrasOtro}</div>`;
+  // Lo molido: el resumen del ejercicio que acabas de terminar.
+  let resumen = '';
+  if (molido) {
+    const mejor = hechasDesde.reduce((m, x) => (G.e1rm(x.peso, x.reps, x.rir) > G.e1rm(m.peso, m.reps, m.rir) ? x : m), hechasDesde[0]);
+    const antes = mejorAntes(desde.ej, s.id);
+    const hoyE = G.e1rm(mejor.peso, mejor.reps, mejor.rir);
+    const pct = antes > 0 ? Math.round((hoyE / antes - 1) * 100) : null;
+    const fuerza = pct == null ? '' : pct >= 1 ? `<div class="md-fila sube"><dt>Fuerza</dt><dd>${icono('sube')}+${pct} %</dd></div>` : pct >= -3 ? '<div class="md-fila"><dt>Fuerza</dt><dd>Como tu mejor</dd></div>' : '';
+    const pesoTrabajo = hechasDesde.at(-1).peso;
+    const px = G.proximaVez({ peso: pesoTrabajo, series: hechasDesde.filter((x) => x.peso === pesoTrabajo).map((x) => ({ reps: x.reps, rir: x.rir })), repMin: desde.repMin, repMax: desde.repMax, tipo: ejDesde.tipo, escalon: escalonDe(desde.ej) });
+    const proxima = px.accion === 'subir' ? `${icono('sube')}${kg(px.peso)} kg` : px.accion === 'bajar' ? `${icono('baja')}${kg(px.peso)} kg` : `${kg(px.peso)} kg, una más`;
+    resumen = `<div class="molido-cuerpo">
+      <h2 class="titular molido-titulo">Lo molido</h2>
+      <p class="molido-ej">${esc(ejDesde.nombre)}</p>
+      <div class="molido-granos" aria-hidden="true">${granos(hechasDesde.length, desde.series, -1)}</div>
+      <dl class="molido-datos">
+        <div class="md-fila"><dt>Mejor</dt><dd class="cifra num">${kg(mejor.peso)} × ${mejor.reps}</dd></div>
+        ${fuerza}
+        <div class="md-fila"><dt>La próxima</dt><dd>${proxima}</dd></div>
+      </dl>
+      <button class="boton plano nyapa" type="button" data-nyapa data-son="none">${icono('grano')}La ñapa · una más</button>
+    </div>`;
+  }
+
+  const nodo = el(`<section class="descanso${molido ? ' lo-molido' : ''}${mismo ? '' : ' otro-ej'}" aria-labelledby="titulo-descanso">
     <div class="luz" aria-hidden="true"></div>
-    <h1 class="oculto" id="titulo-descanso">Descanso</h1>
+    <h1 class="oculto" id="titulo-descanso">${molido ? 'Lo molido' : 'Descanso'}</h1>
     <div class="serie-cabeza">
       <button class="volver" type="button" data-volver>${icono('atras')}Hoy</button>
-      ${granos(hechasDesde.length, desde.series, -1, { clase: 'millo-tenue' })}
+      <span class="cabeza-granos">${granos(hechasDesde.length, desde.series, -1, { clase: 'millo-tenue' })}</span>
+      <button class="libreta-boton" type="button" data-libreta aria-label="La libreta">${icono('libreta')}</button>
     </div>
-    <div class="muela-descanso" aria-hidden="true"><img src="iconos/disco-millo.svg" alt="" width="300" height="300" draggable="false"></div>
-    <p class="cifra descanso-reloj num" data-reloj role="timer" aria-label="Tiempo de descanso">${mmss(d.total)}</p>
+    ${molido ? `<div class="molido-reloj">${muelaHTML('chica')}${relojHTML}</div>${resumen}` : `${muelaHTML()}${relojHTML}`}
     <p class="titular descanso-frase suelta" data-frase aria-live="polite"></p>
-    <p class="descanso-sig" data-sig></p>
+    ${mismo ? tarjetaMismo : loQueViene}
     <div class="puntos" data-puntos aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="relleno"></div>
     <div class="descanso-pie">
-      <button class="redondo cifra" type="button" data-mas data-son="aire" aria-label="Treinta segundos más">+30</button>
-      <button class="boton" type="button" data-ya data-son="piedra">Empezar serie ${hechasSig + 1}</button>
+      <button class="boton-pintadera" type="button" data-mas data-son="aire" aria-label="Treinta segundos más">${pintadera('+30')}</button>
+      <button class="boton ${mismo ? 'boton-brega' : ''}" type="button" data-ya data-son="none">${mismo ? '¡A la brega!' : 'Al siguiente'}</button>
     </div>
   </section>`);
 
-  const muela = nodo.querySelector('.muela-descanso');
+  const muela = nodo.querySelector('.muela-descanso img');
+  const cgs = [...nodo.querySelectorAll('.corona-granos .cg')];
   const reloj = nodo.querySelector('[data-reloj]');
   const frase = nodo.querySelector('[data-frase]');
-  const lsig = nodo.querySelector('[data-sig]');
   const puntos = nodo.querySelector('[data-puntos]');
+  const tarjeta = nodo.querySelector('[data-tarjeta]');
   const quieto = reduceMovimiento();
-  let tramo = -1, raf = 0, ultimoSeg = -1, acabado = false;
+  let tramo = -1, raf = 0, ultimoSeg = -1, acabado = false, llenos = -1;
 
   function ponFrase(f, clase = '') {
     frase.className = `titular descanso-frase ${clase}`;
@@ -593,14 +772,23 @@ export function descansoPantalla(params, nav) {
     if (t === tramo) return;
     tramo = t;
     nodo.classList.toggle('mira', t === 1); nodo.classList.toggle('reanima', t === 2);
-    if (t === 0) { ponFrase(elige(F1), 'suelta'); lsig.innerHTML = ''; }
-    if (t === 1) { ponFrase(elige(F2)); lsig.innerHTML = lineaSig; lsig.className = 'descanso-sig'; }
-    if (t === 2) { ponFrase(elige(F3)); lsig.innerHTML = ''; S.suena('sube', 0, Math.max(1, quedan)); }
+    // Soltar (G115): la frase va con lo que acabas de mover; «Suelta los brazos» no sale tras un día de pierna.
+    if (t === 0) { const f = G.animo(desde.ej, 'soltar', { evitar: ultimaFrase }); ultimaFrase = f; ponFrase(f, 'suelta'); }
+    if (t === 1) ponFrase(elige(F2));
+    if (t === 2) { ponFrase(elige(F3)); S.suena('sube', 0, Math.max(1, quedan)); }
     avisoServidor();
   }
   // Para los avisos si sales de la app (G79): la frase de la reanimación y la siguiente serie.
   function avisoServidor() {
-    descansoEnCurso({ hasta: d.hasta, frase: F3[0], siguiente: `Te toca ${mismo ? `la serie ${hechasSig + 1} de ${G.ejercicio(sig.ej).nombre.toLowerCase()}` : nombreSig.toLowerCase()}: ${queSig}.` });
+    descansoEnCurso({ hasta: d.hasta, frase: F3[0], siguiente: `Te toca ${mismo ? `la serie ${hechasSig + 1} de ${ejSig.nombre.toLowerCase()}` : ejSig.nombre.toLowerCase()}: ${queSig()}.` });
+  }
+  // La corona: un grano por cada 1/24 del descanso; se van moliendo y vuelven con +30.
+  function pintarCorona(quedan, total) {
+    const n = Math.max(0, Math.min(NG, Math.ceil(NG * quedan / total)));
+    if (n === llenos) return;
+    const antes = llenos; llenos = n;
+    cgs.forEach((g, k) => g.classList.toggle('cg-molido', k >= n));
+    if (antes > n && antes !== -1 && cgs[n] && !quieto) cgs[n].animate([{ opacity: 1 }, { opacity: 0.15 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
   }
   function cuadro() {
     const quedanMs = d.hasta - Date.now();
@@ -611,6 +799,7 @@ export function descansoPantalla(params, nav) {
     // La muela: una vuelta en todo el descanso (mide el tiempo, lineal); en los últimos 10 s acelera (G79).
     const extra = quedan < 10 ? 13 * (10 - quedan) ** 2 : 0;
     if (!quieto) muela.style.transform = `rotate(${360 * transc / total + extra}deg)${quedan < 10 && quedan > 0 ? ` scale(${1 + (10 - quedan) * 0.006})` : ''}`;
+    pintarCorona(quedan, total);
     const seg = Math.ceil(quedan);
     if (seg !== ultimoSeg) {
       const primero = ultimoSeg === -1;
@@ -623,35 +812,119 @@ export function descansoPantalla(params, nav) {
     if (quedanMs <= 0) { fin(); return; }
     raf = requestAnimationFrame(cuadro);
   }
-  // G96 · Al llegar a cero ya no hay que tocar nada: tambor, «¡A LA BREGA!» y la serie entra sola.
-  // Si la app no está a la vista (has salido), se espera a que vuelvas para hacerlo.
+  // Empezar: con el mismo ejercicio, tambor, «¡A LA BREGA!» y directo a Moliendo con lo preparado (G115).
+  // Con otro, a su «Ahora» (y sus piedras, si tocan).
+  async function empezar({ solo = false } = {}) {
+    await guardarPrep(true);
+    delete s.descanso; await guardarSesion(s);
+    if (mismo || solo) {
+      S.suena('tambor'); vibrarTambor();
+      await aLaBrega({ hechas: hechasSig, total: sig.series, alCambiar: () => nav.reemplazar('serie', { sesionId: s.id, i: d.siguiente, ...(mismo ? { momento: 'moliendo' } : {}) }, { sinAnimacion: true }) });
+    } else {
+      S.toque('barrido'); vibrar();
+      nav.reemplazar('serie', { sesionId: s.id, i: d.siguiente, anima: true }, { duracion: 260 });
+    }
+  }
+  // G96 · Al llegar a cero ya no hay que tocar nada. Si la app no está a la vista (has salido), se espera a que vuelvas.
   function fin() {
     if (acabado) return; acabado = true;
     S.ambienteOff(); S.pararReanima();
-    reloj.textContent = '0:00'; puntos.style.opacity = 0;
+    reloj.textContent = '0:00'; puntos.style.opacity = 0; pintarCorona(0, 1);
     descansoEnCurso(null);
-    const ir = async () => {
-      if (!nodo.isConnected) return;
-      S.suena('tambor'); vibrar();
-      delete s.descanso; await guardarSesion(s);
-      await aLaBrega({ hechas: hechasSig, total: sig.series, alCambiar: () => nav.reemplazar('serie', { sesionId: s.id, i: d.siguiente }, { sinAnimacion: true }) });
-    };
+    const ir = () => { if (nodo.isConnected) empezar({ solo: true }); };
     if (document.hidden) document.addEventListener('visibilitychange', function vuelta() { if (!document.hidden) { document.removeEventListener('visibilitychange', vuelta); ir(); } });
     else ir();
   }
   const parar = () => { cancelAnimationFrame(raf); S.ambienteOff(); S.pararReanima(); descansoEnCurso(null); };
 
-  nodo.querySelector('[data-volver]').onclick = () => nav.volver();
-  nodo.querySelector('[data-mas]').onclick = async () => {
+  // ── La tarjeta de la siguiente (R29, G115): se cambia aquí y la serie sale con eso ──
+  let tPrep = 0, sucio = false;
+  async function guardarPrep(ya = false) {
+    clearTimeout(tPrep);
+    if (!sucio) return;
+    if (ya) { sucio = false; await guardarSesion(s); return; }
+    tPrep = setTimeout(() => { sucio = false; guardarSesion(s); }, 450);
+  }
+  if (tarjeta) {
+    const vPeso = tarjeta.querySelector('[data-ts-peso] [data-v]'), vReps = tarjeta.querySelector('[data-ts-reps] [data-v]');
+    const gofioEl = tarjeta.querySelector('[data-ts-gofio]');
+    const bote = (x) => { if (!quieto) x.animate([{ transform: 'scale(1.1)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'cubic-bezier(.22,1,.36,1)' }); };
+    const pintar = (que) => {
+      vPeso.textContent = kg(prep.peso); vReps.textContent = prep.reps;
+      if (que) bote(que === 'peso' ? vPeso : vReps);
+      const cp = prep.peso !== prep.gofio.peso, cr = prep.reps !== prep.gofio.reps;
+      vPeso.classList.toggle('cambiado', cp); vReps.classList.toggle('cambiado', cr);
+      const txt = cp || cr ? `${kg(prep.gofio.peso)} × ${prep.gofio.reps}` : '';
+      const antes = !gofioEl.hidden;
+      gofioEl.innerHTML = txt ? `Gofio: <s>${esc(txt)}</s>` : ''; gofioEl.hidden = !txt;
+      if (txt && !antes && !quieto) gofioEl.animate([{ opacity: 0, transform: 'translateX(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' });
+      sucio = true; guardarPrep(); if (tramo >= 0) avisoServidor();
+    };
+    const paso = (que, dir, veces = 1) => {
+      if (que === 'peso') for (let k = 0; k < veces; k++) prep.peso = Math.max(0, G.siguienteEscalon(prep.peso, escSig, dir));
+      else prep.reps = Math.max(1, Math.min(60, prep.reps + dir * veces));
+      pintar(que);
+    };
+    tarjeta.querySelectorAll('[data-ts]').forEach((b) => repetir(b, (v) => paso(b.dataset.ts, Number(b.dataset.dir), v)));
+    tarjeta.querySelector('[data-ts-peso]').onclick = async () => {
+      const v = await pedirNumero({ titulo: lastreSig ? 'Lastre' : 'Peso', sub: 'Para la siguiente.', valor: prep.peso });
+      if (v != null) { prep.peso = v; pintar('peso'); }
+    };
+    tarjeta.querySelector('[data-ts-reps]').onclick = async () => {
+      const v = await pedirNumero({ titulo: 'Reps', sub: 'Para la siguiente.', valor: prep.reps, unidad: 'reps', decimal: false });
+      if (v != null) { prep.reps = Math.max(1, Math.min(60, Math.round(v))); pintar('reps'); }
+    };
+    // R27 · Deja o al fallo, con un toque (en el descanso hay tiempo; la serie lo respeta).
+    const pild = tarjeta.querySelector('[data-ts-deja]');
+    pild.onclick = () => {
+      prep.fallo = !prep.fallo;
+      pild.textContent = prep.fallo ? 'Al fallo' : deja(pSig.rir).replace(/^d/, 'D'); pild.classList.toggle('fallo', prep.fallo);
+      pop(pild, 1.1); vibrar(); sucio = true; guardarPrep();
+    };
+    tarjeta.querySelector('[data-senal]').onclick = () => abrirLibreta({ ejId: sig.ej, porque: porqueSenal(prep, ultima) });
+  }
+  nodo.querySelector('[data-libreta]').onclick = () => abrirLibreta({
+    ejId: mismo ? sig.ej : desde.ej,
+    porque: mismo ? porqueSenal(prep, ultima) : [`<b>${esc(ejDesde.nombre)}:</b> ${hechasDesde.length} ${hechasDesde.length === 1 ? 'serie' : 'series'} hoy.`],
+    pestana: molido ? 'molino' : 'porque',
+  });
+
+  // «La ñapa» (G115): una serie más de regalo, preparada con la última. El descanso sigue contando.
+  nodo.querySelector('[data-nyapa]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget; if (b.dataset.va) return; b.dataset.va = '1';
+    desde.series += 1; desde.extra = (desde.extra ?? 0) + 1;
+    const pD = prescripcion(desde);
+    const r = G.siguienteSerie({ hecha: ultima, repsObjetivo: pD.reps[Math.min(hechasDesde.length, pD.reps.length - 1)] ?? desde.repMin, repMin: desde.repMin, repMax: desde.repMax, tipo: ejDesde.tipo, escalon: escalonDe(desde.ej), mejorReciente: mejorReciente(desde.ej) });
+    s.prep = { i: d.desde, n: hechasDesde.length, peso: r.peso, reps: r.reps, fallo: false, senal: r.senal, gofio: { peso: r.peso, reps: r.reps } };
+    d.siguiente = d.desde;
+    await guardarSesion(s);
+    S.suena('punado'); vibrar();
+    const v = G.volumen(s.plan);
+    const m = Object.entries(ejDesde.musculos).find(([, f]) => f === 1)?.[0];
+    if (m && v[m] > G.TOPE_SESION) avisar(`${musculoCorto(m).replace(/^./, (c) => c.toUpperCase())}: ya van ${String(v[m]).replace('.', ',')} hoy.`);
+    if (!quieto) await nodo.querySelector('.molido-cuerpo').animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-10px)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).finished;
+    parar();
+    nav.reemplazar('descanso', { sesionId: s.id, nyapa: true }, { sinAnimacion: true });
+  });
+
+  nodo.querySelector('[data-volver]').onclick = async () => { await guardarPrep(true); nav.volver(); };
+  // +30 con una pintadera: se estampa (G115) y la corona recupera sus granos.
+  const pinta = nodo.querySelector('[data-mas]');
+  pinta.onclick = async () => {
     S.pararReanima();
     d.hasta += 30000; d.total += 30;
+    if (!quieto) {
+      pinta.querySelector('svg').animate([{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(-24deg) scale(.86)', offset: 0.35 }, { transform: 'rotate(8deg) scale(1.1)', offset: 0.7 }, { transform: 'rotate(0) scale(1)' }], { duration: 420, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+      const h = document.createElement('span'); h.className = 'pt-huella'; pinta.append(h);
+      h.animate([{ opacity: 0.7, transform: 'scale(.7)' }, { opacity: 0, transform: 'scale(1.7)' }], { duration: 520, delay: 140, easing: 'ease-out', fill: 'both' }).finished.then(() => h.remove());
+    }
     if (acabado) return;
     if (tramo === 2 && (d.hasta - Date.now()) / 1000 > 10) tramo = -1;
     vibrar(); await guardarSesion(s); avisoServidor();
   };
-  nodo.querySelector('[data-ya]').onclick = async () => {
-    parar(); vibrar(); delete s.descanso; await guardarSesion(s);
-    nav.reemplazar('serie', { sesionId: s.id, i: d.siguiente });
+  nodo.querySelector('[data-ya]').onclick = (e) => {
+    const b = e.currentTarget; if (b.dataset.va) return; b.dataset.va = '1';
+    acabado = true; parar(); empezar();
   };
   return {
     nodo, pestana: null,
@@ -659,13 +932,22 @@ export function descansoPantalla(params, nav) {
       mantenerEncendida(true); cancelAnimationFrame(raf);
       if (d.hasta > Date.now()) setTimeout(() => S.ambienteOn(), 500);
       raf = requestAnimationFrame(cuadro);
-      if (params.entrada && !o.refresco) {
+      if (quieto || o.refresco) return;
+      if (params.entrada) {
         params.entrada = false;
         S.suena('rodar');
         // La muela llega rodando desde la derecha y frena largo en el centro (storyboard, 600-1000 ms).
-        if (!quieto) muela.animate([{ translate: '120vw 0', rotate: '540deg' }, { translate: '0 0', rotate: '0deg' }], { duration: 520, easing: 'cubic-bezier(.22,1,.36,1)' });
+        nodo.querySelector('.muela-descanso').animate([{ translate: '120vw 0', rotate: '540deg' }, { translate: '0 0', rotate: '0deg' }], { duration: 520, easing: 'cubic-bezier(.22,1,.36,1)' });
+        cgs.forEach((g, k) => g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 380 + k * 14, fill: 'backwards' }));
+        escalonar(nodo.querySelectorAll('.molido-cuerpo > *, .tarjeta-sig, .lo-que-viene, .descanso-pie > *'), { desde: 260, retraso: 45 });
+      }
+      if (params.nyapa) {
+        params.nyapa = false;
+        // El grano de regalo cae en su hueco y la tarjeta de la siguiente sube.
+        [...nodo.querySelectorAll('.cabeza-granos .grano')].at(-1)?.animate([{ transform: 'translateY(-22px) scale(1.4)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+        escalonar(nodo.querySelectorAll('.tarjeta-sig, .tarjeta-sig .ts-numeros > *'), { desde: 60, retraso: 50 });
       }
     },
-    alSalir() { parar(); },
+    alSalir() { parar(); guardarPrep(true); },
   };
 }

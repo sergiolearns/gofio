@@ -197,6 +197,19 @@ function registrarSW() {
   }).catch(() => {});
   let recargando = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!recargando) { recargando = true; location.reload(); } });
+  // G117 · Un aviso tocado con la app ya abierta: la pantalla que esté en ese paso lo atiende; si ninguna, se va al paso.
+  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data?.gofioIr) irAlPaso(e.data.gofioIr); });
+}
+
+/** G117 · Abrir el paso exacto que pide un aviso: «como» → «¿Cómo fue?» de la serie que estaba moliendo. */
+function irAlPaso(paso) {
+  window.gofioIr = paso;
+  const ev = new CustomEvent('gofio:ir', { detail: paso, cancelable: true });
+  if (!dispatchEvent(ev)) return;                       // una pantalla ya lo ha atendido
+  const s = sesionEnCurso();
+  if (paso === 'como' && s?.moliendo) ir('serie', { sesionId: s.id, i: s.moliendo.i, momento: 'como' }, { duracion: 240 });
+  else if (paso === 'serie' && s?.descanso) ir('descanso', { sesionId: s.id }, { duracion: 240 });
+  else window.gofioIr = null;
 }
 
 // ── ¿Abierta en Safari en vez de desde el icono? ──
@@ -254,7 +267,7 @@ function echarCortinilla() {
   c.dataset.vuelta = '1';
   document.body.appendChild(c);
   document.documentElement.classList.add('cortinilla-echada');
-  document.documentElement.style.backgroundColor = '#E3A62B';
+  document.documentElement.style.backgroundColor = '#D4922B';
 }
 function abrirCortinillaDeVuelta() {
   const c = document.querySelector('#cortinilla[data-vuelta]');
@@ -310,7 +323,12 @@ async function inicio() {
   const forzar = new URLSearchParams(location.search).get('pantalla'); // solo para pruebas
   if (esIOS && !instalada && !sessionStorage.getItem('gofio-seguir-safari') && !forzar) ir('instalar', {}, { modo: 'pestana' });
   else if (!ajuste('inicioHecho') && !forzar) ir('bienvenida', {}, { modo: 'pestana' });
-  else { pedirPersistencia(); ir(forzar && PANTALLAS[forzar] ? forzar : 'hoy', {}, { modo: 'pestana' }); }
+  else {
+    pedirPersistencia(); ir(forzar && PANTALLAS[forzar] ? forzar : 'hoy', {}, { modo: 'pestana' });
+    // Abierta desde un aviso (G117): ?ir=como o ?ir=serie. Se limpia la URL para que recargar no repita el salto.
+    const paso = new URLSearchParams(location.search).get('ir');
+    if (paso) { history.replaceState(null, '', location.pathname); irAlPaso(paso); }
+  }
   quitarCortinilla();
   // G63 · Si la instalación es de antes de la barra opaca, se avisa (una vez por apertura) de que hay que reinstalar.
   if (navigator.standalone && (window.gofioPantalla?.arriba ?? 0) > 0 && ajuste('inicioHecho')) {

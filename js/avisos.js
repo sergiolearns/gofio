@@ -3,7 +3,8 @@
 //
 // Qué viaja al servidor, y solo si los avisos están encendidos y sales de la app en mitad de un descanso:
 //  · la dirección de avisos que da Apple (un enlace opaco, sin tu nombre) con sus dos claves de cifrado;
-//  · la hora de cada aviso (dos como mucho: al salir y al acabar) y su texto («Embúllate.», «Te toca…»).
+//  · la hora de cada aviso (dos como mucho: al salir y al acabar) y su texto («Embúllate.», «Te toca…»);
+//  · con una serie en marcha (Moliendo, G117), un solo aviso «¿Hecha?» a los 3 minutos, y a qué paso abre («como»).
 // Nada más: ni historial, ni pesos guardados, ni comidas. El servidor lo borra al enviarlo o al volver tú a la app.
 // Sin servidor (o sin conexión) no pasa nada: el descanso sigue contando igual dentro de la app.
 import { ajuste, ponerAjuste } from './logica.js';
@@ -27,7 +28,7 @@ export async function encenderAvisos() {
   // G104 · Al cerrarse la pregunta de iOS, el iPhone vuelve a pintar la barra de arriba con el color de fondo de la página
   // (en Ajustes, harina) y se queda así hasta cerrar la app. Mientras pregunta, el fondo es millo, como al abrir (G65).
   const raiz = document.documentElement;
-  raiz.style.backgroundColor = '#E3A62B';
+  raiz.style.backgroundColor = '#D4922B';
   const devolver = () => setTimeout(() => { raiz.style.backgroundColor = window.gofioFondo || ''; }, 1500);
   let permiso;
   try { permiso = await Notification.requestPermission(); } finally { devolver(); }
@@ -81,7 +82,7 @@ async function alSalir() {
   // G79: dos avisos como mucho. Al salir, cuánto queda; al acabar, la frase de la reanimación y la siguiente serie.
   mandar('/programar', { sub, avisos: [
     { en: Date.now(), titulo: 'Respira.', cuerpo: `Quedan ${m}:${String(s).padStart(2, '0')}. Te aviso al acabar.` },
-    { en: descanso.hasta, titulo: descanso.frase || 'Embúllate.', cuerpo: descanso.siguiente || '¡A la brega!' },
+    { en: descanso.hasta, titulo: descanso.frase || 'Embúllate.', cuerpo: descanso.siguiente || '¡A la brega!', ir: 'serie' },
   ] });
   programado = true;
 }
@@ -91,9 +92,23 @@ function cancelar() {
   mandar('/cancelar', { endpoint: sub.endpoint });
 }
 
+// G117 · Moliendo: si sales de la app con una serie en marcha, un aviso «¿Hecha?» a los 3 min. Tocarlo abre «¿Cómo fue?».
+let molida = null; // { hasta, titulo, cuerpo }
+export function molienda(m) {
+  molida = m;
+  if (!m) { if (!descanso) cancelar(); return; }
+  if (avisosActivos() && !sub) suscripcion().then((x) => { sub = x; });
+}
+async function alSalirMoliendo() {
+  if (!molida || descanso || programado || !avisosActivos()) return;
+  sub = sub ?? await suscripcion(); if (!sub) return;
+  mandar('/programar', { sub, avisos: [{ en: Math.max(Date.now() + 60000, molida.hasta), titulo: molida.titulo, cuerpo: molida.cuerpo, ir: 'como' }] });
+  programado = true;
+}
+
 export function iniciarAvisos() {
   if (!SERVIDOR) return;
-  document.addEventListener('visibilitychange', () => { if (document.hidden) alSalir(); else cancelar(); });
-  addEventListener('pagehide', () => alSalir());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { alSalir(); alSalirMoliendo(); } else cancelar(); });
+  addEventListener('pagehide', () => { alSalir(); alSalirMoliendo(); });
 }
 export { b64url };

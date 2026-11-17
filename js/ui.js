@@ -43,6 +43,11 @@ const I = {
   // Del sistema: se tienen que reconocer (G86: el botón de compartir de iOS no se toca).
   compartir: '<path d="M12 2l4.6 4.6l-1.4 1.4L13 5.8V15h-2V5.8L8.8 8L7.4 6.6zM5 10h3v2H7v8h10v-8h-1v-2h3v12H5z"/>',
   check: '<path d="M9.5 16.2L4.8 11.5l-1.6 1.6l6.3 6.3L21 7.9l-1.6-1.6z"/>',
+  // La brega (G115): la piedra del levantamiento (Arrimar) y el tostador (Tostar).
+  piedra: '<path d="M4.5 9.2C5.6 5.4 9.8 4.2 13.4 4.6c4.3.5 7.1 3.4 6.6 7.6c-.4 4.2-3.8 7.4-8.2 7.3C7.4 19.4 3.4 16.6 3.6 12.8c0-1.3.4-2.6.9-3.6z"/>',
+  // La libreta: un cuaderno con goma (lo que se lee, no lo que se suda).
+  libreta: '<path fill-rule="evenodd" d="M6.5 2.5h11a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2zM7.5 7h6.5v1.7H7.5zM7.5 10.6h6.5v1.7H7.5zM7.5 14.2h4.5v1.7H7.5zM15.6 2.5h1.5v19h-1.5z"/>',
+  tostar: '<path d="M15.5 2.5l1.6 1.2l-4.6 6.6l-1.6-1.2zM2 12.5h20c-.6 4.4-4.7 7.5-10 7.5S2.6 16.9 2 12.5zM7 9.6a1.5 1.8 0 1 1 0 3.6a1.5 1.8 0 1 1 0-3.6zM11.5 10a1.5 1.8 0 1 1 0 3.6a1.5 1.8 0 1 1 0-3.6zM16.5 9.8a1.5 1.8 0 1 1 0 3.6a1.5 1.8 0 1 1 0-3.6z"/>',
 };
 I.info = I.igual; I.vuelta = I.hoy; I.copia = I.zurron;
 export const icono = (n, extra = '') => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ${extra}>${I[n]}</svg>`;
@@ -242,3 +247,34 @@ export function pop(n, escala = 1.14) {
 export function cuandoRevelada(fn) {
   if (window.gofioRevelada) fn(); else window.addEventListener('gofio:revelada', fn, { once: true });
 }
+
+// ── Piezas canarias de La brega (G115-G117; tablero 16 del lienzo) ─────────────────────────────
+/** El +30 del descanso: una pintadera de tiempo (círculo doble con corona de triángulos). Lenguaje de pintadera, no copia. */
+export function pintadera(texto = '+30', n = 12) {
+  const tri = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i * 360 / n - 90) * Math.PI / 180, d = Math.PI / n * 0.78;
+    const p = [[35 * Math.cos(a - d), 35 * Math.sin(a - d)], [35 * Math.cos(a + d), 35 * Math.sin(a + d)], [44 * Math.cos(a), 44 * Math.sin(a)]];
+    tri.push(`<path d="M${p.map((q) => q.map((v) => v.toFixed(1)).join(' ')).join('L')}Z"/>`);
+  }
+  return `<svg class="pintadera" viewBox="-50 -50 100 100" aria-hidden="true"><circle r="49" class="pt-fondo"/><circle r="46" class="pt-aro"/><g class="pt-tri">${tri.join('')}</g><circle r="33" class="pt-aro fino"/><text y="7" text-anchor="middle">${texto}</text></svg>`;
+}
+/** La corona de granos del reloj del descanso: n granos en círculo; se van moliendo (de lleno a vacío). */
+export function coronaGranos(n = 24) {
+  const g = [];
+  for (let i = 0; i < n; i++) {
+    const a = -90 + i * 360 / n;
+    g.push(`<g transform="rotate(${a + 90}) translate(0 -46) scale(.032)"><path class="cg" d="M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z" transform="rotate(-14)"/></g>`);
+  }
+  return `<svg class="corona-granos" viewBox="-50 -50 100 100" aria-hidden="true">${g.join('')}</svg>`;
+}
+/** Una piedra del levantamiento canario (Arrimar): forma irregular; estado hecha | ahora | luego | trabajo | saltada. */
+export function piedra(arriba, abajo, estado = 'luego', escala = 1) {
+  const w = Math.round(62 * escala), h = Math.round(46 * escala);
+  const d = `M${w * .12} ${h * .30}C${w * .18} ${h * .06} ${w * .46} ${h * .02} ${w * .62} ${h * .05}C${w * .86} ${h * .09} ${w * .99} ${h * .30} ${w * .97} ${h * .55}C${w * .95} ${h * .86} ${w * .74} ${h * .98} ${w * .48} ${h * .97}C${w * .20} ${h * .96} ${w * .02} ${h * .82} ${w * .03} ${h * .58}C${w * .04} ${h * .46} ${w * .07} ${h * .38} ${w * .12} ${h * .30}Z`;
+  return `<span class="piedra pd-${estado}" style="--w:${w}px;--h:${h}px"><svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${d}"/>${estado === 'saltada' ? `<line x1="${w * .18}" y1="${h * .82}" x2="${w * .82}" y2="${h * .2}"/>` : ''}</svg><span class="pd-txt"><b class="cifra">${arriba}</b><small>${abajo}</small></span></span>`;
+}
+/** Sello pequeño de pintadera (lo hecho en una lista): círculo con triángulo vaciado. */
+export const selloTri = (clase = '') => `<svg class="sello-tri ${clase}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" class="st-c"/><path d="M12 5.5L18.2 16.5H5.8z" class="st-v"/><path d="M12 10L14.6 14.6H9.4z" class="st-c"/></svg>`;
+/** Golpe de tambor en la mano: dos pulsos, el segundo más suave (donde el móvil deje vibrar). */
+export function vibrarTambor() { vibrar(); setTimeout(vibrar, 110); }

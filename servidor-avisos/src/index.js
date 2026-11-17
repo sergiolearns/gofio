@@ -3,7 +3,8 @@
 // (hora y texto). Los manda a su hora con Web Push (RFC 8030, cifrado RFC 8291, VAPID RFC 8292) y los borra.
 // Las claves VAPID se generan aquí dentro la primera vez y nunca salen del servidor (la pública sí: la pide la app).
 //
-// Rutas: GET /clave · POST /programar {sub, avisos:[{en, titulo, cuerpo}]} · POST /cancelar {endpoint}
+// Rutas: GET /clave · POST /programar {sub, avisos:[{en, titulo, cuerpo, ir?}]} · POST /cancelar {endpoint}
+// «ir» dice a qué paso abre la app al tocar el aviso; solo vale uno de la lista IRES (G117).
 // Los POST llegan como texto plano (sendBeacon), así no necesitan permiso previo del navegador.
 
 import { DurableObject } from 'cloudflare:workers';
@@ -14,6 +15,7 @@ const SUJETO = 'https://gofio.sergiolearns.com';
 const MAX_AVISOS = 2;          // G79: dos como mucho por descanso
 const MAX_ADELANTO = 20 * 60e3; // un descanso no pasa de 20 minutos
 const MAX_TEXTO = 140;
+const IRES = ['como', 'serie']; // los únicos pasos a los que un aviso puede abrir la app
 
 const cors = (origen) => ({
   'Access-Control-Allow-Origin': ORIGENES.includes(origen) ? origen : ORIGENES[0],
@@ -42,7 +44,7 @@ export default {
       const ahora = Date.now();
       const avisos = (Array.isArray(d.avisos) ? d.avisos : []).slice(0, MAX_AVISOS)
         .filter((a) => Number.isFinite(a?.en) && a.en <= ahora + MAX_ADELANTO && a.en >= ahora - 60e3)
-        .map((a) => ({ en: Math.max(a.en, ahora), titulo: String(a.titulo ?? '').slice(0, MAX_TEXTO), cuerpo: String(a.cuerpo ?? '').slice(0, MAX_TEXTO) }));
+        .map((a) => ({ en: Math.max(a.en, ahora), titulo: String(a.titulo ?? '').slice(0, MAX_TEXTO), cuerpo: String(a.cuerpo ?? '').slice(0, MAX_TEXTO), ...(IRES.includes(a.ir) ? { ir: a.ir } : {}) }));
       const k = d.sub?.keys;
       if (!avisos.length || !k?.p256dh || !k?.auth) return json({ error: 'datos' }, origen, 400);
       await movil.programar({ endpoint, p256dh: k.p256dh, auth: k.auth }, avisos);
@@ -83,7 +85,7 @@ export class Avisos extends DurableObject {
     const vapid = await claves.claveCompleta();
     for (const a of toca) {
       let r;
-      try { r = await enviar(sub, { titulo: a.titulo, cuerpo: a.cuerpo }, vapid); } catch { continue; } // sin red: ese aviso se pierde, nada más
+      try { r = await enviar(sub, { titulo: a.titulo, cuerpo: a.cuerpo, ...(a.ir ? { ir: a.ir } : {}) }, vapid); } catch { continue; } // sin red: ese aviso se pierde, nada más
       if (r.status === 404 || r.status === 410) { await this.ctx.storage.deleteAll(); return; } // el móvil ya no está suscrito
     }
     if (avisos.length) { await this.ctx.storage.put('avisos', avisos); await this.ctx.storage.setAlarm(Math.min(...avisos.map((a) => a.en))); }

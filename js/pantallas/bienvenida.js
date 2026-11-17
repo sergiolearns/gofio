@@ -188,7 +188,7 @@ export function instalarPantalla(_, nav) {
 
 // Los huecos honestos (lienzo: Huecos.dc.html; G86): su icono en grande, una frase con voz de Gofio y en qué versión llegan.
 const DIBUJO = {
-  progreso: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#3A3531" d="M3 9.5L12 3l9 6.5v2.6L12 5.6l-9 6.5zM3 14.7l9-6.5l9 6.5v2.6l-9-6.5l-9 6.5z"/><path class="sube" fill="#E3A62B" d="M3 19.9l9-6.5l9 6.5V22.5l-9-6.5l-9 6.5z"/></svg>`,
+  progreso: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#3A3531" d="M3 9.5L12 3l9 6.5v2.6L12 5.6l-9 6.5zM3 14.7l9-6.5l9 6.5v2.6l-9-6.5l-9 6.5z"/><path class="sube" fill="#D4922B" d="M3 19.9l9-6.5l9 6.5V22.5l-9-6.5l-9 6.5z"/></svg>`,
   comida: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1B1917" d="M2.5 5h19v2.2h-19zM4 8.4h16c0 4.2-3.6 7.4-8 7.4s-8-3.2-8-7.4z"/><g fill="#B8422E"><circle class="piedra" cx="6" cy="19.7" r="2.2"/><circle class="piedra" cx="12" cy="19.7" r="2.2"/><circle class="piedra" cx="18" cy="19.7" r="2.2"/></g></svg>`,
 };
 const hueco = (pestana, titulo, frase, texto, version) => () => {

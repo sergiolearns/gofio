@@ -106,7 +106,7 @@ h1, h2, h3, p { margin: 0; }
 }
 @keyframes brillo { from { transform: translateX(-140%) skewX(-18deg); } to { transform: translateX(330%) skewX(-18deg); } } /* una sola pasada al aparecer (G53) */
 .boton.oscuro:active { box-shadow: 0 0 0 6px rgba(27, 25, 23, .18), 0 12px 30px -8px rgba(0,0,0,.6); }
-.boton.millo:active { box-shadow: 0 0 0 7px rgba(227, 166, 43, .28), 0 14px 36px -8px rgba(227, 166, 43, .9); }
+.boton.millo:active { box-shadow: 0 0 0 7px rgba(212,146,43, .28), 0 14px 36px -8px rgba(212,146,43, .9); }
 /* La onda desde el dedo (ui.js) */
 .onda { position: absolute; z-index: 0; border-radius: 50%; pointer-events: none; background: currentColor; transform: scale(0); }
 .chip, .redondo, .rir-botones button, .opciones button, .lista-sesiones button, .lista-ejercicios li, .pestanas a, .tarjeta-eleccion, .icono-boton, .fila.tocable, .tocable { position: relative; overflow: hidden; }
@@ -116,7 +116,7 @@ h1, h2, h3, p { margin: 0; }
 .lista-sesiones li button:active { background: var(--harina-2); transform: scale(.985); }
 .fila.tocable:active { background: rgba(0,0,0,.03); }
 .chip[aria-pressed="true"] { box-shadow: 0 6px 18px -8px rgba(243, 234, 219, .6); }
-.rir-botones button[aria-pressed="true"] { box-shadow: 0 8px 22px -8px rgba(227, 166, 43, .9); }
+.rir-botones button[aria-pressed="true"] { box-shadow: 0 8px 22px -8px rgba(212,146,43, .9); }
 /* Tarjetas de elección (primer arranque) */
 .tarjeta-eleccion {
   display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px; border-radius: var(--radio-grande);
@@ -140,7 +140,7 @@ h1, h2, h3, p { margin: 0; }
 .vista-rutina p + p { margin-top: 6px; }
 .boton .lado { margin-left: auto; font-family: var(--letra-texto); font-stretch: normal; font-weight: 600; font-size: 14px; opacity: .85; }
 .boton.oscuro { background: var(--basalto); color: var(--harina-texto); box-shadow: 0 6px 18px -10px rgba(0,0,0,.6); }
-.boton.millo { background: var(--millo); color: var(--basalto); box-shadow: 0 6px 18px -10px rgba(227,166,43,.7); }
+.boton.millo { background: var(--millo); color: var(--basalto); box-shadow: 0 6px 18px -10px rgba(212,146,43,.7); }
 .boton.plano { background: var(--basalto-2); color: var(--harina-texto); box-shadow: none; font-size: 22px; min-height: 52px; }
 .clara .boton.plano { background: var(--harina-2); color: var(--basalto); }
 .boton[disabled] { opacity: .45; pointer-events: none; }
