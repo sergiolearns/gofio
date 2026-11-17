@@ -1,4 +1,4 @@
-// «La serie: el terrero» (lienzo: Serie.dc.html; G78) y «El descanso» (Descanso.dc.html; G79).
+// «La serie: el terrero» (lienzo: Serie.dc.html y SerieDos.dc.html; G78, G105: «Ahora» y «¿Cómo fue?») y «El descanso» (Descanso.dc.html; G79).
 // Basalto, números grandes y pocas palabras. Guardar una serie: los números se hacen grano, el grano vuela a su hueco
 // y la muela del descanso llega rodando (storyboard y prototipo v5). Sonidos: G83.
 import * as G from '../cerebro/index.js';
@@ -38,14 +38,15 @@ function mejorAntes(ejId, sesionId) {
 function avisoDe(p, slot, n) {
   const busca = p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin;
   const r = `busca ${busca} · ${deja(p.rir)}`;
-  if (slot.diaMalo) return { icono: 'malo', texto: `Día malo · ${r}` };
-  if (p.descarga) return { icono: 'baja', texto: `Descarga · ${r}` };
-  if (p.vuelta === 'larga') return { icono: 'baja', texto: `Vuelta suave · ${r}` };
+  // «corto»: lo que va en «Ahora», donde los números ya están en grande (G105).
+  if (slot.diaMalo) return { icono: 'malo', texto: `Día malo · ${r}`, corto: 'Día malo: cuenta igual' };
+  if (p.descarga) return { icono: 'baja', texto: `Descarga · ${r}`, corto: 'Semana de descarga' };
+  if (p.vuelta === 'larga') return { icono: 'baja', texto: `Vuelta suave · ${r}`, corto: 'Vuelta suave' };
   switch (p.accion) {
-    case 'subir': return { icono: 'sube', texto: `Sube a ${kg(p.peso)} · ${r}` };
-    case 'bajar': return { icono: 'baja', texto: `Baja a ${kg(p.peso)} · ${r}` };
-    case 'primera': return { icono: 'igual', texto: `Primera vez · ${rango(slot.repMin, slot.repMax)} reps · ${deja(p.rir)}` };
-    default: return { icono: 'igual', texto: `Mismo peso · ${r}` };
+    case 'subir': return { icono: 'sube', texto: `Sube a ${kg(p.peso)} · ${r}`, corto: `Sube a ${kg(p.peso)} kg` };
+    case 'bajar': return { icono: 'baja', texto: `Baja a ${kg(p.peso)} · ${r}`, corto: `Baja a ${kg(p.peso)} kg` };
+    case 'primera': return { icono: 'igual', texto: `Primera vez · ${rango(slot.repMin, slot.repMax)} reps · ${deja(p.rir)}`, corto: 'Primera vez' };
+    default: return { icono: 'igual', texto: `Mismo peso · ${r}`, corto: 'Mismo peso' };
   }
 }
 /** El porqué del aviso, para la hoja que se abre al tocarlo (el historial va ahí, no en la pantalla). */
@@ -76,7 +77,8 @@ export function seriePantalla({ sesionId, i = 0 }, nav) {
   const ultimaHoy = hechas.at(-1);
   let peso = ultimaHoy?.peso ?? p.peso;
   let reps = p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin;
-  let rir = ultimaHoy?.rir ?? p.rir.max;
+  let rir = null;   // G105: la reserva no viene marcada; la eliges al acabar la serie
+  const repsMeta = reps, pesoMeta = peso;
   const escalon = escalonDe(slot.ej);
   const lastre = !!ej.lastre;
   const aviso = avisoDe(p, slot, n);
@@ -84,17 +86,33 @@ export function seriePantalla({ sesionId, i = 0 }, nav) {
   const restoTotal = s.plan.reduce((acc, _, k) => acc + Math.max(0, s.plan[k].series - seriesDelHueco(s, k).length), 0);
   const esUltima = restoTotal === 1;
 
-  const nodo = el(`<section aria-labelledby="titulo-serie">
+  // G105 · Dos momentos en la misma pantalla: «Ahora» (lo que toca, en grande) y, al tocar «Hecha», «¿Cómo fue?».
+  const rep = rango(slot.repMin, slot.repMax);
+  const unidad = lastre ? 'kg de lastre' : 'kg';
+  const ahoraNumeros = peso == null
+    ? `<b class="titular ahora-texto">Un peso que te deje ${rep}</b><p class="ahora-pista">El peso que pongas lo apuntas al acabar.</p>`
+    : `<b class="cifra ahora-peso num" data-ahora-peso>${kg(peso)}</b><span class="unidad">${unidad}</span>
+       <b class="cifra ahora-reps num" data-ahora-reps><i class="por" aria-hidden="true">×</i>${reps}</b><span class="unidad">reps</span>`;
+  const nodo = el(`<section class="serie" data-momento="ahora" aria-labelledby="titulo-serie">
     <div class="serie-cabeza">
       <button class="volver" type="button" data-volver>${icono('atras')}Hoy</button>
       ${granos(n, total, -1, { ahora: true, clase: 'millo-tenue' })}
     </div>
-    <h1 class="titular serie-titulo" id="titulo-serie">${esc(ej.nombre)}</h1>
-    <button class="aviso-serie" type="button" data-aviso aria-label="${esc(aviso.texto)}. Ver por qué">${icono(aviso.icono)}<span data-aviso-txt>${esc(aviso.texto)}</span></button>
-    <div class="numeros" data-numeros>
+    <h1 class="titular serie-titulo ahora-solo" id="titulo-serie">${esc(ej.nombre)}</h1>
+    <button class="aviso-serie ahora-solo" type="button" data-aviso aria-label="${esc(aviso.texto)}. Ver por qué">${icono(aviso.icono)}<span data-aviso-txt>${esc(aviso.corto)}</span></button>
+    <div class="ahora ahora-solo" data-ahora>
+      <span class="ahora-etiqueta">Ahora</span>
+      ${ahoraNumeros}
+      <span class="ahora-deja">${deja(p.rir).replace(/^d/, 'D')}</span>
+    </div>
+    <div class="como-cabeza como-solo">
+      <h2 class="titular">¿Cómo fue?</h2>
+      <p>${esc(ej.nombre)} · si cambió algo, tócalo</p>
+    </div>
+    <div class="numeros como-solo" data-numeros>
       <div class="contador">
         <button class="redondo" type="button" data-peso="-1" data-son="-1" aria-label="Restar el escalón">${icono('menos')}</button>
-        <div class="valor"><button type="button" data-escribir-peso data-son="0" aria-label="Escribir el peso"><span class="cifra peso num" data-v-peso>${peso == null ? '—' : kg(peso)}</span></button><span class="unidad">${lastre ? 'kg de lastre' : 'kg'}</span></div>
+        <div class="valor"><button type="button" data-escribir-peso data-son="0" aria-label="Escribir el peso"><span class="cifra peso num" data-v-peso>${peso == null ? '—' : kg(peso)}</span></button><span class="unidad">${unidad}</span></div>
         <button class="redondo" type="button" data-peso="1" data-son="1" aria-label="Sumar el escalón">${icono('mas')}</button>
       </div>
       <div class="contador">
@@ -103,20 +121,24 @@ export function seriePantalla({ sesionId, i = 0 }, nav) {
         <button class="redondo" type="button" data-reps="1" data-son="1" aria-label="Una rep más">${icono('mas')}</button>
       </div>
       <div class="rir" role="group" aria-labelledby="rir-t">
-        <h3 id="rir-t">¿Cuántas te quedaban?</h3>
-        <div class="rir-botones">${G.BOTONES_RIR.map((v) => `<button type="button" data-rir="${v}" data-son="pop" aria-pressed="${v === Math.min(4, rir)}">${v === 4 ? '4+' : v}</button>`).join('')}</div>
+        <h3 class="titular" id="rir-t">¿Cuántas te quedaban?</h3>
+        <div class="rir-botones">${G.BOTONES_RIR.map((v) => `<button type="button" data-rir="${v}" data-son="none" aria-pressed="false">${v === 4 ? '4+' : v}</button>`).join('')}</div>
         <div class="rir-pie"><span>al fallo</span><span>sobrado</span></div>
       </div>
     </div>
     <div class="relleno"></div>
-    <div class="serie-herramientas">
+    <div class="como-pie como-solo">
+      <p data-como-pista>${esUltima ? 'Tocas una y se guarda: la última.' : 'Tocas una y se guarda: empieza el descanso.'}</p>
+      <button class="enlace" type="button" data-aun-no>‹ Aún no la he hecho</button>
+    </div>
+    <div class="serie-herramientas ahora-solo">
       <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
       <button class="chip" type="button" data-nota>${icono('nota')}Nota</button>
       <button class="chip" type="button" data-lista>${icono('lista')}Ejercicios</button>
       <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>
       ${n > 0 ? '<button class="chip" type="button" data-deshacer>Borrar la última</button>' : ''}
     </div>
-    <button class="boton boton-guardar${esUltima ? ' solo' : ''}" type="button" data-guardar data-son="none">${esUltima ? 'Guardar la última' : `Guardar serie<span class="lado">descanso ${mmss(descansoDe(slot.ej))}</span>`}</button>
+    <button class="boton boton-guardar boton-hecha ahora-solo" type="button" data-hecha data-son="none">${icono('check')}Hecha</button>
   </section>`);
 
   const vPeso = nodo.querySelector('[data-v-peso]');
@@ -127,7 +149,8 @@ export function seriePantalla({ sesionId, i = 0 }, nav) {
   // «¡Fuerte marca!» (G78): si lo que vas a guardar supera tu mejor fuerza estimada en este ejercicio (R11).
   let marca = false;
   function mirarMarca() {
-    const ahora = peso != null && record > 0 && G.e1rm(peso, reps, rir) > record + 0.01;
+    vReps.classList.toggle('cambiado', reps !== repsMeta); vPeso.classList.toggle('cambiado', pesoMeta != null && peso !== pesoMeta);
+    const ahora = peso != null && record > 0 && G.e1rm(peso, reps, rir ?? 0) > record + 0.01;
     if (ahora) avTxt.textContent = `¡Fuerte marca! ${kg(peso)} × ${reps}`;
     if (ahora === marca) return;
     marca = ahora;
@@ -154,12 +177,43 @@ export function seriePantalla({ sesionId, i = 0 }, nav) {
   nodo.querySelectorAll('[data-reps]').forEach((b) => b.addEventListener('click', () => {
     reps = Math.max(0, Math.min(60, reps + Number(b.dataset.reps))); vReps.textContent = reps; bote(vReps); mirarMarca();
   }));
-  nodo.querySelectorAll('[data-rir]').forEach((b) => b.addEventListener('click', () => {
+  let guardando = false;
+  // G105 · Tocar la reserva la elige y guarda la serie (dos toques por serie: «Hecha» y la reserva).
+  nodo.querySelectorAll('[data-rir]').forEach((b) => b.addEventListener('click', async () => {
+    if (guardando) return;
     rir = Number(b.dataset.rir);
     nodo.querySelectorAll('[data-rir]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-    if (!reduceMovimiento()) b.animate([{ transform: 'scale(.92)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'cubic-bezier(.34,1.56,.64,1)' });
-    vibrar(); mirarMarca();
+    if (!reduceMovimiento()) b.animate([{ transform: 'scale(.9)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration: 240, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+    mirarMarca();
+    await guardar();
   }));
+  // «Hecha» → «¿Cómo fue?»: los números grandes bajan y encogen hasta los contadores (FLIP, solo transform y opacity).
+  const ahoraPeso = nodo.querySelector('[data-ahora-peso]'), ahoraReps = nodo.querySelector('[data-ahora-reps]');
+  function aMomento(m) {
+    const desdeP = ahoraPeso?.getBoundingClientRect(), desdeR = ahoraReps?.getBoundingClientRect();
+    nodo.dataset.momento = m;
+    nodo.scrollTop = 0;
+    if (reduceMovimiento()) return;
+    const curva = 'cubic-bezier(.22,1,.36,1)';
+    if (m === 'como') {
+      const flip = (desde, hacia) => {
+        if (!desde || !hacia || !desde.height) return;
+        const r = hacia.getBoundingClientRect();
+        const dx = desde.left + desde.width / 2 - (r.left + r.width / 2), dy = desde.top + desde.height / 2 - (r.top + r.height / 2);
+        hacia.animate([{ transform: `translate(${dx}px,${dy}px) scale(${desde.height / r.height})` }, { transform: 'none' }], { duration: 480, easing: curva });
+      };
+      flip(desdeP, vPeso); flip(desdeR, vReps);
+      const aparece = (els, desde, y = 10) => els.forEach((x, k) => x.animate([{ opacity: 0, transform: `translateY(${y}px)` }, { opacity: 1, transform: 'none' }], { duration: 360, delay: desde + k * 40, easing: curva, fill: 'backwards' }));
+      aparece([...nodo.querySelectorAll('.como-cabeza > *')], 0, -10);
+      aparece([...nodo.querySelectorAll('.contador .redondo, .contador .unidad')], 200, 0);
+      aparece([nodo.querySelector('.rir h3'), ...nodo.querySelectorAll('.rir-botones button'), nodo.querySelector('.rir-pie')], 260, 16);
+      aparece([...nodo.querySelectorAll('.como-pie > *')], 420, 8);
+    } else {
+      escalonar(nodo.querySelectorAll('.serie-titulo, .aviso-serie, .ahora > *, .serie-herramientas, .boton-hecha'), { desde: 0, retraso: 35 });
+    }
+  }
+  nodo.querySelector('[data-hecha]').onclick = () => { vibrar(); S.toque('piedra'); aMomento('como'); };
+  nodo.querySelector('[data-aun-no]').onclick = () => { S.toque(-1); aMomento('ahora'); };
   // El historial y el porqué, al tocar el aviso (G78).
   av.onclick = () => {
     const nota = estado.notas[slot.ej]?.texto;
@@ -173,15 +227,20 @@ export function seriePantalla({ sesionId, i = 0 }, nav) {
     escalonar(h.querySelectorAll('.opciones li'), { desde: 120, retraso: 40 });
   };
 
-  let guardando = false;
-  nodo.querySelector('[data-guardar]').onclick = async () => {
+  async function guardar() {
     if (guardando) return;
-    if (peso == null) { await escribirPeso(); if (peso == null) return; }
+    if (peso == null) { await escribirPeso(); if (peso == null) { nodo.querySelectorAll('[data-rir]').forEach((x) => x.setAttribute('aria-pressed', 'false')); return; } }
     guardando = true;
     vibrar();
     S.suena('guardar');
     if (marca) S.suena('marca', 0.45);
     const fueMarca = marca;
+    if (fueMarca) {   // «¡Fuerte marca!» en el pie, un momento, antes de que vuele el grano
+      const pista = nodo.querySelector('[data-como-pista]');
+      pista.innerHTML = `${icono('marca')}¡Fuerte marca! ${esc(kg(peso))} × ${reps}`; pista.classList.add('marca');
+      if (!reduceMovimiento()) pista.animate([{ transform: 'scale(.9)', opacity: 0 }, { transform: 'scale(1.04)', opacity: 1 }, { transform: 'none', opacity: 1 }], { duration: 340, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+      await espera(520);
+    }
     // Storyboard «guardar serie»: los números se hacen grano, el grano vuela a su hueco y cae con un destello.
     const vuelo = hacerseGrano(nodo.querySelector('[data-numeros]'), nodo.querySelectorAll('.serie-cabeza .grano')[n]);
     await guardarSerie(s, i, { peso, reps, rir });
@@ -195,7 +254,7 @@ export function seriePantalla({ sesionId, i = 0 }, nav) {
     s.descanso = { hasta: Date.now() + descansoDe(slot.ej) * 1000, total: descansoDe(slot.ej), siguiente: sig, desde: i, marca: fueMarca };
     await guardarSesion(s);
     nav.reemplazar('descanso', { sesionId: s.id, entrada: true }, { duracion: 240 });
-  };
+  }
 
   nodo.querySelector('[data-deshacer]')?.addEventListener('click', async () => {
     const ok = await confirmarHoja({ titulo: '¿Borrar la última?', texto: `${kg(ultimaHoy.peso)} kg × ${ultimaHoy.reps}, te quedaban ${ultimaHoy.rir === 4 ? '4 o más' : ultimaHoy.rir}.`, si: 'Borrar', no: 'Dejarla' });

@@ -142,6 +142,51 @@
 .boton-guardar { justify-content: space-between; padding: 0 22px; }
 .boton-guardar .lado { margin-left: 0; }
 .boton-guardar.solo { justify-content: center; }
+/* G105 · La serie en dos momentos: «Ahora» (lo que toca) y «¿Cómo fue?» (lo que pasó), en la misma pantalla. */
+.serie[data-momento="ahora"] .como-solo, .serie[data-momento="como"] .ahora-solo { display: none !important; }
+.serie[data-momento="ahora"] > .relleno { display: none; }
+.ahora { margin: auto 0; padding: 28px 0 18px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ahora-etiqueta { font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--millo); }
+.ahora .cifra { display: block; line-height: .86; }
+.ahora-peso { margin-top: 10px; font-size: min(150px, 17dvh); }
+.ahora-reps { margin-top: min(22px, 2.4dvh); font-size: min(96px, 11dvh); }
+.ahora .unidad { font-size: 15px; color: var(--piedra); }
+.ahora-texto { margin-top: 14px; max-width: 340px; font-size: min(64px, 8dvh); line-height: .95; }
+.ahora-pista { margin: 18px 0 0; max-width: 300px; font-size: 15px; color: var(--piedra); }
+.ahora-deja { margin-top: min(26px, 3dvh); padding: 10px 18px; border-radius: 22px; border: 2px solid var(--basalto-3); font-size: 16px; font-weight: 700; }
+.boton-hecha { justify-content: center; gap: 12px; min-height: 72px; font-size: 34px; }
+.boton-hecha svg { width: 30px; height: 30px; }
+.como-cabeza { margin-top: 10px; }
+.como-cabeza h2 { font-size: 42px; line-height: .95; }
+.como-cabeza p { margin: 8px 0 0; font-size: 15px; color: var(--piedra); }
+.serie .numeros { margin-top: min(30px, 3.5dvh); gap: min(22px, 2.6dvh); }
+.serie .contador { grid-template-columns: 60px 1fr 60px; }
+.serie .contador .redondo { width: 60px; height: 60px; }
+.serie .contador .cifra.peso { font-size: min(84px, 10dvh); }
+.serie .contador .cifra.reps { font-size: min(72px, 8.6dvh); }
+.contador .cifra.cambiado { color: var(--millo); }
+.serie .rir h3 { margin: 6px 0 12px; font-size: 26px; font-weight: 800; }
+.serie .rir-botones button { height: 64px; border-radius: 16px; font-size: 26px; }
+.como-pie { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 16px; text-align: center; }
+.como-pie p { margin: 0; font-size: 14px; color: var(--piedra); }
+.como-pie p.marca { display: inline-flex; align-items: center; gap: 10px; padding: 14px 18px; border-radius: 16px; background: var(--millo); color: var(--basalto); font-size: 16px; font-weight: 800; }
+.como-pie p.marca svg { width: 22px; height: 22px; color: var(--almagre); }
+.como-pie .enlace { min-height: 44px; }
+/* El «×» va fuera del número, para que el número quede centrado de verdad. */
+.ahora-reps { position: relative; }
+.ahora-reps .por { position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: .12em; font-size: .5em; color: var(--piedra); font-style: normal; }
+/* iPhone bajo (SE): todo cabe sin desplazar, «Hecha» incluido. */
+@media (max-height: 720px) {
+  .ahora-etiqueta { display: none; }
+  .ahora { padding: 6px 0 4px; }
+  .ahora-peso { margin-top: 0; font-size: min(96px, 14dvh); }
+  .ahora-reps { margin-top: 4px; font-size: min(64px, 9dvh); }
+  .ahora-deja { margin-top: 12px; padding: 8px 16px; }
+  .boton-hecha { min-height: 62px; font-size: 30px; }
+  .serie .serie-herramientas { margin-top: 14px; }
+  .serie .rir-botones button { height: 56px; }
+  .como-cabeza h2 { font-size: 36px; }
+}
 
 /* La serie se hace grano (guardar serie, storyboard) */
 .volador { position: fixed; z-index: 75; left: 0; top: 0; width: 30px; height: 36px; margin: -18px 0 0 -15px; pointer-events: none; }

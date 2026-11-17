@@ -1,6 +1,6 @@
 {
   "name": "gofio",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": true,
   "type": "module",
   "description": "Gofio: entrenamiento con base científica. Proyecto personal de Sergio Learns.",
