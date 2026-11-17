@@ -260,19 +260,19 @@ function deslizable(li, { quitar, cambiar }) {
       .finished.then(() => poner(0), () => poner(0));
     mueve.style.transform = '';
   };
-  li.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    g = { x0: e.clientX, y0: e.clientY, dx: 0, modo: null, id: e.pointerId, enganche: false };
-  });
-  li.addEventListener('pointermove', (e) => {
-    if (!g || e.pointerId !== g.id) return;
-    const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+  // En el iPhone se usan los eventos táctiles (con preventDefault en cuanto el gesto es horizontal, para que la página no
+  // se lleve el dedo); con ratón, los de puntero. Mismo gesto en los dos.
+  const empezar = (x, y) => { g = { x0: x, y0: y, dx: 0, modo: null, enganche: false }; };
+  const mover = (x, y, e) => {
+    if (!g) return;
+    const dx = x - g.x0, dy = y - g.y0;
     if (!g.modo) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       g.modo = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'h' : 'v';
-      if (g.modo === 'h') { try { li.setPointerCapture(e.pointerId); } catch { /* */ } li.classList.add('arrastrando'); li.dataset.arrastre = '1'; }
+      if (g.modo === 'h') { li.classList.add('arrastrando'); li.dataset.arrastre = '1'; }
     }
     if (g.modo !== 'h') return;
+    if (e.cancelable) e.preventDefault();
     const umbral = li.clientWidth / 3;
     g.dx = Math.abs(dx) > umbral * 1.6 ? Math.sign(dx) * (umbral * 1.6 + (Math.abs(dx) - umbral * 1.6) * 0.35) : dx;  // tira con resistencia
     poner(g.dx);
@@ -281,7 +281,22 @@ function deslizable(li, { quitar, cambiar }) {
       g.enganche = enganche; li.classList.toggle('enganchado', enganche);
       if (enganche) { vibrar(); toque('piedra'); }
     }
-  });
+  };
+  if ('ontouchstart' in window) {
+    li.addEventListener('touchstart', (e) => { if (e.touches.length === 1) empezar(e.touches[0].clientX, e.touches[0].clientY); else g = null; }, { passive: true });
+    li.addEventListener('touchmove', (e) => { if (e.touches.length === 1) mover(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false });
+    li.addEventListener('touchend', () => fin());
+    li.addEventListener('touchcancel', () => { if (g?.modo === 'h') fin(); else g = null; });
+  } else {
+    li.addEventListener('pointerdown', (e) => { if (e.button === 0) { empezar(e.clientX, e.clientY); g.id = e.pointerId; } });
+    li.addEventListener('pointermove', (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const antes = g.modo; mover(e.clientX, e.clientY, e);
+      if (!antes && g?.modo === 'h') { try { li.setPointerCapture(e.pointerId); } catch { /* */ } }
+    });
+    li.addEventListener('pointerup', () => fin());
+    li.addEventListener('pointercancel', () => { if (g?.modo === 'h') fin(); else g = null; });
+  }
   const fin = async () => {
     if (!g) return;
     const { dx, modo, enganche } = g; g = null;
@@ -297,8 +312,6 @@ function deslizable(li, { quitar, cambiar }) {
       if (enganche && dx > 0) cambiar();
     }
   };
-  li.addEventListener('pointerup', fin);
-  li.addEventListener('pointercancel', () => { if (g?.modo === 'h') fin(); else g = null; });
 }
 
 /** «Cambiar» desde Hoy (R22): lo del mismo movimiento primero, luego lo que comparte músculo. Solo para hoy. */
