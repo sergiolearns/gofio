@@ -256,16 +256,17 @@ function entraLaCuenta(nodo, sesion) {
     // Si el sello queda fuera de la pantalla (iPhone pequeño, molienda larga), se estampa cuando aparece al bajar.
     const estampar = () => {
       tapaSello.cancel();
+      // G112 · Cae tal como está girado (sin girar más): baja acelerando, golpea, se aplasta un pelín y se asienta.
       sello.animate([
-        { transform: 'rotate(-40deg) scale(1.6)', opacity: 0 },
-        { transform: 'rotate(-14deg) scale(.93)', opacity: 1, offset: 0.55 },
-        { transform: 'rotate(-14deg) scale(1.03)', offset: 0.78 },
+        { transform: 'rotate(-14deg) scale(1.7)', opacity: 0, easing: 'cubic-bezier(.55,0,1,.45)' },
+        { transform: 'rotate(-14deg) scale(.94)', opacity: 1, offset: 0.5, easing: 'cubic-bezier(.22,1,.36,1)' },
+        { transform: 'rotate(-14deg) scale(1.02)', offset: 0.75, easing: 'ease-out' },
         { transform: 'rotate(-14deg) scale(1)', opacity: 1 },
-      ], { duration: 560, easing: 'cubic-bezier(.55,0,.2,1)', fill: 'backwards' });
+      ], { duration: 520, fill: 'backwards' });
       setTimeout(() => {
         S.suena('tambor'); vibrar();
         sitio.querySelector('.aro-tinta')?.animate([{ transform: 'scale(.8)', opacity: 0.45 }, { transform: 'scale(1.5)', opacity: 0 }], { duration: 520, easing: 'ease-out' });
-      }, 300);
+      }, 250);
     };
     const r0 = sitio.getBoundingClientRect(), alto = nodo.getBoundingClientRect().bottom - 70;
     if (r0.top + r0.height * 0.6 < alto || !('IntersectionObserver' in window)) setTimeout(estampar, 420);

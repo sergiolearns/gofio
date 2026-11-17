@@ -22,8 +22,9 @@ nav.addEventListener('click', (e) => {
   e.preventDefault();
   if (pila.length === 1 && pila[0].nombre === a.dataset.p) { pila[0].nodo.scrollTo({ top: 0, behavior: reduceMovimiento() ? 'auto' : 'smooth' }); return; }
   S.suena('pestana');
-  if (a.dataset.p === 'hoy') S.suena('muelaHoy');
   ir(a.dataset.p, {}, { modo: 'pestana' });
+  // La muela solo suena si gira: con la molienda hecha no hay hoyuelo ni vuelta (G112).
+  if (a.dataset.p === 'hoy' && pila[pila.length - 1]?.nodo.querySelector('.hoy-hoyuelo')) S.suena('muelaHoy');
   pop(nav.querySelector('[aria-current="page"] svg'), 1.25);
 });
 
