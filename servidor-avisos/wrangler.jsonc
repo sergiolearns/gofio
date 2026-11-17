@@ -1,0 +1,9 @@
+// Gofio · servidor de los avisos del descanso (G90). Plan gratuito de Cloudflare Workers con Durable Objects (SQLite).
+{
+  "name": "gofio-avisos",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "durable_objects": { "bindings": [{ "name": "AVISOS", "class_name": "Avisos" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Avisos"] }]
+}

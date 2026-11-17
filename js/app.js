@@ -1,10 +1,13 @@
 // Gofio v0.1 · arranque, navegación entre pantallas (con gesto de volver desde el borde) y pestañas.
 import { estado, arrancar, ajuste, sesionEnCurso } from './logica.js';
 import { pedirPersistencia } from './datos.js';
-import { icono, el, avisar, reduceMovimiento, pop } from './ui.js';
+import { icono, el, avisar, reduceMovimiento, pop, TOCABLES } from './ui.js';
+import * as S from './sonidos.js';
+import { iniciarAvisos } from './avisos.js';
 import { PANTALLAS } from './pantallas/index.js';
 
 const app = document.getElementById('app');
+const cinta = document.getElementById('cinta');
 const nav = document.getElementById('pestanas');
 const PESTANAS = [['hoy', 'Hoy'], ['semana', 'Semana'], ['progreso', 'Progreso'], ['comida', 'Comida'], ['ajustes', 'Ajustes']];
 const pila = []; // [{nombre, params, nodo}]
@@ -42,6 +45,7 @@ function aplicarCromo(entrada) {
   const { r } = entrada;
   nav.hidden = false;
   nav.classList.toggle('fuera', !r.pestana);
+  cinta.classList.toggle('fuera', r.cinta === false);   // en Hoy y en la portada todo es millo arriba: no hay remate
   if (r.pestana) pintarPestanas(r.pestana, r.clara);
   const fondo = r.clara ? '#F1E6D2' : '#1B1917';
   pintarFondo(fondo, r.arriba || fondo);
@@ -49,7 +53,7 @@ function aplicarCromo(entrada) {
 }
 
 /** Navega. modo: 'pestana' (cambia de sección), 'empuja' (entra encima), 'reemplaza' (misma altura). */
-export function ir(nombre, params = {}, { modo = 'empuja', duracion = 220 } = {}) {
+export function ir(nombre, params = {}, { modo = 'empuja', duracion = 220, sinAnimacion = false } = {}) {
   const nueva = montar(nombre, params);
   const vieja = pila[pila.length - 1];
   if (modo === 'pestana') pila.length = 0; else if (modo === 'reemplaza') pila.pop();
@@ -58,6 +62,7 @@ export function ir(nombre, params = {}, { modo = 'empuja', duracion = 220 } = {}
   aplicarCromo(nueva);
   if (!vieja) { nueva.r.alEntrar?.(); return; }
   const quitar = () => { vieja.r.alSalir?.(); vieja.nodo.remove(); };
+  if (sinAnimacion) { quitar(); nueva.r.alEntrar?.(); return; }
   if (reduceMovimiento()) {
     nueva.nodo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 }).finished.then(quitar);
   } else if (modo === 'empuja') {
@@ -157,6 +162,17 @@ function finGesto() {
 app.addEventListener('pointerup', finGesto);
 app.addEventListener('pointercancel', finGesto);
 
+// ── Todo lo que se toca suena (G81-G82). Cada botón dice su sonido con data-son: 1 / -1 (+ y −), pop (la reserva),
+// piedra (empezar serie), aire (+30), barrido (volver) o none (los que tienen sonido propio, como «Guardar serie»).
+document.addEventListener('click', (e) => {
+  const t = e.target.closest(`[data-son], ${TOCABLES}, .volver, .enlace`);
+  if (!t || t.disabled) return;
+  const son = t.dataset.son ?? (t.classList.contains('volver') ? 'barrido' : '0');
+  if (son === 'none') return;
+  S.toque(/^-?\d+$/.test(son) ? Number(son) : son);
+});
+const aplicarSonidos = () => S.configurar({ sonidos: ajuste('sonidos') !== false, tictacDescanso: ajuste('tictac') !== false });
+
 // ── Service worker: sin conexión y aviso de versión nueva (nunca a mitad de un entreno) ──
 function registrarSW() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
@@ -243,7 +259,9 @@ window.visualViewport?.addEventListener('resize', devolver);
 async function inicio() {
   try { await document.fonts.ready; } catch { /* */ }
   await arrancar();
+  aplicarSonidos();
   registrarSW();
+  iniciarAvisos();
   const forzar = new URLSearchParams(location.search).get('pantalla'); // solo para pruebas
   if (esIOS && !instalada && !sessionStorage.getItem('gofio-seguir-safari') && !forzar) ir('instalar', {}, { modo: 'pestana' });
   else if (!ajuste('inicioHecho') && !forzar) ir('bienvenida', {}, { modo: 'pestana' });

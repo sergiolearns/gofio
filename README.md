@@ -22,6 +22,12 @@ Es un **proyecto personal** de [Sergio Learns](https://sergiolearns.com), hecho 
 - **Descanso** con un cronómetro que es la muela del molino dando una vuelta.
 - **Mi semana:** constancia (semanas con entreno, sin rachas que se pongan a cero) y series por músculo con su franja.
 
+## v0.1.10 · «El alma»
+
+La app ya cuenta su historia: **casa → fuerza → casa**. Cada entreno es una molienda: sales de casa con el millo, lo mueles a fuerza de piedra y vuelves hecho gofio. Iconos propios (formas llenas, como un sello en barro), voz canaria con palabras del *Diccionario histórico del español de Canarias*, la muela de «Hoy» que gira y rueda en «A moler», el descanso en tres tramos con reanimación y «Mi semana» como una era. Los sonidos (piedra, madera, aire y eco) los hace la propia app con Web Audio, sin grabaciones.
+
+**Avisos del descanso** (opcionales): si sales de la app a mitad de un descanso, un pequeño servidor en [`servidor-avisos/`](servidor-avisos/) (Cloudflare Workers, plan gratuito) te avisa al acabar. Solo recibe la dirección de avisos del móvil y la hora y el texto del aviso, y lo borra al enviarlo.
+
 ## Cada número, con su porqué
 
 El «cerebro» está en [`js/cerebro/`](js/cerebro/): una función por regla, con el número de la regla en un comentario, y sus pruebas en [`pruebas/`](pruebas/). Las reglas salen de estudios (Pelland y cols. 2026 para el volumen, Robinson y cols. 2024 para el esfuerzo, Plotkin y cols. 2022 para la progresión, Ogasawara y cols. 2011-2013 para la vuelta, Bickel y cols. 2011, Kassiano y cols. 2022, Lally y cols. 2010, Singer y cols. 2024…); lo que no tiene estudio detrás está marcado como diseño de Gofio.

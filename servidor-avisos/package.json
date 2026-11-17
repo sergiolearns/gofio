@@ -1,0 +1,1 @@
+{ "name": "gofio-avisos", "private": true, "type": "module", "scripts": { "test": "node --test prueba.test.mjs", "deploy": "wrangler deploy" } }

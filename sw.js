@@ -1,6 +1,6 @@
 // Service worker de Gofio: guarda la app para que funcione sin conexión (en el sótano del gimnasio).
 // Al publicar una versión nueva se cambia VERSION; la app avisa y el usuario decide cuándo actualizar.
-const VERSION = 'gofio-0.1.9';
+const VERSION = 'gofio-0.1.10';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/variables.css', 'css/app.css',
@@ -8,7 +8,7 @@ const ARCHIVOS = [
   'iconos/apple-touch-icon.png', 'iconos/favicon-32.png', 'iconos/icono.svg', 'iconos/icono-192.png', 'iconos/icono-512.png',
   'iconos/icono-maskable-192.png', 'iconos/icono-maskable-512.png',
   'iconos/disco-millo.svg', 'iconos/disco-negro.svg', 'iconos/disco-negro-solo-gofio.svg', 'iconos/disco-sello-almagre.svg', 'iconos/gofio-logo-oscuro.svg', 'iconos/gofio-logo-claro.svg',
-  'js/app.js', 'js/datos.js', 'js/logica.js', 'js/ui.js',
+  'css/alma.css', 'js/app.js', 'js/datos.js', 'js/logica.js', 'js/ui.js', 'js/sonidos.js', 'js/avisos.js', 'js/amoler.js',
   'js/pantallas/index.js', 'js/pantallas/hoy.js', 'js/pantallas/serie.js', 'js/pantallas/hecho.js', 'js/pantallas/semana.js',
   'js/pantallas/ajustes.js', 'js/pantallas/bienvenida.js',
   'js/cerebro/index.js', 'js/cerebro/musculos.js', 'js/cerebro/fechas.js', 'js/cerebro/ejercicios.js', 'js/cerebro/plantilla.js',
@@ -33,4 +33,21 @@ self.addEventListener('fetch', (e) => {
   }
   // El resto, primero lo guardado (rápido y sin conexión en el sótano del gimnasio).
   e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
+});
+
+// ── Avisos del descanso (G90): el servidor solo manda el texto; el aviso lo enseña la app. Suena el de iOS. ──
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { titulo: e.data?.text?.() }; }
+  e.waitUntil(self.registration.showNotification(d.titulo || 'Gofio', {
+    body: d.cuerpo || '', tag: 'gofio-descanso', renotify: true,
+    icon: 'iconos/icono-192.png', badge: 'iconos/icono-192.png', data: { url: './' },
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ws) => {
+    const w = ws.find((c) => 'focus' in c);
+    return w ? w.focus() : self.clients.openWindow('./');
+  }));
 });

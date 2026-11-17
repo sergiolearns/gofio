@@ -13,36 +13,46 @@ export function el(html) {
   return t.content.firstElementChild;
 }
 
-// Iconos: trazos rellenos y geometría sencilla (triángulos, círculos), sin emojis ni glifos.
+// Iconos propios de El alma (G86): formas llenas con vaciados, como un sello en barro, en rejilla de 24.
+// Los `path` son los del tablero de iconos del lienzo (identidad/alma/lienzo/Iconos.dc.html), copiados tal cual.
 const I = {
-  hoy: '<path fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20zm0 7.2a2.8 2.8 0 1 1 0 5.6a2.8 2.8 0 0 1 0-5.6zm5.4 7a1.3 1.3 0 1 1 0 2.6a1.3 1.3 0 0 1 0-2.6z"/>',
-  semana: '<path d="M1 19l3.7-12l3.6 12zM8.4 19L12 7l3.6 12zM15.7 19l3.6-12L23 19z"/>',
-  progreso: '<path d="M3 10.5L12 3l9 7.5v3.6L12 6.6L3 14.1zM3 17.4L12 9.9l9 7.5V21l-9-7.5L3 21z"/>',
-  comida: '<path d="M2 11h20a10 10 0 0 1-20 0z"/><circle cx="12" cy="5.2" r="3"/>',
-  ajustes: '<path d="M3 6h9.2a3 3 0 0 1 5.6 0H21v2h-3.2a3 3 0 0 1-5.6 0H3zm0 10h3.2a3 3 0 0 1 5.6 0H21v2h-9.2a3 3 0 0 1-5.6 0H3z"/>',
-  atras: '<path d="M15.5 3.5L7 12l8.5 8.5l1.8-1.8L10.6 12l6.7-6.7z"/>',
-  cambiar: '<path d="M4 7h12.2l-3-3L14.6 2.6L20 8l-5.4 5.4l-1.4-1.4l3-3H4zm16 10H7.8l3 3l-1.4 1.4L4 16l5.4-5.4l1.4 1.4l-3 3H20z"/>',
-  nota: '<path d="M4 3h16v12l-6 6H4zm2 2v14h7v-5h5V5zm2 3h8v2H8zm0 4h5v2H8z"/>',
-  lista: '<path d="M3 5h3v3H3zm5 .5h13v2H8zM3 10.5h3v3H3zm5 .5h13v2H8zM3 16h3v3H3zm5 .5h13v2H8z"/>',
-  fin: '<path d="M5 3h2v18H5zm3 1h11l-3 5l3 5H8z"/>',
-  sube: '<path d="M12 4l8 14H4z"/>',
+  hoy: '<path fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20zM12 9a3 3 0 1 1 0 6a3 3 0 1 1 0-6zM17.4 13.4a1.5 1.5 0 1 1 0 3a1.5 1.5 0 1 1 0-3z"/>',
+  semana: '<path fill-rule="evenodd" d="M1 19.5L4.6 7l3.6 12.5zM3.6 17.5h2L4.6 14zM8.4 19.5L12 5l3.6 14.5zM15.8 19.5L19.4 7L23 19.5zM18.4 17.5h2l-1-3.5z"/>',
+  progreso: '<path d="M3 9.5L12 3l9 6.5v2.6L12 5.6l-9 6.5zM3 14.7l9-6.5l9 6.5v2.6l-9-6.5l-9 6.5zM3 19.9l9-6.5l9 6.5V22.5l-9-6.5l-9 6.5z"/>',
+  comida: '<path d="M2.5 5h19v2.2h-19zM4 8.4h16c0 4.2-3.6 7.4-8 7.4s-8-3.2-8-7.4zM6 17.5a2.2 2.2 0 1 1 0 4.4a2.2 2.2 0 1 1 0-4.4zM12 17.5a2.2 2.2 0 1 1 0 4.4a2.2 2.2 0 1 1 0-4.4zM18 17.5a2.2 2.2 0 1 1 0 4.4a2.2 2.2 0 1 1 0-4.4z"/>',
+  ajustes: '<path d="M2 5h20v2H2zM5 9.5L8 3.5l3 6zM2 11h20v2H2zM13 15.5l3-6l3 6zM2 17h20v2H2zM7 21.5l3-6l3 6z"/>',
+  cambiar: '<path d="M2.5 9L9 3.5v11zM8.5 7.5H21v3H8.5zM21.5 15L15 20.5v-11zM3 13.5h12.5v3H3z"/>',
+  nota: '<path fill-rule="evenodd" d="M4 3h14l2 18H5zM8 7h8v2H8zM8 11h7v2H8zM8 15h5v2H8z"/>',
+  lista: '<path d="M5 7.8a3 4.2 0 1 0 0 8.4a3 4.2 0 1 0 0-8.4zM12 7.8a3 4.2 0 1 0 0 8.4a3 4.2 0 1 0 0-8.4zM19 7.8a3 4.2 0 1 0 0 8.4a3 4.2 0 1 0 0-8.4z"/>',
+  fin: '<path fill-rule="evenodd" d="M3 3h18v18H3zM5.5 18.5L18.5 5.5v13z"/>',
   igual: '<path d="M4 8h16v3H4zm0 5h16v3H4z"/>',
-  baja: '<path d="M12 20L4 6h16z"/>',
-  info: '<path fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20zm-1.3 8h2.6v8h-2.6zm1.3-4.6a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 0 1 0-3.2z"/>',
-  vuelta: '<path d="M12 4a8 8 0 1 1-7.4 5H2l3.6-4.6L9.2 9H7.2A5.4 5.4 0 1 0 12 6.6z"/>',
-  compartir: '<path d="M12 2l4.6 4.6l-1.4 1.4L13 5.8V15h-2V5.8L8.8 8L7.4 6.6zM5 10h3v2H7v8h10v-8h-1v-2h3v12H5z"/>',
+  sube: '<path d="M12 4l8 14H4z"/>',
+  baja: '<path d="M12 20L4 6h16z"/>', // «sube» al revés
+  marca: '<path d="M12 9.5c3 0 4 3.3 3.6 5.7c-.4 2.3-1.9 4.3-3.6 4.3s-3.2-2-3.6-4.3C8 12.8 9 9.5 12 9.5zM4 9L6 3l2 6zM10 6.5L12 1l2 5.5zM16 9l2-6l2 6z"/>',
+  malo: '<path fill-rule="evenodd" d="M12 2.5c5.5 0 7.2 6 6.4 10.4C17.6 17.2 14.9 21.5 12 21.5s-5.6-4.3-6.4-8.6C4.8 8.5 6.5 2.5 12 2.5zM12 4.6c-3.8 0-5.1 4.4-4.4 8c.6 3.3 2.6 6.8 4.4 6.8z"/>',
+  otro: '<path fill-rule="evenodd" d="M1.5 20L7.5 6l6 14zM14.5 20l4-10l4 10zM16.8 18.2h3.4l-1.7-4.2z"/>',
+  mas30: '<path fill-rule="evenodd" d="M12 6a6 6 0 1 0 0 12a6 6 0 1 0 0-12zM12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2zM12 1.5a10.5 10.5 0 0 1 10.4 9h-2.2A8.4 8.4 0 0 0 12 3.6z"/>',
+  zurron: '<path d="M8 3h8l-1.5 3H9.5zM6.5 7.5h11c2 2 3.5 5 3.5 8c0 3.3-2.7 5.5-6 5.5H9c-3.3 0-6-2.2-6-5.5c0-3 1.5-6 3.5-8z"/>',
+  sonido: '<path d="M3 13l12-9c3 1.5 5.5 4 6 7.5l-3 1.5l1 3l-3 1l.5 3l-3.5.5L12 22l-2-3l-3 .5l-1-3.5z"/>',
+  atras: '<path d="M15.5 3.5L7 12l8.5 8.5l1.8-1.8L10.6 12l6.7-6.7z"/>',
   mas: '<path d="M10.6 3h2.8v7.6H21v2.8h-7.6V21h-2.8v-7.6H3v-2.8h7.6z"/>',
-  menos: '<path d="M3 10.6h18v2.8H3z"/>',
+  menos: '<path d="M3 10.6h18v2.8H3z"/>', // la barra gruesa de «+ / −»
+  sigue: '<path d="M8.5 3.5L17 12l-8.5 8.5l-1.8-1.8L13.4 12L6.7 5.3z"/>', // «atrás» al revés (filas que abren algo)
+  // Del sistema: se tienen que reconocer (G86: el botón de compartir de iOS no se toca).
+  compartir: '<path d="M12 2l4.6 4.6l-1.4 1.4L13 5.8V15h-2V5.8L8.8 8L7.4 6.6zM5 10h3v2H7v8h10v-8h-1v-2h3v12H5z"/>',
   check: '<path d="M9.5 16.2L4.8 11.5l-1.6 1.6l6.3 6.3L21 7.9l-1.6-1.6z"/>',
-  copia: '<path d="M12 3l9 5v8l-9 5l-9-5V8zm0 2.3L5.6 8.8L12 12.3l6.4-3.5zM5 10.6v4.2l6 3.3v-4.2zm14 0l-6 3.3v4.2l6-3.3z"/>',
 };
+I.info = I.igual; I.vuelta = I.hoy; I.copia = I.zurron;
 export const icono = (n, extra = '') => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ${extra}>${I[n]}</svg>`;
 
-/** Un grano de millo (lleno = serie hecha). */
-export const grano = (lleno, clase = '') =>
-  `<svg class="grano ${clase}" viewBox="-80 -92 160 184" aria-hidden="true"><path class="${lleno ? 'lleno' : 'vacio'}" transform="rotate(-14)" d="M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z"/></svg>`;
-export const granos = (hechas, total, nueva = -1) =>
-  `<div class="granos" role="img" aria-label="${hechas} de ${total} series">${Array.from({ length: total }, (_, i) => grano(i < hechas, i === nueva ? 'cae' : '')).join('')}</div>`;
+/** Un grano de millo. estado: true = lleno (serie hecha), false = por llenar, 'ahora' = la serie de ahora (late). */
+export const grano = (estado, clase = '') => {
+  const st = estado === 'ahora' ? 'ahora' : estado ? 'lleno' : 'vacio';
+  return `<svg class="grano ${clase}${st === 'ahora' ? ' late' : ''}" viewBox="-80 -92 160 184" aria-hidden="true"><path class="${st}" transform="rotate(-14)" d="M0 -82C55 -82 72 -22 64 22C56 64 29 82 0 82C-29 82 -56 64 -64 22C-72 -22 -55 -82 0 -82Z"/></svg>`;
+};
+/** Fila de granos: `hechas` llenos; con `ahora`, el siguiente late (la serie que toca). */
+export const granos = (hechas, total, nueva = -1, { ahora = false, clase = '' } = {}) =>
+  `<div class="granos ${clase}" role="img" aria-label="${hechas} de ${total} series">${Array.from({ length: total }, (_, i) => grano(i < hechas ? true : ahora && i === hechas ? 'ahora' : false, i === nueva ? 'cae' : '')).join('')}</div>`;
 
 /** Separador de dientes de sierra (Cueva Pintada). */
 export const sierra = () =>

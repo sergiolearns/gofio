@@ -53,9 +53,15 @@
       // La imagen de arranque ocupa la pantalla entera: la muela de la cortinilla se centra en la pantalla, no en la app
       // (más abajo si la app empieza arriba del todo; más arriba si empieza debajo de la barra opaca).
       raiz.style.setProperty('--centro', (arriba > 0 ? dif / 2 : -dif / 2) + 'px');
-      window.gofioPantalla = { alto: alto, app: Math.round(mide), arriba: arriba };
+      // G88 · Con la barra opaca, la página empieza debajo de la barra de iOS (59 px en su iPhone): lo que se diseñó
+      // midiendo desde arriba de la pantalla (el disco de Hoy) se coloca restando esta medida.
+      raiz.style.setProperty('--barra', (arriba > 0 ? 0 : dif) + 'px');
+      window.gofioPantalla = { alto: alto, app: Math.round(mide), arriba: arriba, barra: arriba > 0 ? 0 : dif };
     }
     raiz.style.setProperty('--falta', falta + 'px');
+    // Solo para las pruebas en el ordenador: ?prueba-barra=59 hace como si hubiera encima la barra opaca del iPhone.
+    var pb = /[?&]prueba-barra=(\d+)/.exec(location.search);
+    if (pb) { raiz.style.setProperty('--barra', pb[1] + 'px'); window.gofioPantalla = { alto: innerHeight + +pb[1], app: innerHeight, arriba: 0, barra: +pb[1] }; }
   }
   raiz.style.backgroundColor = '#E3A62B';                // mientras está la cortinilla
   medir();
@@ -77,12 +83,14 @@ html,body{background:#1B1917;margin:0}
 </style>
 <link rel="stylesheet" href="css/variables.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/alma.css">
 </head>
 <body>
 <div id="cortinilla" aria-hidden="true">
   <img class="c-disco" src="iconos/disco-negro-solo-gofio.svg" alt="" width="280" height="280">
   <p class="c-sub">Hecho en Canarias</p>
 </div>
+<div id="cinta" aria-hidden="true"><svg width="100%" height="9"><defs><pattern id="sierra-cinta" width="12" height="9" patternUnits="userSpaceOnUse"><path d="M0 0L6 8L12 0Z" fill="#E3A62B"/></pattern></defs><rect width="100%" height="9" fill="url(#sierra-cinta)"/></svg></div>
 <div id="app" aria-live="polite"></div>
 <nav id="pestanas" class="pestanas" aria-label="Secciones" hidden></nav>
 <div id="capa-hojas"></div>

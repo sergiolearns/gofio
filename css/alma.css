@@ -1,0 +1,321 @@
+/* Gofio · El alma (v0.1.2 programada, G66-G89). Va después de app.css y manda sobre ella.
+   Diseño: identidad/alma/lienzo/ (un tablero por pantalla). Movimiento: solo transform y opacity (G53). */
+
+:root {
+  --curva-piedra: cubic-bezier(.77,0,.175,1);  /* la muela: arranque lento y frenada larga */
+  --curva-golpe: cubic-bezier(.55,0,1,.45);    /* solo la caída del sello y de la muela de «A moler» */
+  --barra: 0px;                                  /* G88: lo que mide la barra opaca de iOS encima de la página */
+  --sierra: 9px;                                 /* el remate de la cinta millo */
+  --arriba: calc(env(safe-area-inset-top, 0px) + var(--sierra));
+}
+
+/* ── La cinta millo: el borde del saco (G65, G77). La franja millo es la barra de iOS; aquí solo va su remate
+   en diente de sierra (y, en instalaciones viejas con barra translúcida, el millo que falta debajo de la hora). ── */
+#cinta { position: fixed; z-index: 30; left: 0; right: 0; top: 0; pointer-events: none;
+  padding-top: env(safe-area-inset-top, 0px); background: linear-gradient(var(--millo), var(--millo)) top / 100% env(safe-area-inset-top, 0px) no-repeat;
+  transition: opacity .2s ease; }
+#cinta svg { display: block; width: 100%; height: var(--sierra); }
+#cinta.fuera { opacity: 0; }
+.pantalla { padding-top: calc(var(--arriba) + 10px); }
+
+/* ── Pestañas con los iconos propios ── */
+.pestanas svg { width: 24px; height: 24px; }
+.pestanas a { gap: 4px; }
+
+/* ── Granos ── */
+.grano .ahora { fill: rgba(227,166,43,.25); stroke: var(--millo); stroke-width: 16; }
+.grano.late { animation: late 1.6s ease-in-out infinite; transform-origin: 50% 50%; }
+@keyframes late { 50% { transform: scale(1.18); } }
+.granos.millo .vacio { stroke: var(--millo); stroke-width: 16; }
+.granos.millo-tenue .vacio { stroke: var(--millo); stroke-width: 16; stroke-opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .grano.late { animation: none; } }
+
+/* ── Botón «volver» del lienzo: «‹ Hoy» ── */
+.volver { font-weight: 600; }
+.volver svg { width: 16px; height: 16px; }
+
+/* ── Interruptores (almagre, G86) ── */
+.interruptor { position: relative; flex: none; width: 52px; height: 32px; }
+.interruptor input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.interruptor i { position: absolute; inset: 0; border-radius: 99px; background: #CDBEA3; transition: background-color .2s ease; }
+.interruptor i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #FFF6E8;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .26s var(--curva-muelle); }
+.interruptor input:checked + i { background: var(--almagre); }
+.interruptor input:checked + i::after { transform: translateX(20px); }
+.interruptor input:focus-visible + i { outline: 3px solid var(--millo); outline-offset: 2px; }
+.interruptor input:disabled + i { opacity: .45; }
+
+/* ════════════════════════ HOY: la casa ════════════════════════ */
+.pantalla.hoy { padding: 0; overflow-x: hidden; }
+/* La muela gigante (G87, G88): un círculo de verdad, colocado midiendo desde arriba de la pantalla. */
+.hoy-muela { position: absolute; z-index: 0; left: 0; top: 0; width: 1600px; height: 1600px; border-radius: 50%; background: var(--millo);
+  pointer-events: none; will-change: transform; transform-origin: 50% 50%; }
+.hoy-hoyuelo { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--basalto); }
+.hoy-cabeza { position: relative; z-index: 1; color: var(--basalto); padding: max(calc(env(safe-area-inset-top, 0px) + 12px), calc(72px - var(--barra))) 24px 0; }
+.hoy-arriba { display: flex; justify-content: space-between; align-items: center; padding: 0; }
+.fecha-hoy { width: 64px; height: 64px; border-radius: 50%; background: var(--basalto); color: var(--millo); display: grid; place-items: center; font-size: 30px; }
+.semana-triangulos { gap: 6px; align-items: flex-end; }
+.semana-triangulos div { font-size: 10px; font-weight: 700; gap: 2px; }
+.semana-triangulos svg { width: 18px; height: 16px; }
+.hoy-titulo { margin-top: 16px; max-width: 330px; font-size: 92px; line-height: .86; letter-spacing: -1px; }
+.hoy-por-que { margin-top: 14px; max-width: 300px; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.hoy-por-que b { display: block; font-weight: 700; }
+.hoy-meta { margin-top: 6px; font-size: 13px; font-weight: 700; }
+.hoy-hecho-1 { margin-top: 14px; font-size: 17px; font-weight: 700; }
+.hoy-hecho-2 { margin-top: 4px; font-size: 14px; font-weight: 600; }
+.hoy-sello { position: absolute; z-index: 1; width: 190px; height: 190px; left: calc(100% - 140px); transform: rotate(-18deg); pointer-events: none; }
+.hoy-cuerpo { position: relative; z-index: 1; padding: 0 24px; display: flex; flex-direction: column; flex: 1 0 auto; }
+.hoy .fila-titulo { min-height: 0; padding-bottom: 8px; align-items: baseline; }
+.hoy .fila-titulo h2 { color: var(--harina-texto); font-size: 15px; }
+.hoy .fila-titulo .enlace { font-size: 14px; font-weight: 600; padding: 6px 0; }
+.lista-hoy { list-style: none; margin: 0; padding: 2px 16px; background: var(--basalto-2); border-radius: 18px; }
+.lista-hoy li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 50px; border-top: 1px solid var(--basalto-3); cursor: pointer; }
+.lista-hoy li:first-child { border-top: 0; }
+.lista-hoy .nombre { flex: 1 1 auto; font-size: 15px; font-weight: 600; line-height: 1.2; }
+.lista-hoy .der { display: flex; align-items: center; gap: 12px; flex: none; }
+.lista-hoy .granos { gap: 3px; }
+.lista-hoy .grano { width: 10px; height: 12px; }
+.lista-hoy .rango { width: 38px; font-size: 12px; color: var(--piedra); }
+.lista-hoy .carga { width: 44px; text-align: right; font-size: 22px; }
+.lista-hoy .carga.vacia { color: var(--piedra); font-size: 18px; }
+.lista-hoy li { transition: transform .12s var(--curva-salida); position: relative; overflow: hidden; }
+.lista-hoy li:active { transform: scale(.985); }
+.hoy-pie { position: sticky; z-index: 3; bottom: calc(var(--abajo) + 60px); margin: 0 -24px; padding: 34px 24px 14px;
+  background: linear-gradient(to bottom, rgba(27,25,23,0), var(--basalto) 46%); }
+.hoy-pie .boton { position: relative; }
+.hoy .relleno { min-height: 12px; }
+.tarjeta-granos { margin-top: 0; padding: 18px 16px 14px; border-radius: 18px; background: var(--basalto-2); display: flex; flex-direction: column; gap: 14px; }
+.tarjeta-granos .rejilla { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 10px 6px; justify-items: center; }
+.tarjeta-granos .grano { width: 22px; height: 26px; }
+.tarjeta-granos p { text-align: center; font-size: 13px; color: var(--piedra); }
+.boton.piedra { background: var(--basalto-2); color: var(--harina-texto); box-shadow: none; }
+.boton.piedra::before { display: none; }
+.hoy-otra { align-self: center; color: var(--millo); font-weight: 600; font-size: 15px; padding: 12px 0; }
+
+/* ════════════════════════ LA SERIE: el terrero ════════════════════════ */
+.serie-cabeza { min-height: 44px; }
+.serie-cabeza .granos { gap: 5px; }
+.serie-cabeza .grano { width: 14px; height: 17px; }
+.serie-titulo { margin-top: 10px; font-size: 42px; line-height: .95; }
+.aviso-serie { margin-top: 12px; align-self: flex-start; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px;
+  background: var(--basalto-2); font-size: 14px; font-weight: 600; text-align: left; transition: background-color .22s ease, color .22s ease; }
+.aviso-serie svg { width: 18px; height: 18px; flex: none; color: var(--millo); }
+.aviso-serie.marca { background: var(--millo); color: var(--basalto); font-weight: 800; }
+.aviso-serie.marca svg { color: var(--almagre); }
+.numeros { display: flex; flex-direction: column; gap: 28px; margin-top: 40px; }
+.contador { display: grid; grid-template-columns: 68px 1fr 68px; align-items: center; }
+.contador .redondo { width: 68px; height: 68px; }
+.contador .redondo svg { width: 22px; height: 22px; }
+.contador .valor { text-align: center; }
+.contador .valor button { width: 100%; }
+.contador .cifra { display: block; line-height: .9; }
+.contador .cifra.peso { font-size: 104px; }
+.contador .cifra.reps { font-size: 84px; transition: color .2s ease; }
+.contador .cifra.reps.marca { color: var(--millo); }
+.contador .unidad { font-size: 13px; color: var(--piedra); }
+.rir { margin-top: 0; }
+.rir-botones { gap: 8px; }
+.rir-botones button { height: 56px; border-radius: 14px; font-size: 24px; }
+.serie-herramientas .chip { height: 44px; border-radius: 22px; font-size: 14px; }
+.serie-herramientas .chip svg { width: 18px; height: 18px; color: var(--millo); }
+.boton-guardar { justify-content: space-between; padding: 0 22px; }
+.boton-guardar .lado { margin-left: 0; }
+.boton-guardar.solo { justify-content: center; }
+
+/* La serie se hace grano (guardar serie, storyboard) */
+.volador { position: fixed; z-index: 75; left: 0; top: 0; width: 30px; height: 36px; margin: -18px 0 0 -15px; pointer-events: none; }
+.volador .grano { width: 30px; height: 36px; }
+.destello { position: fixed; z-index: 74; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(227,166,43,.6), transparent 70%); pointer-events: none; }
+
+/* Hojas de la serie: «Otra maña» y «Chacho, ¿lo dejas aquí?» */
+.hoja .opciones .flecha-der { margin-left: auto; width: 18px; height: 18px; color: var(--millo); flex: none; }
+.hoja .granos-sesion { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.hoja .granos-sesion .grano { width: 14px; height: 17px; }
+.hoja .granos-sesion .vacio { stroke: var(--millo); stroke-width: 12; stroke-opacity: .6; }
+.boton.plano.grande { font-size: 26px; min-height: 56px; background: var(--basalto); }
+
+/* ════════════════════════ EL DESCANSO ════════════════════════ */
+.pantalla.descanso { background: #161412; transition: background-color .6s ease; overflow: hidden; }
+.pantalla.descanso.reanima { background: var(--basalto); }
+.descanso .luz { position: absolute; left: 50%; top: calc(var(--arriba) + 262px); width: 640px; height: 640px; margin: -320px 0 0 -320px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(227,166,43,.4) 0%, rgba(227,166,43,.12) 40%, transparent 68%); opacity: 0; transition: opacity .8s ease; pointer-events: none; }
+.descanso.reanima .luz { opacity: 1; }
+.descanso .serie-cabeza { position: relative; z-index: 1; }
+.muela-descanso { position: relative; z-index: 1; width: min(300px, 72vw); height: min(300px, 72vw); margin: 18px auto 0; will-change: transform; }
+.muela-descanso img { width: 100%; height: 100%; }
+.descanso-reloj { position: relative; z-index: 1; margin-top: 30px; text-align: center; font-size: 110px; line-height: 1; transition: color .4s ease; }
+.descanso.reanima .descanso-reloj { color: var(--millo); }
+.descanso-frase { position: relative; z-index: 1; margin-top: 18px; text-align: center; font-size: 30px; line-height: 1.05; color: var(--harina-texto); }
+.descanso-frase.suelta { color: var(--piedra); }
+.descanso-frase.brega { font-size: 76px; line-height: .9; color: var(--millo); }
+.descanso-sig { position: relative; z-index: 1; margin-top: 12px; min-height: 28px; text-align: center; font-size: 16px; color: var(--piedra); }
+.descanso-sig b { font-size: 22px; color: var(--millo); }
+.descanso-sig.blanca b { color: var(--harina-texto); }
+.puntos { position: relative; z-index: 1; display: flex; justify-content: center; gap: 12px; margin-top: 4px; opacity: 0; transition: opacity .15s ease; }
+.puntos span { width: 12px; height: 12px; border-radius: 50%; background: var(--basalto-3); transition: background-color .12s ease; }
+.puntos span.on { background: var(--millo); }
+.descanso-pie { position: relative; z-index: 1; display: flex; gap: 12px; margin-top: 0; }
+.descanso-pie .redondo { width: 64px; height: 64px; font-size: 18px; }
+.descanso-pie .boton { flex: 1; min-height: 64px; font-size: 26px; background: #3A2620; color: #D9A79A; box-shadow: none;
+  transition: background-color .5s ease, color .5s ease, box-shadow .5s ease, transform .14s var(--curva-salida); }
+.descanso-pie .boton::before { display: none; }
+.descanso.mira .descanso-pie .boton { background: #4A2A22; color: #E8B8AA; }
+.descanso.reanima .descanso-pie .boton, .descanso.ya .descanso-pie .boton { background: var(--almagre); color: var(--almagre-texto);
+  box-shadow: 0 0 0 4px rgba(227,166,43,.35), 0 8px 28px rgba(184,66,46,.5); }
+.descanso.ya .descanso-pie .boton { box-shadow: 0 8px 28px rgba(184,66,46,.55); }
+.descanso .relleno { min-height: 16px; }
+
+/* ════════════════════════ «A MOLER» ════════════════════════ */
+#amoler { position: fixed; inset: 0; z-index: 90; pointer-events: none; visibility: hidden; overflow: hidden; }
+#amoler.va { visibility: visible; pointer-events: auto; }
+#amoler .am-millo { position: absolute; left: 50%; top: 50%; width: 260vmax; height: 260vmax; margin: -130vmax 0 0 -130vmax; border-radius: 50%; background: var(--millo); opacity: 0; }
+#amoler .am-muela { position: absolute; left: 50%; top: 50%; width: 250px; height: 250px; margin: -125px 0 0 -125px; }
+#amoler .am-ojo { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; background: var(--basalto); transform: scale(0); }
+#amoler .am-texto { position: absolute; left: 0; right: 0; top: 50%; margin: -120px 0 0; text-align: center; font-size: 118px; line-height: .82; color: var(--harina-texto); opacity: 0; }
+#amoler .am-texto span { color: var(--millo); }
+#amoler .am-granos { position: absolute; left: 40px; right: 40px; top: 50%; margin-top: 110px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; opacity: 0; }
+#amoler .am-granos .grano { width: 18px; height: 22px; }
+#amoler .am-granos .vacio { stroke: var(--millo); stroke-width: 14; }
+
+/* ════════════════════════ MOLIENDA HECHA ════════════════════════ */
+.hecho { overflow-x: hidden; }
+.hecho .etiqueta { margin-top: 8px; }
+.hecho-titulo { margin-top: 10px; max-width: 280px; font-size: 92px; line-height: .86; letter-spacing: -1px; }
+.sello { top: calc(var(--arriba) + 38px); }
+.hecho-lema { position: relative; z-index: 1; margin-top: 22px; font-size: 30px; color: var(--almagre); }
+.hecho-cifras { gap: 40px; margin-top: 26px; }
+.hecho-cifras .cifra { font-size: 50px; }
+.hecho-cifras .etiqueta { margin-top: 6px; font-size: 15px; }
+.hecho-granos { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 16px 6px; justify-items: center; margin-top: 26px; }
+.hecho-granos .grano { width: 22px; height: 26px; }
+.hecho .sierra-hecho { position: relative; margin: 28px 0 0; height: 10px; overflow: hidden; color: var(--basalto); }
+.hecho .sierra-hecho svg { display: block; width: 100%; height: 10px; }
+.hecho .sierra-hecho i { position: absolute; inset: 0; background: var(--harina); transform-origin: right center; transform: scaleX(0); }
+.hecho .bloque { margin-top: 22px; }
+.hecho .bloque h3 { font-size: 15px; font-weight: 700; color: var(--tierra); margin-bottom: 6px; }
+.hecho .bloque p { font-size: 19px; line-height: 1.35; font-weight: 500; }
+.hecho .bloque + .bloque { margin-top: 18px; }
+.hecho .bloque .cifra { font-size: 23px; }
+.hecho .boton.oscuro { min-height: 64px; font-size: 28px; }
+
+/* ════════════════════════ MI SEMANA: la era ════════════════════════ */
+.semana-encabezado { margin-top: 6px; }
+.semana-encabezado .titular { font-size: 46px; line-height: .92; margin-top: 8px; }
+.era { display: flex; justify-content: center; margin-top: 18px; }
+.era svg { width: 300px; height: 300px; overflow: visible; }
+.era .trozo { transform-box: view-box; transform-origin: 150px 150px; }
+.era .trozo.tocable { cursor: pointer; }
+.era .centro { transform-box: view-box; transform-origin: 150px 150px; }
+.era-pie { margin-top: 8px; text-align: center; font-size: 13px; color: var(--tierra); }
+.frases-semana { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.frase-semana { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 16px; background: var(--harina-2); font-size: 15px; line-height: 1.3; }
+.frase-semana svg { width: 22px; height: 22px; flex: none; }
+.molido-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 34px; }
+.molido-cab h2 { font-size: 16px; font-weight: 700; }
+.molido-cab span { font-size: 12px; color: var(--tierra); text-align: right; }
+.molido-cab mark { background: rgba(227,166,43,.35); color: inherit; padding: 1px 4px; border-radius: 3px; }
+.molido { margin-top: 10px; padding: 8px 14px; border-radius: 16px; background: #EDE0C8; list-style: none; }
+.molido li { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 30px; }
+.molido .m { font-size: 13px; font-weight: 600; width: 92px; flex: none; }
+.molido .fila-granos { display: flex; flex: none; }
+.molido .fila-granos span { display: inline-flex; width: 11px; justify-content: center; padding: 2px 0; }
+.molido .fila-granos span.franja { background: rgba(227,166,43,.28); }
+.molido .fila-granos .grano { width: 8px; height: 10px; }
+.molido .grano .lleno { fill: var(--basalto); }
+.molido .grano .vacio { stroke: #B9A98F; stroke-width: 14; }
+.molido .grano .medio { fill: var(--basalto); }
+.molido .n { width: 30px; text-align: right; font-size: 16px; flex: none; }
+.molido-pie { margin-top: 8px; font-size: 13px; color: var(--tierra); }
+.constancia-titulo { margin-top: 28px; font-size: 18px; font-weight: 700; }
+.muelas { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; margin-top: 12px; justify-items: center; }
+.muelas div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.muelas b { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--millo); color: var(--basalto); font-size: 19px; }
+.muelas b.vacia { background: transparent; border: 2px solid #CDBEA3; }
+.muelas b.esta { box-shadow: 0 0 0 2px var(--almagre); }
+.muelas span { font-size: 11px; color: var(--tierra); }
+.constancia-pie { margin-top: 12px; display: block; font-size: 14px; color: var(--tierra); text-align: left; }
+.zurron-semana { display: flex; align-items: center; gap: 12px; margin-top: 26px; padding: 14px 14px 14px 20px; border-radius: 18px; background: var(--millo); color: var(--basalto); font-size: 16px; font-weight: 600; }
+.zurron-semana button { margin-left: auto; height: 46px; padding: 0 22px; border-radius: 999px; background: var(--basalto); color: var(--harina-texto); font-size: 17px; }
+
+/* ════════════════════════ AJUSTES: la casa por dentro ════════════════════════ */
+.ajustes .titular.grande { font-size: 54px; margin-top: 18px; }
+.ajustes .grupo { margin-top: 26px; }
+.ajustes .grupo > h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--tierra); margin-bottom: 10px; }
+.ajustes .tarjeta { background: var(--harina-2); box-shadow: none; border-radius: 18px; padding: 6px 20px; }
+.ajustes .fila { border-bottom-color: #D9C9AC; min-height: 56px; }
+.ajustes .fila > .que { font-size: 16px; }
+.ajustes .fila > .que small { font-size: 14px; margin-top: 2px; }
+.ajustes .enlace { color: var(--almagre); font-size: 16px; }
+.ajustes .valor-caja { min-width: 104px; height: 48px; padding: 0 14px; border-radius: 12px; background: var(--harina); display: grid; place-items: center;
+  font-family: var(--letra-titulo); font-stretch: var(--estrecha); font-weight: 800; font-size: 24px; position: relative; overflow: hidden; }
+.ajustes .valor-caja select { position: absolute; inset: 0; opacity: 0; font-size: 16px; }
+.ajustes .botones-zurron { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 4px 0 14px; border-bottom: 1px solid #D9C9AC; }
+.ajustes .botones-zurron .boton { min-height: 56px; font-size: 24px; }
+.ajustes .botones-zurron .boton.oscuro { background: var(--basalto); }
+.ajustes .botones-zurron .boton.harina { background: var(--harina); color: var(--basalto); box-shadow: none; }
+.ajustes .botones-zurron .boton::before { display: none; }
+.ajustes .pie-ajustes { margin-top: 28px; text-align: center; }
+.ajustes .pie-ajustes .enlace { font-size: 17px; }
+.ajustes .pie-ajustes p { margin-top: 8px; font-size: 14px; color: var(--tierra); }
+.ajustes .legal { margin-top: 18px; font-size: 12px; line-height: 1.5; color: var(--tierra); text-align: left; }
+.ajustes .legal a { color: inherit; }
+
+/* ════════════════════════ LOS HUECOS: Progreso y Comida ════════════════════════ */
+.hueco-pantalla .titular.grande { font-size: 54px; margin-top: 18px; }
+.hueco-dibujo { display: grid; place-items: center; margin: auto 0 0; padding-top: 30px; }
+.hueco-dibujo svg { width: 240px; height: 240px; overflow: visible; }
+.hueco-texto { margin: 40px 0 auto; padding-bottom: 30px; }
+.hueco-texto h2 { font-size: 46px; line-height: 1; }
+.hueco-texto p { margin-top: 16px; font-size: 19px; line-height: 1.5; max-width: 34ch; }
+.hueco-texto small { display: block; margin-top: 18px; font-size: 14px; color: var(--piedra); }
+.clara .hueco-texto small { color: var(--tierra); }
+
+/* ════════════════════════ PORTADA y PRIMER ARRANQUE ════════════════════════ */
+.bienvenida-disco { width: 740px; height: 740px; left: -155px; margin-left: 0; top: calc(-430px - var(--barra) + env(safe-area-inset-top, 0px)); }
+.bienvenida-disco img { opacity: 1; }
+.portada-pie { display: flex; flex-direction: column; gap: 22px; margin-top: auto; padding-bottom: 6px; }
+.bienvenida-logo { width: 184px; margin-top: 0; }
+.bienvenida-lema { margin: 0; font-size: 50px; line-height: .94; letter-spacing: -.5px; }
+.bienvenida-lema span { color: var(--millo); }
+.portada-granos { display: flex; gap: 10px; align-items: center; }
+.portada-granos .grano { width: 16px; height: 19px; }
+.portada-granos .vacio { stroke: var(--basalto-3); stroke-width: 14; }
+.portada-acciones { display: flex; flex-direction: column; gap: 14px; align-items: center; margin-top: 6px; }
+.portada-acciones .legal { margin: 0; font-size: 13px; }
+.portada-acciones .enlace { font-size: 14px; font-weight: 600; padding: 4px 0; }
+.bienvenida.con-pie { padding-top: calc(var(--arriba) + 14px) !important; }
+.pasos-arranque { gap: 7px; }
+.pasos-arranque .grano { width: 12px; height: 15px; }
+.pasos-arranque .vacio { stroke: var(--millo); stroke-width: 14; stroke-opacity: .55; }
+.paso-bienvenida .titular.grande { font-size: 44px; line-height: .95; }
+.tarjeta-eleccion { padding: 18px; border-radius: 16px; gap: 14px; }
+.tarjeta-eleccion[aria-checked="true"] { background: #2E2614; }
+.tarjeta-eleccion .grano-el { flex: none; width: 18px; height: 22px; }
+.tarjeta-eleccion .grano-el .vacio { stroke: var(--basalto-3); stroke-width: 14; }
+.tarjeta-eleccion .grano-el path { transition: fill .2s ease, stroke .2s ease; }
+.tarjeta-eleccion b { font-size: 17px; }
+.tarjeta-eleccion span.d { font-size: 13px; }
+.elecciones { gap: 12px; margin-top: 10px; }
+.fila-opciones .chip { height: 54px; border-radius: 14px; font-size: 22px; }
+.fila-opciones .chip[aria-pressed="true"] { background: var(--millo); color: var(--basalto); }
+
+/* ── Reducir movimiento: fundidos (G40) ── */
+@media (prefers-reduced-motion: reduce) {
+  .interruptor i::after { transition: none; }
+}
+.tarjeta-eleccion[aria-checked="true"] .grano-el .vacio { fill: var(--millo); stroke: var(--millo); }
+.hoja .icono-fila { flex: none; width: 24px; height: 24px; color: var(--millo); margin-right: 4px; }
+.hoja .icono-fila svg { width: 24px; height: 24px; }
+.portada-pie .boton { width: 100%; }
+.hoy-otra { display: block; width: 100%; text-align: center; }
+.ajustes .botones-zurron .boton { font-size: 21px; white-space: nowrap; padding: 0 12px; }
+/* Pantallas bajas (iPhone SE, mini): todo se encoge un poco en vez de salirse. */
+.bienvenida-disco { top: calc(-430px - var(--barra) + env(safe-area-inset-top, 0px) - max(0px, (932px - 100dvh - var(--barra)) * .55)); }
+.pantalla.descanso { overflow-x: hidden; overflow-y: auto; }
+.muela-descanso { width: min(300px, 72vw, calc(100dvh - 430px)); height: min(300px, 72vw, calc(100dvh - 430px)); }
+.descanso-reloj { font-size: min(110px, 14dvh); margin-top: min(30px, 3dvh); }
+.hecho-pie { position: sticky; bottom: calc(var(--abajo) + 8px); z-index: 2; margin: 0 -24px; padding: 26px 24px 0;
+  background: linear-gradient(to bottom, rgba(241,230,210,0), var(--harina) 40%); }
+.hecho-pie .boton { position: relative; }
+.hoy .fila-titulo .sobre-millo { color: var(--basalto); }

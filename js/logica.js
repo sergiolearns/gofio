@@ -92,17 +92,17 @@ const CORTO = { pecho: 'pecho', dorsal: 'espalda', 'hombro-anterior': 'hombro', 
   biceps: 'bíceps', triceps: 'tríceps', cuadriceps: 'cuádriceps', isquios: 'isquios', gluteo: 'glúteo', gemelos: 'gemelos', abdomen: 'abdomen' };
 export const musculoCorto = (m) => CORTO[m] ?? m;
 
+// Lo que va corto, dicho como en casa (El alma: «Te toca: la pierna va corta esta semana.»).
+const VA_CORTO = { pecho: 'el pecho va corto', dorsal: 'la espalda va corta', 'hombro-anterior': 'el hombro va corto', 'hombro-lateral': 'el hombro va corto',
+  'hombro-posterior': 'el hombro de atrás va corto', biceps: 'el bíceps va corto', triceps: 'el tríceps va corto', cuadriceps: 'la pierna va corta',
+  isquios: 'la pierna va corta', gluteo: 'el glúteo va corto', gemelos: 'los gemelos van cortos', abdomen: 'el abdomen va corto' };
+
 /** R15.8 · El porqué en una frase corta. */
 export function porQue(plan) {
-  const plantilla = ajuste('plantilla');
-  const ayer = plan.ayer ? G.diaDe(plantilla, plan.ayer)?.nombre?.toLowerCase() : null;
   const { musculo } = plan.motivo ?? {};
   if (!musculo) return 'Semana hecha. Lo de hoy, de regalo.';
-  if (plan.tipo === 'combinada') return `Última de la semana: lo que más falta, junto.`;
-  const base = `Vas corto de ${musculoCorto(musculo)}.`;
-  if (ayer) return `${base} Ayer, ${ayer}.`;
-  if (plan.razon === 'rotacion') return `${base} Te toca por orden.`;
-  return base;
+  if (plan.tipo === 'combinada') return 'Última de la semana: lo que más falta, junto.';
+  return `Te toca: ${VA_CORTO[musculo] ?? `${musculoCorto(musculo)} va corto`} esta semana.`;
 }
 
 /** Empieza una sesión con una lista de ejercicios. */
@@ -141,6 +141,12 @@ export async function guardarSerie(sesion, i, { peso, reps, rir }) {
 export async function borrarSerie(serie) {
   estado.series = estado.series.filter((s) => s.id !== serie.id);
   await D.borrar('series', serie.id);
+}
+
+/** Deshace una sesión empezada sin ninguna serie (no cuenta como entreno). */
+export async function descartarSesion(sesion) {
+  estado.sesiones = estado.sesiones.filter((s) => s.id !== sesion.id);
+  await D.borrar('sesiones', sesion.id);
 }
 
 export async function terminarSesion(sesion) {
