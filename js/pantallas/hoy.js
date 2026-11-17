@@ -2,9 +2,10 @@
 // vuelta tras días sin ir (R14) y modo «día malo» (R21). Arriba, la muela gigante: un círculo de verdad que gira.
 import * as G from '../cerebro/index.js';
 import { estado, ajuste, hoy, planDeHoy, porQue, prescripcion, vueltaHoy, sesionEnCurso, sesionesHechas, empezarSesion, resumen,
-  siguienteHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva } from '../logica.js';
-import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada } from '../ui.js';
+  siguienteHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste } from '../logica.js';
+import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada, avisar } from '../ui.js';
 import { aMoler } from '../amoler.js';
+import { toque } from '../sonidos.js';
 
 let diaMaloActivo = false;
 let eleccion = null; // {fecha, diaId|'combinada'} si el usuario eligió «Otro día»
@@ -32,7 +33,12 @@ export function hoyPantalla(params = {}, nav) {
     if (eleccion.diaId === 'combinada' && plan.tipo === 'combinada') sesion = { diaId: null, nombre: 'Combinada', ejercicios: plan.ejercicios, tipo: 'combinada' };
     else if (eleccion.diaId !== 'combinada') { const d = G.diaDe(plantilla, eleccion.diaId); sesion = { diaId: d.id, nombre: d.nombre, ejercicios: d.ejercicios, tipo: 'dia' }; }
   }
-  const ejercicios = diaMaloActivo ? G.diaMalo(sesion.ejercicios) : sesion.ejercicios;
+  // G100 · Lo que quitas o cambias deslizando un ejercicio vale solo para hoy (y para esta sesión).
+  const clave = sesion.diaId ?? 'combinada';
+  const rt = retoques(fecha, clave);
+  const base = aplicarRetoques(sesion.ejercicios, rt);
+  const ejercicios = diaMaloActivo ? G.diaMalo(base) : base;
+  const editable = !enCurso && !mostrarHecho;
   const vuelta = vueltaHoy();
   const presc = ejercicios.map((e) => prescripcion(e, vuelta));
   const totalSeries = presc.reduce((s, p) => s + p.series, 0);
@@ -64,8 +70,8 @@ export function hoyPantalla(params = {}, nav) {
   const filas = ejercicios.map((e, i) => {
     const p = presc[i]; const ej = G.ejercicio(e.ej);
     const rep = e.repMin === e.repMax ? e.repMin : `${e.repMin}-${e.repMax}`;
-    return `<li data-i="${i}" role="button" tabindex="0" aria-label="${esc(ej.nombre)}: ${p.series} series de ${rep}. Ver ficha"><span class="nombre">${esc(ej.nombre)}</span>
-      <span class="der">${granos(0, p.series, -1, { clase: 'millo' })}<span class="rango">${rep}</span><b class="carga cifra num${p.peso == null ? ' vacia' : ''}">${p.accion === 'subir' && !p.descarga && p.vuelta !== 'larga' ? `<i class="sube-peso" title="Hoy sube">${icono('sube')}</i>` : ''}${p.peso == null ? '—' : kg(p.peso)}</b></span></li>`;
+    return `<li data-i="${i}" role="button" tabindex="0" aria-label="${esc(ej.nombre)}: ${p.series} series de ${rep}. Ver ficha">${editable ? FONDOS : ''}<div class="fila-mueve"><span class="nombre">${esc(ej.nombre)}</span>
+      <span class="der">${granos(0, p.series, -1, { clase: 'millo' })}<span class="rango">${rep}</span><b class="carga cifra num${p.peso == null ? ' vacia' : ''}">${p.accion === 'subir' && !p.descarga && p.vuelta !== 'larga' ? `<i class="sube-peso" title="Hoy sube">${icono('sube')}</i>` : ''}${p.peso == null ? '—' : kg(p.peso)}</b></span></div></li>`;
   }).join('');
 
   let cabezaTexto, cuerpo;
@@ -99,8 +105,28 @@ export function hoyPantalla(params = {}, nav) {
     <div class="hoy-cuerpo">${cuerpo}</div>
   </section>`);
 
+  // Quitar (a la izquierda) y cambiar (a la derecha), solo para hoy.
+  const idBase = (e) => e.original ?? e.ej;
+  const quitar = async (i) => {
+    if (base.length <= 1) { avisar('Deja al menos uno.'); return false; }
+    const id = idBase(ejercicios[i]);
+    await ponerRetoques(fecha, clave, { ...rt, quitados: [...rt.quitados, id] });
+    toque('aire'); vibrar(); nav.refrescar();
+    avisar(`${G.ejercicio(ejercicios[i].ej).nombre}: fuera por hoy`, { texto: 'Deshacer', hacer: async () => {
+      const ahora = retoques(fecha, clave);
+      await ponerRetoques(fecha, clave, { ...ahora, quitados: ahora.quitados.filter((x) => x !== id) }); nav.refrescar();
+    } });
+    return true;
+  };
+  const cambiar = (i) => cambiarHoy(ejercicios[i], ejercicios.map((e) => e.ej), async (nuevo) => {
+    const id = idBase(ejercicios[i]); const cambios = { ...rt.cambios };
+    if (nuevo === id) delete cambios[id]; else cambios[id] = nuevo;
+    await ponerRetoques(fecha, clave, { ...rt, cambios }); vibrar(); nav.refrescar();
+  });
   nodo.querySelectorAll('.lista-hoy li').forEach((li) => {
-    const abrir = () => fichaEjercicio(ejercicios[Number(li.dataset.i)], presc[Number(li.dataset.i)]);
+    const i = Number(li.dataset.i);
+    const abrir = () => { if (li.dataset.arrastre) return; fichaEjercicio(ejercicios[i], presc[i], editable ? { quitar: () => quitar(i), cambiar: () => cambiar(i) } : null); };
+    if (editable) deslizable(li, { quitar: () => quitar(i), cambiar: () => cambiar(i) });
     li.addEventListener('click', abrir);
     li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } });
   });
@@ -200,22 +226,111 @@ function colocarMuela(nodo, hecho) {
   }
 }
 
-/** Ficha de un ejercicio de la lista (se abre al tocarlo). */
-function fichaEjercicio(slot, p) {
+// ── G100 · Deslizar un ejercicio: a la izquierda se quita (almagre), a la derecha se cambia (millo). Solo para hoy. ──
+const FONDOS = `<span class="fondo-accion cambiar" aria-hidden="true">${icono('cambiar')}Cambiar</span><span class="fondo-accion quitar" aria-hidden="true">Quitar${icono('menos')}</span>`;
+
+function retoques(fecha, clave) {
+  const r = ajuste('retoquesHoy');
+  const x = r?.fecha === fecha ? r.por?.[clave] : null;
+  return { quitados: x?.quitados ?? [], cambios: x?.cambios ?? {} };
+}
+async function ponerRetoques(fecha, clave, valor) {
+  const r = ajuste('retoquesHoy');
+  const por = r?.fecha === fecha ? { ...r.por } : {};   // lo de otros días se olvida solo
+  por[clave] = valor;
+  await ponerAjuste('retoquesHoy', { fecha, por });
+}
+function aplicarRetoques(lista, rt) {
+  return lista.filter((e) => !rt.quitados.includes(e.ej))
+    .map((e) => (rt.cambios[e.ej] ? { ...e, ej: rt.cambios[e.ej], original: e.ej } : e));
+}
+
+/** El gesto: sigue al dedo 1:1; pasado un tercio del ancho, «engancha» (toque y vibración) y al soltar se hace. */
+function deslizable(li, { quitar, cambiar }) {
+  const mueve = li.querySelector('.fila-mueve');
+  const fq = li.querySelector('.fondo-accion.quitar'), fc = li.querySelector('.fondo-accion.cambiar');
+  let g = null;
+  const poner = (dx) => {
+    mueve.style.transform = dx ? `translateX(${dx}px)` : '';
+    fq.style.opacity = dx < 0 ? '1' : '0'; fc.style.opacity = dx > 0 ? '1' : '0';
+  };
+  const volverA0 = (desde) => {
+    if (reduceMovimiento()) { poner(0); return; }
+    mueve.animate([{ transform: `translateX(${desde}px)` }, { transform: 'none' }], { duration: 300, easing: 'cubic-bezier(.34,1.4,.64,1)' })
+      .finished.then(() => poner(0), () => poner(0));
+    mueve.style.transform = '';
+  };
+  li.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    g = { x0: e.clientX, y0: e.clientY, dx: 0, modo: null, id: e.pointerId, enganche: false };
+  });
+  li.addEventListener('pointermove', (e) => {
+    if (!g || e.pointerId !== g.id) return;
+    const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    if (!g.modo) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      g.modo = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'h' : 'v';
+      if (g.modo === 'h') { try { li.setPointerCapture(e.pointerId); } catch { /* */ } li.classList.add('arrastrando'); li.dataset.arrastre = '1'; }
+    }
+    if (g.modo !== 'h') return;
+    const umbral = li.clientWidth / 3;
+    g.dx = Math.abs(dx) > umbral * 1.6 ? Math.sign(dx) * (umbral * 1.6 + (Math.abs(dx) - umbral * 1.6) * 0.35) : dx;  // tira con resistencia
+    poner(g.dx);
+    const enganche = Math.abs(g.dx) >= umbral;
+    if (enganche !== g.enganche) {
+      g.enganche = enganche; li.classList.toggle('enganchado', enganche);
+      if (enganche) { vibrar(); toque('piedra'); }
+    }
+  });
+  const fin = async () => {
+    if (!g) return;
+    const { dx, modo, enganche } = g; g = null;
+    li.classList.remove('arrastrando', 'enganchado');
+    setTimeout(() => { delete li.dataset.arrastre; }, 60);   // el clic que llega al soltar no abre la ficha
+    if (modo !== 'h') return;
+    if (enganche && dx < 0) {
+      const ancho = li.clientWidth;
+      if (!reduceMovimiento()) await mueve.animate([{ transform: `translateX(${dx}px)` }, { transform: `translateX(${-ancho}px)` }], { duration: 200, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }).finished;
+      if (!(await quitar())) { mueve.getAnimations().forEach((a) => a.cancel()); volverA0(dx); }
+    } else {
+      volverA0(dx);
+      if (enganche && dx > 0) cambiar();
+    }
+  };
+  li.addEventListener('pointerup', fin);
+  li.addEventListener('pointercancel', () => { if (g?.modo === 'h') fin(); else g = null; });
+}
+
+/** «Cambiar» desde Hoy (R22): lo del mismo movimiento primero, luego lo que comparte músculo. Solo para hoy. */
+function cambiarHoy(slot, yaHoy, elegir) {
+  const lista = [...G.sustitutos(slot.original ?? slot.ej).filter((x) => x.id !== slot.ej && !yaHoy.includes(x.id)), ...(slot.original ? [{ ...G.ejercicio(slot.original), vuelta: true }] : [])];
+  const { nodo: h, cerrar } = hoja(`<h2>Cambiar</h2><p class="sub">${esc(G.ejercicio(slot.ej).nombre)}, solo por hoy. Mismas series y reps.</p>
+    <ul class="opciones">${lista.map((x) => `<li><button type="button" data-ej="${x.id}"><span class="que"><b>${esc(x.vuelta ? 'El de tu rutina' : x.nombre)}</b><span>${x.vuelta ? esc(x.nombre) : x.mismoPatron ? 'Mismo movimiento' : 'Mismo músculo'}</span></span>${icono('sigue', 'class="flecha-der"')}</button></li>`).join('')}</ul>`);
+  escalonar(h.querySelectorAll('.opciones li'), { desde: 120, retraso: 30 });
+  h.querySelectorAll('[data-ej]').forEach((b) => b.addEventListener('click', () => { cerrar(); elegir(b.dataset.ej); }));
+}
+
+/** Ficha de un ejercicio de la lista (se abre al tocarlo). Con «Cambiar» y «Quitar de hoy» si aún no has empezado. */
+function fichaEjercicio(slot, p, acciones = null) {
   const ej = G.ejercicio(slot.ej);
   const princ = Object.entries(ej.musculos).filter(([, f]) => f === 1).map(([m]) => musculoCorto(m));
   const ayuda = Object.entries(ej.musculos).filter(([, f]) => f < 1).map(([m]) => musculoCorto(m));
   const rep = slot.repMin === slot.repMax ? slot.repMin : `${slot.repMin}-${slot.repMax}`;
   const rir = p.rir.min === p.rir.max ? p.rir.min : `${p.rir.min}-${p.rir.max}`;
   const nota = estado.notas[slot.ej]?.texto;
-  const { nodo } = hoja(`<h2>${esc(ej.nombre)}</h2><p class="sub">${p.series} × ${rep} · deja ${rir}</p>
+  const { nodo, cerrar } = hoja(`<h2>${esc(ej.nombre)}</h2><p class="sub">${p.series} × ${rep} · deja ${rir}</p>
     <ul class="opciones">
       <li><button type="button" tabindex="-1"><span class="que"><b class="num">${p.peso == null ? 'Lo pones tú' : `${kg(p.peso)} kg`}</b><span>Hoy</span></span></button></li>
       ${p.otraVez ? `<li><button type="button" tabindex="-1"><span class="que"><b class="num">${kg(p.otraVez.peso)} × ${p.otraVez.series.map((x) => x.reps).join(' · ')}</b><span>La última vez</span></span></button></li>` : ''}
       <li><button type="button" tabindex="-1"><span class="que"><b>${esc(princ.join(', ').replace(/^./, (c) => c.toUpperCase()))}</b><span>${ayuda.length ? `Ayudan: ${esc(ayuda.join(', '))}` : 'Trabaja'}</span></span></button></li>
       ${nota ? `<li><button type="button" tabindex="-1"><span class="que"><b>${esc(nota)}</b><span>Tu nota</span></span></button></li>` : ''}
-    </ul>`);
+    </ul>
+    ${acciones ? `<div class="ficha-acciones"><button class="boton piedra" type="button" data-cambiar>${icono('cambiar')}Cambiar</button><button class="boton piedra quitar" type="button" data-quitar>Quitar de hoy</button></div>` : ''}`);
   escalonar(nodo.querySelectorAll('.opciones li'), { desde: 120, retraso: 40 });
+  if (acciones) {
+    nodo.querySelector('[data-cambiar]').onclick = () => { cerrar(); setTimeout(acciones.cambiar, 200); };
+    nodo.querySelector('[data-quitar]').onclick = () => { cerrar(); acciones.quitar(); };
+  }
 }
 
 /** «Otro día»: elegir otra sesión de la plantilla, o el día malo (R21). */

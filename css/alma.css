@@ -65,6 +65,9 @@
 .hoy-hecho-2 { margin-top: 4px; font-size: 14px; font-weight: 600; }
 .hoy-sello { position: absolute; z-index: 1; width: 190px; height: 190px; left: calc(100% - 140px); transform: rotate(-18deg); pointer-events: none; }
 .hoy-cuerpo { position: relative; z-index: 1; padding: 0 24px; display: flex; flex-direction: column; flex: 1 0 auto; }
+/* G100 · Abajo, lo que tapan las pestañas: al final del todo, «A moler» queda encima de ellas y la lista entera por encima
+   de «A moler» (antes el último ejercicio quedaba debajo del botón y el scroll rebotaba). */
+.pantalla.hoy .hoy-cuerpo { padding-bottom: calc(var(--abajo) + 60px); }
 .hoy .fila-titulo { min-height: 0; padding-bottom: 8px; align-items: baseline; }
 .hoy .fila-titulo h2 { color: var(--harina-texto); font-size: 15px; }
 .hoy .fila-titulo .enlace { font-size: 14px; font-weight: 600; padding: 6px 0; }
@@ -80,6 +83,24 @@
 .lista-hoy .carga.vacia { color: var(--piedra); font-size: 18px; }
 .lista-hoy li { transition: transform .12s var(--curva-salida); position: relative; overflow: hidden; }
 .lista-hoy li:active { transform: scale(.985); }
+/* G100 · Deslizar: la fila se mueve sobre su fondo (almagre «Quitar» a la izquierda, millo «Cambiar» a la derecha). */
+.lista-hoy { overflow: hidden; }
+.lista-hoy li { margin: 0 -16px; padding: 0; display: block; touch-action: pan-y; border-top: 0; }
+.lista-hoy li + li .fila-mueve::before { content: ''; position: absolute; left: 16px; right: 16px; top: 0; height: 1px; background: var(--basalto-3); }
+.lista-hoy .fila-mueve { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 50px; padding: 0 16px; background: var(--basalto-2); will-change: transform; }
+.lista-hoy li.arrastrando, .lista-hoy li.arrastrando:active { transform: none; }
+.fondo-accion { position: absolute; inset: 0; display: flex; align-items: center; gap: 8px; padding: 0 22px; opacity: 0;
+  font-weight: 700; font-size: 15px; letter-spacing: .02em; }
+.fondo-accion svg { width: 18px; height: 18px; flex: none; transition: transform .18s cubic-bezier(.34,1.56,.64,1); }
+.fondo-accion.quitar { justify-content: flex-end; background: var(--almagre); color: var(--almagre-texto); }
+.fondo-accion.cambiar { justify-content: flex-start; background: var(--millo); color: var(--basalto); }
+.lista-hoy li.enganchado .fondo-accion svg { transform: scale(1.35); }
+.ficha-acciones { display: flex; gap: 10px; margin-top: 18px; }
+.ficha-acciones .boton.piedra { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px;
+  font-family: var(--letra-texto); font-size: 16px; font-weight: 700; letter-spacing: 0; background: var(--basalto-3); }
+.ficha-acciones .boton svg { width: 18px; height: 18px; }
+.ficha-acciones .boton.quitar { color: #F08A73; }
 .hoy-pie { position: sticky; z-index: 3; bottom: calc(var(--abajo) + 60px); margin: 0 -24px; padding: 34px 24px 14px;
   background: linear-gradient(to bottom, rgba(27,25,23,0), var(--basalto) 46%); }
 .hoy-pie .boton { position: relative; }

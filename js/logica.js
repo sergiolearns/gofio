@@ -113,7 +113,7 @@ export async function empezarSesion({ diaId, nombre, ejercicios, modo = 'normal'
   const vuelta = vueltaHoy();
   const s = {
     id: D.id(), fecha: hoy(), diaId, nombre, modo, vuelta: vuelta.tipo, inicio: Date.now(), fin: null, estado: 'en-curso',
-    plan: ejercicios.map((e) => ({ ej: e.ej, series: e.series, repMin: e.repMin, repMax: e.repMax, ...(e.diaMalo ? { diaMalo: true, rir: e.rir } : {}) })),
+    plan: ejercicios.map((e) => ({ ej: e.ej, series: e.series, repMin: e.repMin, repMax: e.repMax, ...(e.original ? { original: e.original } : {}), ...(e.diaMalo ? { diaMalo: true, rir: e.rir } : {}) })),
   };
   // La vuelta larga recorta series desde el principio (R14); la descarga, a la mitad (R13).
   if (vuelta.tipo === 'larga') s.plan = s.plan.map((p) => ({ ...p, series: Math.max(1, Math.round(p.series * vuelta.factorSeries)) }));
