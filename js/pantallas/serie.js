@@ -7,6 +7,7 @@ import { estado, prescripcion, seriesDelHueco, siguienteHueco, guardarSerie, bor
 import { el, esc, kg, mmss, icono, grano, granos, ajustarTitulo, hoja, pedirNumero, vibrar, reduceMovimiento, escalonar, pop } from '../ui.js';
 import * as S from '../sonidos.js';
 import { descansoEnCurso } from '../avisos.js';
+import { aLaBrega } from '../amoler.js';
 
 const sesionPorId = (id) => estado.sesiones.find((s) => s.id === id);
 const rango = (a, b) => (a === b ? `${a}` : `${a}-${b}`);
@@ -38,6 +39,7 @@ function avisoDe(p, slot, n) {
   const busca = p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin;
   const r = `busca ${busca} · ${deja(p.rir)}`;
   if (slot.diaMalo) return { icono: 'malo', texto: `Día malo · ${r}` };
+  if (p.descarga) return { icono: 'baja', texto: `Descarga · ${r}` };
   if (p.vuelta === 'larga') return { icono: 'baja', texto: `Vuelta suave · ${r}` };
   switch (p.accion) {
     case 'subir': return { icono: 'sube', texto: `Sube a ${kg(p.peso)} · ${r}` };
@@ -47,7 +49,8 @@ function avisoDe(p, slot, n) {
   }
 }
 /** El porqué del aviso, para la hoja que se abre al tocarlo (el historial va ahí, no en la pantalla). */
-function porqueDe(p, slot) {
+export function porqueDe(p, slot) {
+  if (p.descarga) return `Semana de descarga: ${p.series} ${p.series === 1 ? 'serie' : 'series'}, un 10 % menos y más margen.`;
   if (p.vuelta === 'larga') return `Semana de vuelta: un 10 % menos de peso, ${p.series} ${p.series === 1 ? 'serie' : 'series'} y sin apurar.`;
   if (p.vuelta === 'media') return 'Vuelves tras unos días: tu peso de siempre con una más de margen.';
   if (slot.diaMalo) return 'Día malo: tu peso, 2 series y con margen. Cuenta igual.';
@@ -389,17 +392,21 @@ export function descansoPantalla(params, nav) {
     if (quedanMs <= 0) { fin(); return; }
     raf = requestAnimationFrame(cuadro);
   }
+  // G96 · Al llegar a cero ya no hay que tocar nada: tambor, «¡A LA BREGA!» y la serie entra sola.
+  // Si la app no está a la vista (has salido), se espera a que vuelvas para hacerlo.
   function fin() {
     if (acabado) return; acabado = true;
-    S.ambienteOff(); S.suena('tambor');
+    S.ambienteOff(); S.pararReanima();
     reloj.textContent = '0:00'; puntos.style.opacity = 0;
-    nodo.classList.remove('reanima', 'mira'); nodo.classList.add('ya');
-    reloj.hidden = true;
-    frase.className = 'titular descanso-frase brega'; frase.innerHTML = '¡A la<br>brega!';
-    lsig.innerHTML = lineaSig; lsig.className = 'descanso-sig blanca';
-    if (!quieto) frase.animate([{ transform: 'scale(1.25)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 200, easing: 'cubic-bezier(.22,1,.36,1)' });
-    vibrar();
     descansoEnCurso(null);
+    const ir = async () => {
+      if (!nodo.isConnected) return;
+      S.suena('tambor'); vibrar();
+      delete s.descanso; await guardarSesion(s);
+      await aLaBrega({ hechas: hechasSig, total: sig.series, alCambiar: () => nav.reemplazar('serie', { sesionId: s.id, i: d.siguiente }, { sinAnimacion: true }) });
+    };
+    if (document.hidden) document.addEventListener('visibilitychange', function vuelta() { if (!document.hidden) { document.removeEventListener('visibilitychange', vuelta); ir(); } });
+    else ir();
   }
   const parar = () => { cancelAnimationFrame(raf); S.ambienteOff(); S.pararReanima(); descansoEnCurso(null); };
 
@@ -407,8 +414,8 @@ export function descansoPantalla(params, nav) {
   nodo.querySelector('[data-mas]').onclick = async () => {
     S.pararReanima();
     d.hasta += 30000; d.total += 30;
-    if (acabado) { acabado = false; reloj.hidden = false; nodo.classList.remove('ya'); tramo = -1; ultimoSeg = -1; S.ambienteOn(); raf = requestAnimationFrame(cuadro); }
-    else if (tramo === 2 && (d.hasta - Date.now()) / 1000 > 10) tramo = -1;
+    if (acabado) return;
+    if (tramo === 2 && (d.hasta - Date.now()) / 1000 > 10) tramo = -1;
     vibrar(); await guardarSesion(s); avisoServidor();
   };
   nodo.querySelector('[data-ya]').onclick = async () => {

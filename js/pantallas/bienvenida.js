@@ -203,5 +203,5 @@ const hueco = (pestana, titulo, frase, texto, version) => () => {
     },
   };
 };
-export const progresoPantalla = hueco('progreso', 'Progreso', 'Aún moliendo.', 'Aquí verás cómo le coges el jeito a cada ejercicio: tu fuerza, con su gráfica. Las series de hoy ya cuentan.', 'Llega con la v0.2 · Progresión.');
+const progresoHueco = hueco('progreso', 'Progreso', 'Aún moliendo.', 'Aquí verás cómo le coges el jeito a cada ejercicio: tu fuerza, con su gráfica. Las series de hoy ya cuentan.', 'Llega con la v0.2 · Progresión.');
 export const comidaPantalla = hueco('comida', 'Comida', 'Al fuego, pronto.', 'Tu peso, lo que comes y lo que gastas de verdad. Sin números inventados mientras tanto.', 'Llega con la v0.3 · Comida y peso.');

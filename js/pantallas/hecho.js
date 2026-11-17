@@ -2,7 +2,7 @@
 // «Hecho gofio.» y tres datos. Movimiento: el sello cae y se estampa, el título sube, los números cuentan, los granos
 // caen escalonados, la sierra se dibuja de izquierda a derecha y «Lo más fino» entra al final. Sonido: G83.
 import * as G from '../cerebro/index.js';
-import { estado, resumen, planDeHoy, seriesDe } from '../logica.js';
+import { estado, resumen, planDeHoy, seriesDe, ponerSensacion } from '../logica.js';
 import { el, esc, kg, num, grano, contar, vibrar, reduceMovimiento, escalonar, avisar } from '../ui.js';
 import { suena } from '../sonidos.js';
 
@@ -53,6 +53,11 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
       <div><span class="cifra" data-n="${tercero[0]}">${tercero[0]}</span><p class="etiqueta">${tercero[1]}</p></div>
     </div>
     <div class="hecho-granos" role="img" aria-label="${r.series} granos: un grano, una serie">${Array.from({ length: r.series }, () => grano(true)).join('')}</div>
+    ${soloVer ? '' : `<div class="como-te-dejo" role="group" aria-labelledby="como-t">
+      <p id="como-t">¿Cómo te ha dejado?</p>
+      <div class="opciones-como">${[['entero', 'Entero'], ['molido', 'Molido'], ['molesta', 'Me molesta<br>algo']].map(([v, t]) => `<button type="button" data-como="${v}" aria-pressed="${s.sensacion === v}">${t}</button>`).join('')}</div>
+      <small data-como-pie>Opcional. Si «molido» o «me molesta algo» se repite, Gofio te propondrá aflojar una semana.</small>
+    </div>`}
     <div class="sierra-hecho" aria-hidden="true"><svg width="100%" height="10"><defs><pattern id="ph" width="12" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L6 2L12 10Z" fill="currentColor"/></pattern></defs><rect width="100%" height="10" fill="url(#ph)"/></svg><i></i></div>
     <div class="bloque"><h3>Lo más fino</h3><p>${fino}</p></div>
     ${proxima && !soloVer ? `<div class="bloque"><h3>La próxima</h3><p>${esc(proxima)}</p></div>` : ''}
@@ -60,6 +65,15 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
     <div class="hecho-pie"><button class="boton oscuro" type="button" data-cerrar data-son="barrido">${soloVer ? 'Volver' : 'A casa'}</button></div>
   </section>`);
 
+  // R13.2 · La señal de cansancio o molestias, opcional. Si molesta una articulación, R8: parar y consultar.
+  nodo.querySelectorAll('[data-como]').forEach((b) => b.addEventListener('click', async () => {
+    const v = s.sensacion === b.dataset.como ? null : b.dataset.como;
+    await ponerSensacion(s, v); vibrar();
+    nodo.querySelectorAll('[data-como]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.como === v)));
+    nodo.querySelector('[data-como-pie]').textContent = v === 'molesta'
+      ? 'Si es dolor en una articulación, o un dolor que no se va, para y consulta. Gofio no es una app médica.'
+      : 'Opcional. Si «molido» o «me molesta algo» se repite, Gofio te propondrá aflojar una semana.';
+  }));
   nodo.querySelector('[data-cerrar]').onclick = () => { vibrar(); if (soloVer) nav.volver(); else nav.ir('hoy', {}, { modo: 'pestana' }); };
 
   return {
@@ -87,7 +101,7 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
         { duration: 300, delay: 700 + k * 40, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' }));
       const fin = 700 + r.series * 40;
       nodo.querySelector('.sierra-hecho i').animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: 520, delay: fin, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' });
-      escalonar(nodo.querySelectorAll('.bloque, [data-cerrar]'), { desde: fin + 300, retraso: 120 });
+      escalonar(nodo.querySelectorAll('.como-te-dejo, .bloque, [data-cerrar]'), { desde: fin + 300, retraso: 120 });
     },
   };
 }

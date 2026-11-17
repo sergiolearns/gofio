@@ -14,13 +14,15 @@ const pila = []; // [{nombre, params, nodo}]
 const CURVA = 'cubic-bezier(.32,.72,0,1)';
 
 function pintarPestanas(activa, clara) {
-  nav.innerHTML = PESTANAS.map(([id, txt]) => `<a href="#${id}" data-p="${id}" ${id === activa ? 'aria-current="page"' : ''}>${icono(id)}${txt}</a>`).join('');
+  nav.innerHTML = PESTANAS.map(([id, txt]) => `<a href="#${id}" data-p="${id}" data-son="none" ${id === activa ? 'aria-current="page"' : ''}>${icono(id)}${txt}</a>`).join('');
   nav.classList.toggle('clara', !!clara);
 }
 nav.addEventListener('click', (e) => {
   const a = e.target.closest('a[data-p]'); if (!a) return;
   e.preventDefault();
   if (pila.length === 1 && pila[0].nombre === a.dataset.p) { pila[0].nodo.scrollTo({ top: 0, behavior: reduceMovimiento() ? 'auto' : 'smooth' }); return; }
+  S.suena('pestana');
+  if (a.dataset.p === 'hoy') S.suena('muelaHoy');
   ir(a.dataset.p, {}, { modo: 'pestana' });
   pop(nav.querySelector('[aria-current="page"] svg'), 1.25);
 });

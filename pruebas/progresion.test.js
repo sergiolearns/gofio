@@ -26,8 +26,13 @@ test('R12 · sube: la última sesión supera a todas las anteriores', () => {
 test('R12 · atascado: 3 sesiones seguidas sin mejorar la mejor de antes', () => {
   assert.equal(G.estadoFuerza(ses(['2026-10-01', '2026-10-04', '2026-10-07', '2026-10-10'], [93, 92, 93, 91])), 'atascado');
 });
-test('R12 · antes de marcar atascado, mira si ha faltado mucho (8 días o más entre sesiones)', () => {
+test('R12 · antes de marcar atascado, mira si ha faltado mucho (8 días o más sin ir al gimnasio)', () => {
   assert.equal(G.estadoFuerza(ses(['2026-10-01', '2026-10-04', '2026-10-20', '2026-10-23'], [93, 92, 93, 91])), 'asienta');
+});
+test('R12 · un ejercicio que vuelve cada 9 días no ha «faltado» si fuiste al gimnasio entre medias', () => {
+  const ej = ses(['2026-10-01', '2026-10-10', '2026-10-19', '2026-10-28'], [93, 92, 93, 91]);
+  const gym = ['2026-10-01', '2026-10-03', '2026-10-06', '2026-10-08', '2026-10-10', '2026-10-13', '2026-10-15', '2026-10-17', '2026-10-19', '2026-10-22', '2026-10-24', '2026-10-26', '2026-10-28'];
+  assert.equal(G.estadoFuerza(ej, gym), 'atascado');
 });
 test('R12 · se asienta: ni sube ni lleva 3 sin mejorar; con una sola sesión, nuevo', () => {
   assert.equal(G.estadoFuerza(ses(['2026-10-01', '2026-10-04', '2026-10-07'], [90, 93, 92])), 'asienta');

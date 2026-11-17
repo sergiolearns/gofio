@@ -23,18 +23,21 @@ export function fuerzaPorSesion(series) {
  * Estado de un ejercicio (diseño de Gofio sobre R12):
  *  · 'nuevo'     → menos de 2 sesiones: aún no hay tendencia.
  *  · 'atascado'  → R12: la e1RM no mejora en 3 sesiones seguidas de ese ejercicio. Pero R12 manda mirar antes
- *                  si ha faltado mucho: si alguna de esas 3 sesiones llega tras 8 días o más sin ese ejercicio
- *                  (la vuelta corta de R14), no se marca.
+ *                  si ha faltado mucho: si en ese tramo hubo 8 días o más sin ir al gimnasio (la vuelta de R14),
+ *                  no se marca. (Se mira el gimnasio, no el ejercicio: con 5 días de rutina, un ejercicio vuelve
+ *                  cada 7-10 días sin que falte nada.)
  *  · 'sube'      → la última sesión supera a todas las anteriores.
  *  · 'asienta'   → lo demás: ni sube ni lleva 3 sin mejorar.
  * @param {{fecha:string, e1rm:number}[]} sesiones de la más antigua a la más reciente
+ * @param {string[]} fechasGimnasio todas las fechas con entreno (para ver si ha faltado mucho)
  */
-export function estadoFuerza(sesiones) {
+export function estadoFuerza(sesiones, fechasGimnasio = []) {
   if (sesiones.length < 2) return 'nuevo';
   const v = sesiones.map((s) => s.e1rm);
   if (estancado(v)) {
-    const ultimas = sesiones.slice(-4);
-    const falto = ultimas.slice(1).some((s, i) => diasEntre(ultimas[i].fecha, s.fecha) >= 8);
+    const desde = sesiones.at(-4).fecha, hasta = sesiones.at(-1).fecha;
+    const tramo = [...new Set([...fechasGimnasio, ...sesiones.slice(-4).map((s) => s.fecha)])].filter((f) => f >= desde && f <= hasta).sort();
+    const falto = tramo.slice(1).some((f, i) => diasEntre(tramo[i], f) >= 8);
     if (!falto) return 'atascado';
   }
   const antes = Math.max(...v.slice(0, -1));

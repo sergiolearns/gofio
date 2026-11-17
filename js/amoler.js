@@ -68,3 +68,39 @@ function limpiar() {
   capa.classList.remove('va'); capa.onclick = null; capa.removeAttribute('style');
   capa.querySelectorAll('*').forEach((n) => { n.getAnimations().forEach((a) => a.cancel()); n.removeAttribute('style'); });
 }
+
+/**
+ * «¡A la brega!» (G96): al acabar el descanso ya no hace falta tocar «Empezar serie». Con el golpe de tambor entra
+ * «¡A LA BREGA!» de golpe, como «A MOLER», con los granos del ejercicio (el siguiente late) y se pasa sola a la serie.
+ * Un toque la salta. Con «Reducir movimiento», un fundido. Solo transform y opacity.
+ */
+export async function aLaBrega({ hechas = 0, total = 0, alCambiar }) {
+  const ov = preparar();
+  const $ = (s) => ov.querySelector(s);
+  const millo = $('.am-millo'), pequena = $('.am-muela'), ojo = $('.am-ojo'), txt = $('.am-texto'), gr = $('.am-granos');
+  const antes = txt.innerHTML;
+  txt.innerHTML = '¡A LA<br><span>BREGA!</span>';
+  gr.innerHTML = Array.from({ length: total }, (_, i) => grano(i < hechas ? true : i === hechas ? 'ahora' : false)).join('');
+  millo.style.opacity = 0; pequena.style.opacity = 0; ojo.style.opacity = 0;
+  ov.classList.add('va'); ov.style.background = 'var(--basalto)';
+  const fin = () => { txt.innerHTML = antes; limpiar(); };
+  if (reduceMovimiento()) {
+    txt.style.opacity = 1; gr.style.opacity = 1;
+    await ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, fill: 'forwards' }).finished;
+    alCambiar(); await espera(700);
+    await ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).finished;
+    fin(); return;
+  }
+  const anims = [];
+  const A = (el, k, o) => { const a = el.animate(k, { fill: 'both', ...o }); anims.push(a); return a; };
+  ov.onclick = () => anims.forEach((a) => a.finish());
+  A(ov, [{ opacity: 0 }, { opacity: 1 }], { duration: 120, easing: 'ease-out' });
+  A(txt, [{ opacity: 0, transform: 'scale(1.25)' }, { opacity: 1, transform: 'scale(.97)', offset: 0.7 }, { opacity: 1, transform: 'scale(1)' }], { duration: 240, delay: 40, easing: 'cubic-bezier(.55,0,1,.45)' });
+  A(gr, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 260, delay: 160, easing: 'cubic-bezier(.22,1,.36,1)' });
+  await Promise.all(anims.map((a) => a.finished.catch(() => {})));
+  await espera(650);
+  alCambiar();
+  await ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, easing: 'ease-out', fill: 'forwards' }).finished;
+  anims.forEach((a) => a.cancel());
+  fin();
+}

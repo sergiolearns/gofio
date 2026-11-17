@@ -2,7 +2,7 @@
 // vuelta tras días sin ir (R14) y modo «día malo» (R21). Arriba, la muela gigante: un círculo de verdad que gira.
 import * as G from '../cerebro/index.js';
 import { estado, ajuste, hoy, planDeHoy, porQue, prescripcion, vueltaHoy, sesionEnCurso, sesionesHechas, empezarSesion, resumen,
-  siguienteHueco, musculoCorto, seriesDe, descartarSesion } from '../logica.js';
+  siguienteHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva } from '../logica.js';
 import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento } from '../ui.js';
 import { aMoler } from '../amoler.js';
 
@@ -53,6 +53,7 @@ export function hoyPantalla(params = {}, nav) {
   let porque = '';
   let etiqueta = 'La molienda de hoy';
   if (diaMaloActivo) { porque = 'Día malo: un fisco de lo importante. Cuenta igual.'; etiqueta += ' · día malo'; }
+  else if (descargaActiva() && vuelta.tipo !== 'larga') { porque = '<b>Semana de descarga.</b>La mitad de series, un 10 % menos y más margen.'; etiqueta += ' · descarga'; }
   else if (vuelta.tipo === 'larga') { porque = `<b>${vuelta.desde ? 'Semana de vuelta.' : '¡Ños, cuánto tiempo!'}</b>Hoy, suave: un 10 % menos y con margen.`; etiqueta += ' · vuelta'; }
   else if (vuelta.tipo === 'media') { porque = '<b>¡Ños, cuánto tiempo!</b>Hoy, tu peso de siempre y algo más de margen.'; etiqueta += ' · vuelta'; }
   else if (vuelta.tipo === 'primera') porque = '<b>Primera molienda.</b>Lo que no sepas, lo apuntas en la primera serie.';
@@ -64,7 +65,7 @@ export function hoyPantalla(params = {}, nav) {
     const p = presc[i]; const ej = G.ejercicio(e.ej);
     const rep = e.repMin === e.repMax ? e.repMin : `${e.repMin}-${e.repMax}`;
     return `<li data-i="${i}" role="button" tabindex="0" aria-label="${esc(ej.nombre)}: ${p.series} series de ${rep}. Ver ficha"><span class="nombre">${esc(ej.nombre)}</span>
-      <span class="der">${granos(0, p.series, -1, { clase: 'millo' })}<span class="rango">${rep}</span><b class="carga cifra num${p.peso == null ? ' vacia' : ''}">${p.peso == null ? '—' : kg(p.peso)}</b></span></li>`;
+      <span class="der">${granos(0, p.series, -1, { clase: 'millo' })}<span class="rango">${rep}</span><b class="carga cifra num${p.peso == null ? ' vacia' : ''}">${p.accion === 'subir' && !p.descarga && p.vuelta !== 'larga' ? `<i class="sube-peso" title="Hoy sube">${icono('sube')}</i>` : ''}${p.peso == null ? '—' : kg(p.peso)}</b></span></li>`;
   }).join('');
 
   let cabezaTexto, cuerpo;
@@ -182,9 +183,13 @@ function colocarMuela(nodo, hecho) {
   cuerpo.style.marginTop = `${Math.max(0, Math.round(Math.max(objetivo, abajo + 24) - ahora))}px`;
   // Lo que cae encima del millo se escribe en basalto, para que no se pierda (G76: «se pierde con el fondo»).
   for (const t of nodo.querySelectorAll('.hoy-cuerpo .fila-titulo h2, .hoy-cuerpo .fila-titulo .enlace')) {
-    const q = t.getBoundingClientRect();
-    const x = (q.left + q.right) / 2 - caja.left, y = (q.top + q.bottom) / 2 - caja.top + nodo.scrollTop;
-    t.classList.toggle('sobre-millo', Math.hypot(x - cx, y - cy) < r - 4);
+    const rango = document.createRange(); rango.selectNodeContents(t);
+    const q = rango.getBoundingClientRect();
+    const y = (q.top + q.bottom) / 2 - caja.top + nodo.scrollTop;
+    const dentro = (x) => Math.hypot(x - caja.left - cx, y - cy) < r - 4;
+    const a = dentro(q.left), z = dentro(q.right);
+    t.classList.toggle('sobre-millo', a && z);
+    t.classList.toggle('cruza', a !== z);   // a caballo del borde: va en su pastilla de basalto
   }
 }
 

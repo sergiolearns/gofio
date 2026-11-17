@@ -206,6 +206,9 @@ const SON = {
   chacara(t, fuerza = 0.75) { chacara(t, fuerza); },
   tambor(t) { tambor(t, 1); },
   marca(t) { golpecito(t, 120, 0.9); subida(t + 0.02, 0.28, 0.6); impacto(t + 0.3, 0.6, 0.4); },
+  // Cambiar de sección (G95): un golpe de madera corto; volver a Hoy, además, la muela que gira un trozo.
+  pestana(t) { golpecito(t, 210, 0.5); },
+  muelaHoy(t) { rodar(t + 0.05, 0.9, 0.35); },
   hecho(t) { impacto(t + 0.2, 1, 0.6); impacto(t + 0.55, 0.45, 0.5); rodar(t + 0.6, 1.4, 0.7); },
 };
 

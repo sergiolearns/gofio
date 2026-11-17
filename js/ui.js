@@ -182,7 +182,7 @@ export function contar(nodo, hasta, ms = 700) {
 
 // ── Todo lo que se toca responde (G49) ─────────────────────────
 // Onda que sale desde el dedo: como una piedra en el agua. Sin ella con «Reducir movimiento».
-export const TOCABLES = '.boton, .chip, .redondo, .rir-botones button, .opciones button, .lista-sesiones button, .lista-ejercicios li, .pestanas a, .tarjeta-eleccion, .icono-boton, .fila.tocable, .tocable';
+export const TOCABLES = '.boton, .chip, .redondo, .rir-botones button, .opciones button, .lista-sesiones button, .lista-ejercicios li, .pestanas a, .tarjeta-eleccion, .icono-boton, .fila.tocable, .tocable, .fila-fuerza, .opciones-como button';
 document.addEventListener('pointerdown', (e) => {
   const t = e.target.closest(TOCABLES);
   if (!t || reduceMovimiento() || t.disabled) return;

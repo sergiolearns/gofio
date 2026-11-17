@@ -221,11 +221,12 @@ export function fuerzaEjercicios(semanas = 6, fecha = hoy()) {
     porEj.get(s.ejercicioId).push(s);
   }
   const res = [];
+  const fechasGym = sesionesHechas().map((x) => x.fecha);
   for (const [ej, xs] of porEj) {
     const todas = G.fuerzaPorSesion(xs);
     const ventana = todas.filter((x) => x.fecha >= desde);
     if (!ventana.length) continue;
-    const estadoF = G.estadoFuerza(todas);
+    const estadoF = G.estadoFuerza(todas, fechasGym);
     res.push({ ej, sesiones: ventana, todas, estado: estadoF, ahora: ventana.at(-1).e1rm, cambio: ventana.length > 1 ? ventana.at(-1).e1rm - ventana[0].e1rm : null, ultima: ventana.at(-1).fecha });
   }
   // Primero lo que se hizo hace menos.
