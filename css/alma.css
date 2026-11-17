@@ -860,3 +860,60 @@
   .moliendo-muela { width: min(130px, 19dvh); height: min(130px, 19dvh); }
   .tostar-pista { display: none; } /* en un iPhone bajo, la lista entera antes que la pista */
 }
+
+/* ════════ G120 · Menos carga: la siguiente en una línea (con su hoja) y Lo molido con dos datos (tablero 18) ════════ */
+.linea-sig { position: relative; z-index: 1; box-sizing: border-box; width: 100%; margin-top: 14px; padding: 14px 14px 14px 18px; border-radius: 20px; background: var(--basalto-2);
+  display: flex; align-items: center; gap: 12px; text-align: left; border: 2px solid transparent; transition: border-color .5s ease, box-shadow .5s ease, transform .12s var(--curva-salida); }
+.linea-sig:active { transform: scale(.98); }
+.descanso.reanima .linea-sig { border-color: var(--millo); box-shadow: 0 0 24px -6px rgba(212,146,43,.5); }
+.ls-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ls-que { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.ls-que b { font-size: 46px; line-height: .9; white-space: nowrap; transition: color .2s ease; }
+.ls-que b.cambiado { color: var(--millo); }
+.ls-que span { flex: none; font-size: 15px; font-weight: 700; color: var(--piedra); }
+.linea-sig .ts-senal { flex: none; }
+.ls-flecha { flex: none; width: 22px; height: 22px; color: var(--millo); }
+.tarjeta-molido { position: relative; z-index: 1; box-sizing: border-box; width: 100%; margin-top: 14px; padding: 16px 18px; border-radius: 20px; background: var(--basalto-2); display: flex; flex-direction: column; gap: 10px; }
+.tarjeta-molido .molido-titulo { font-size: 34px; line-height: .95; }
+.tarjeta-molido .molido-ej { margin: 4px 0 0; font-size: 15px; font-weight: 700; }
+.mol-fuerza { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 800; color: var(--millo); }
+.mol-fuerza svg { width: 18px; height: 18px; }
+.mol-mejor, .mol-proxima { margin: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.mol-mejor span, .mol-proxima span { font-size: 14px; color: var(--piedra); }
+.mol-mejor b { font-size: 24px; white-space: nowrap; }
+.mol-proxima { padding-top: 10px; border-top: 1px solid var(--basalto-3); }
+.mol-proxima b { display: inline-flex; align-items: center; gap: 6px; font-size: 18px; white-space: nowrap; }
+.mol-proxima b svg { width: 16px; height: 16px; color: var(--millo); }
+.lo-que-viene { margin-top: 10px; width: 100%; box-sizing: border-box; padding: 12px 18px; border-radius: 16px; background: none; border: 1px solid var(--basalto-3); gap: 4px; }
+.lqv-fila { align-self: stretch; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.lqv-fila .lqv-nombre { font-family: var(--letra-texto); font-stretch: normal; font-size: 18px; font-weight: 700; line-height: 1.2; }
+.lqv-fila .lqv-que { margin: 0; flex: none; font-size: 24px; color: var(--harina-texto); white-space: nowrap; }
+/* Lo molido, con la misma muela que el descanso (algo más pequeña) y el cuerpo centrado igual. */
+.descanso .pie-fuerza { margin-top: 0; }
+.descanso .muela-descanso { margin-top: auto; }
+.descanso .puntos { margin-bottom: auto; }
+.lo-molido .muela-descanso { width: min(190px, 48vw, calc(100dvh - 700px - var(--abajo))); height: min(190px, 48vw, calc(100dvh - 700px - var(--abajo))); min-width: 110px; min-height: 110px; }
+.lo-molido .descanso-reloj { font-size: min(76px, 9dvh); margin-top: 8px; }
+/* La hoja «La siguiente» */
+.hoja-siguiente { display: flex; flex-direction: column; gap: 14px; }
+.hoja-siguiente h2 { margin: 0; font-size: 34px; }
+.hoja-siguiente .sub { margin: -8px 0 0; }
+.hoja-siguiente .contador { grid-template-columns: 60px 1fr 60px; }
+.hoja-siguiente .contador .redondo { width: 60px; height: 60px; }
+.hoja-siguiente .contador .cifra.peso { font-size: 88px; }
+.hoja-siguiente .contador .cifra.reps { font-size: 72px; }
+.hoja-siguiente .segmentado { margin-top: 2px; }
+.hs-gofio { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--piedra); }
+.hs-gofio[hidden] { display: none; }
+.hs-gofio .enlace { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.hs-gofio .enlace svg { width: 16px; height: 16px; }
+.hs-borrar { align-self: flex-start; min-height: 44px; color: #E58C77 !important; }
+.hs-listo { margin-top: 4px; min-height: 64px; }
+@media (max-height: 720px) { .hoja-siguiente .contador .cifra.peso { font-size: 68px; } .hoja-siguiente .contador .cifra.reps { font-size: 56px; } .hoja-siguiente { gap: 8px; } }
+/* Los botones del descanso, con más vida (G120): almagre con brillo mientras descansas; a pleno en los últimos 10 s. */
+.descanso-accion .boton { background: linear-gradient(180deg, #67301F, #4E2318); color: #FFD5C8; box-shadow: inset 0 0 0 2px rgba(184,66,46,.95), 0 8px 22px -10px rgba(184,66,46,.8); text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.descanso.mira .descanso-accion .boton { background: linear-gradient(180deg, #7A3624, #5C291C); color: #FFE0D6; }
+.descanso.reanima .descanso-accion .boton, .descanso.ya .descanso-accion .boton { background: var(--almagre); color: var(--almagre-texto); box-shadow: 0 0 0 4px rgba(212,146,43,.35), 0 8px 28px rgba(184,66,46,.5); text-shadow: none; }
+@media (max-height: 720px) { .lo-molido .muela-descanso { display: none; } .lo-molido .descanso-reloj { margin-top: auto; font-size: 60px; } }
+.moliendo-muela { width: min(184px, 46vw, 21dvh); height: min(184px, 46vw, 21dvh); }
+@media (max-height: 720px) { .moliendo-muela { width: min(130px, 19dvh); height: min(130px, 19dvh); } }
