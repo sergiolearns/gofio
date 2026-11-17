@@ -64,7 +64,7 @@ export function porqueDe(p, slot) {
   }
 }
 
-export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima = false }, nav) {
+export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima = false, pesoTrabajo = null }, nav) {
   const s = sesionPorId(sesionId);
   if (!s) return { nodo: el('<section><p>Esta sesión ya no existe.</p></section>') };
   if (s.actual !== i) { s.actual = i; guardarSesion(s); }
@@ -75,7 +75,8 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
   const p = prescripcion(slot);
   const total = slot.series;
   const ultimaHoy = hechas.at(-1);
-  let peso = ultimaHoy?.peso ?? p.peso;
+  // pesoTrabajo: el que dijiste al pedir calentar sin peso conocido (G108).
+  let peso = ultimaHoy?.peso ?? p.peso ?? pesoTrabajo;
   let reps = p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin;
   let rir = null;   // G105: la reserva no viene marcada; la eliges al acabar la serie
   let fallo = false; // R27 (G106): al fallo, solo esta serie y solo si lo eliges tú
@@ -152,7 +153,7 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     <div class="serie-herramientas ahora-solo">${calentando ? `
       <button class="chip" type="button" data-otra-ligera>${icono('mas')}Otra ligera</button>
       <button class="chip" type="button" data-al-terrero>Al terrero</button>` : `
-      ${n === 0 && listaCal.length && !calHechos.length ? `<button class="chip" type="button" data-calentar>${icono('calentar')}Calentar</button>` : ''}
+      ${n === 0 && !calHechos.length && (listaCal.length || peso == null) ? `<button class="chip" type="button" data-calentar>${icono('calentar')}Calentar</button>` : ''}
       <button class="chip" type="button" data-una-mas>${icono('grano')}Una serie más</button>
       <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
       <button class="chip" type="button" data-nota>${icono('nota')}Nota</button>
@@ -311,17 +312,25 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     pto?.classList.add('lleno');
     if (pto && !reduceMovimiento()) await pto.animate([{ transform: 'scale(1.8)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'cubic-bezier(.34,1.56,.64,1)' }).finished;
     else await espera(120);
-    if (cal + 1 < totalCal) nav.reemplazar('serie', { sesionId: s.id, i, cal: cal + 1, calN: totalCal, anima: true }, { sinAnimacion: true });
-    else nav.reemplazar('serie', { sesionId: s.id, i, anima: true }, { sinAnimacion: true });
+    if (cal + 1 < totalCal) nav.reemplazar('serie', { sesionId: s.id, i, cal: cal + 1, calN: totalCal, anima: true, pesoTrabajo }, { sinAnimacion: true });
+    else nav.reemplazar('serie', { sesionId: s.id, i, anima: true, pesoTrabajo }, { sinAnimacion: true });
   }
-  nodo.querySelector('[data-calentar]')?.addEventListener('click', () => {
-    S.toque('aire'); nav.reemplazar('serie', { sesionId: s.id, i, cal: 0, calN: listaCal.length, anima: true }, { sinAnimacion: true });
+  nodo.querySelector('[data-calentar]')?.addEventListener('click', async () => {
+    let w = peso, lista = listaCal;
+    // Sin peso conocido (primera vez), las ligeras salen del que vayas a mover en las de trabajo (G108).
+    if (w == null) {
+      const v = await pedirNumero({ titulo: '¿Con cuánto vas?', sub: 'El peso de las series de trabajo. Con eso salen las ligeras.', valor: '' });
+      if (v == null) return;
+      w = v; lista = G.calentamiento(w, escalon);
+      if (!lista.length) { avisar('Con ese peso no hace falta calentar.'); return; }
+    }
+    S.toque('aire'); nav.reemplazar('serie', { sesionId: s.id, i, cal: 0, calN: lista.length, anima: true, pesoTrabajo: w }, { sinAnimacion: true });
   });
   nodo.querySelector('[data-otra-ligera]')?.addEventListener('click', () => {
-    S.toque('pop'); nav.reemplazar('serie', { sesionId: s.id, i, cal, calN: totalCal + 1, anima: true }, { sinAnimacion: true });
+    S.toque('pop'); nav.reemplazar('serie', { sesionId: s.id, i, cal, calN: totalCal + 1, anima: true, pesoTrabajo }, { sinAnimacion: true });
   });
   nodo.querySelector('[data-al-terrero]')?.addEventListener('click', () => {
-    S.toque('aire'); nav.reemplazar('serie', { sesionId: s.id, i, anima: true }, { sinAnimacion: true });
+    S.toque('aire'); nav.reemplazar('serie', { sesionId: s.id, i, anima: true, pesoTrabajo }, { sinAnimacion: true });
   });
   // «Una serie más»: un grano más para este ejercicio, hoy.
   nodo.querySelector('[data-una-mas]')?.addEventListener('click', async () => {

@@ -4,8 +4,7 @@ import * as G from '../cerebro/index.js';
 import { ajuste, ponerAjuste } from '../logica.js';
 import { pedirPersistencia } from '../datos.js';
 import { el, esc, icono, vibrar, grano, escalonar, pop, avisar, cuandoRevelada, reduceMovimiento } from '../ui.js';
-import { empezarSesion, planDeHoy } from '../logica.js';
-import { aMoler } from '../amoler.js';
+import * as S from '../sonidos.js';
 import { formularioCargas, guardarCargas, importarCopia } from './ajustes.js';
 
 const TOTAL = 5;
@@ -87,7 +86,7 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
       <p class="texto-2" style="margin-top:10px">Pon los que sepas. El resto, en la primera serie.</p>
       <div class="tarjeta" style="margin-top:8px">${formularioCargas()}</div>
       <div style="height:20px"></div>
-      <div class="pie-fijo"><button class="boton" type="button" data-sig data-son="none">A moler</button></div></div>`;
+      <div class="pie-fijo"><button class="boton" type="button" data-sig data-son="none">Listo</button></div></div>`;
   }
 
   const nodo = el(`<section class="bienvenida">${cuerpo}</section>`);
@@ -109,7 +108,15 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
 
   nodo.querySelector('[data-atras]')?.addEventListener('click', () => { vibrar(); nav.volver(); });
 
-  nodo.querySelector('[data-sig]').onclick = async () => {
+  // Con el teclado abierto, el primer toque solo lo cerraba y movía el botón: el toque se perdía («a veces no responde»).
+  const sig = nodo.querySelector('[data-sig]');
+  sig.addEventListener('pointerdown', (e) => { if (document.activeElement?.matches?.('input, textarea')) e.preventDefault(); });
+  sig.onclick = async () => {
+    if (sig.dataset.va) return; sig.dataset.va = '1';
+    document.activeElement?.blur?.();
+    try { await alSeguir(); } catch (e) { console.error(e); avisar('Algo falló. Prueba otra vez.'); } finally { delete sig.dataset.va; }
+  };
+  async function alSeguir() {
     vibrar();
     if (paso === 3) {
       await ponerAjuste('plantilla', rutina === 'gofio' ? rutinaGofio() : null);
@@ -123,16 +130,13 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
       await guardarCargas(nodo);
       await ponerAjuste('inicioHecho', true);
       pedirPersistencia();
-      // «A moler» arranca su animación la primera vez (concepto: primer arranque · 5) y abre la primera serie de hoy.
-      // Si aún no estás en el gimnasio, «‹ Hoy» vuelve a casa y la molienda vacía se deshace sola.
-      const plan = planDeHoy();
-      const s = await empezarSesion({ diaId: plan.diaId, nombre: plan.nombre, ejercicios: plan.ejercicios, modo: plan.tipo === 'combinada' ? 'combinada' : 'normal' });
-      nav.ir('hoy', { mantener: s.id }, { modo: 'pestana', sinAnimacion: true });
-      await aMoler({ total: s.plan.reduce((a, x) => a + x.series, 0), alCambiar: () => nav.ir('serie', { sesionId: s.id, i: 0 }, { sinAnimacion: true }) });
+      // G108 · Al acabar, a casa (Hoy): Gofio se configura antes de llegar al gimnasio. «A moler» ya está en Hoy.
+      S.suena('muelaHoy');
+      nav.ir('hoy', {}, { modo: 'pestana', duracion: 380 });
       return;
     }
     siguiente(paso + 1);
-  };
+  }
   return {
     nodo, pestana: null, sinGesto: paso === 0, cinta: paso !== 0,
     alEntrar() {

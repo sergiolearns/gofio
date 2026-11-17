@@ -392,12 +392,15 @@ h1, h2, h3, p { margin: 0; }
 
 /* ── Aviso flotante ────────────────────────────────────────────── */
 .aviso {
-  position: fixed; z-index: 60; left: 16px; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 10px);
+  /* G108 · Abajo, nunca arriba: iOS 26 tiñe la barra de estado con lo fijo que toca el borde de arriba y no lo
+     despinta al quitarlo (la barra se quedaba crema). Arriba solo hay millo: la cortinilla al abrir y la cinta. */
+  position: fixed; z-index: 60; left: 16px; right: 16px; bottom: calc(var(--abajo) + 186px);
   display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
   background: var(--harina-texto); color: var(--basalto); font-weight: 600; font-size: 15px;
   box-shadow: 0 10px 30px -10px rgba(0,0,0,.5);
-  transform: translateY(-140%); transition: transform .4s var(--curva-ios);
+  opacity: 0; transform: translateY(24px) scale(.96); transition: transform .4s var(--curva-ios), opacity .25s ease;
 }
+.aviso.visible { opacity: 1; }
 .aviso.visible { transform: none; }
 .aviso button { margin-left: auto; font-weight: 800; color: var(--almagre); padding: 8px 4px; }
 
