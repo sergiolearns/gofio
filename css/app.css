@@ -436,6 +436,8 @@ h1, h2, h3, p { margin: 0; }
 #cortinilla { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: var(--millo); }
 #cortinilla.fuera { pointer-events: none; }
+/* G114 · Con la cortinilla echada al salir de la app, lo de debajo no se pinta (al volver, iOS pinta antes). */
+html.cortinilla-echada #app, html.cortinilla-echada #pestanas, html.cortinilla-echada #cinta, html.cortinilla-echada #capa-hojas, html.cortinilla-echada #aviso { visibility: hidden; }
 .col { display: flex; flex-direction: column; flex: 1; }
 /* Botón principal de cada pantalla siempre a la vista al desplazar. */
 .pantalla > .boton:last-child { position: sticky; bottom: calc(var(--abajo) + 8px); z-index: 2; flex: none; }

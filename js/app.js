@@ -204,6 +204,31 @@ function registrarSW() {
 const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const instalada = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 
+/** El ojo de la muela se abre: la cortinilla se recorta desde el agujero del disco hacia fuera mientras la muela da un
+ *  cuarto de vuelta (G58). `alRevelar` se llama al empezar a abrirse (lo de debajo ya se ve por el ojo). */
+function abrirOjo(c, { dur = 820, alRevelar } = {}) {
+  const disco = c.querySelector('.c-disco');
+  const r = disco.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const r0 = r.width * 0.12;                                   // el ojo de la muela (120 de 1000 en el SVG)
+  const caja = c.getBoundingClientRect();
+  const r1 = Math.hypot(Math.max(cx - caja.left, caja.right - cx), Math.max(cy - caja.top, caja.bottom - cy)) + 2;
+  const t0 = performance.now();
+  const curva = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  c.classList.add('fuera');
+  disco.animate([{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(90deg) scale(1.35)' }], { duration: dur, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+  c.querySelector('.c-sub')?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' });
+  setTimeout(() => alRevelar?.(), 140);
+  const paso = (ahora) => {
+    const t = Math.min(1, (ahora - t0) / dur);
+    const rad = r0 + (r1 - r0) * curva(t);
+    const m = `radial-gradient(circle at ${cx}px ${cy}px, transparent ${rad}px, #000 ${rad + 1}px)`;
+    c.style.webkitMaskImage = m; c.style.maskImage = m;
+    if (t < 1) requestAnimationFrame(paso); else c.remove();
+  };
+  requestAnimationFrame(paso);
+}
+
 /** La cortinilla se queda lo justo para que se vea la animación (≈1,4 s desde que se abre) y se va con un fundido. */
 function quitarCortinilla() {
   const c = document.getElementById('cortinilla');
@@ -213,32 +238,45 @@ function quitarCortinilla() {
     c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).finished.then(() => c.remove());
     revelar(); return;
   }
-  // G58: se ve al menos un momento (es la continuación de la imagen de arranque de iOS) y luego el ojo de la muela
-  // se abre: la cortinilla se recorta desde el agujero del disco hacia fuera mientras la muela da un cuarto de vuelta.
+  // G58: se ve al menos un momento (es la continuación de la imagen de arranque de iOS) y luego se abre el ojo.
   const espera = Math.max(0, 900 - performance.now());
-  setTimeout(() => {
-    const disco = c.querySelector('.c-disco');
-    const r = disco.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const r0 = r.width * 0.12;                                   // el ojo de la muela (120 de 1000 en el SVG)
-    const caja = c.getBoundingClientRect();
-    const r1 = Math.hypot(Math.max(cx - caja.left, caja.right - cx), Math.max(cy - caja.top, caja.bottom - cy)) + 2;
-    const dur = 820, t0 = performance.now();
-    const curva = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-    c.classList.add('fuera');
-    disco.animate([{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(90deg) scale(1.35)' }], { duration: dur, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
-    c.querySelector('.c-sub')?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' });
-    setTimeout(revelar, 140);
-    const paso = (ahora) => {
-      const t = Math.min(1, (ahora - t0) / dur);
-      const rad = r0 + (r1 - r0) * curva(t);
-      const m = `radial-gradient(circle at ${cx}px ${cy}px, transparent ${rad}px, #000 ${rad + 1}px)`;
-      c.style.webkitMaskImage = m; c.style.maskImage = m;
-      if (t < 1) requestAnimationFrame(paso); else c.remove();
-    };
-    requestAnimationFrame(paso);
-  }, espera);
+  setTimeout(() => abrirOjo(c, { alRevelar: revelar }), espera);
 }
+
+// G114 · La cortinilla al volver. Con la app abierta por detrás, al volver a ella iOS enseña negro (con la barra millo)
+// hasta que la vuelve a pintar. Al salir, Gofio echa la cortinilla y esconde lo de debajo (así hay menos que pintar al
+// volver); al volver, lo primero que se pinta es la cortinilla y el ojo se abre, más rápido que al arrancar. Lo que
+// pasa debajo (el descanso, los avisos) sigue igual.
+const moldeCortinilla = document.getElementById('cortinilla')?.cloneNode(true);
+function echarCortinilla() {
+  if (!moldeCortinilla || !window.gofioRevelada || document.getElementById('cortinilla')) return;
+  const c = moldeCortinilla.cloneNode(true);
+  c.dataset.vuelta = '1';
+  document.body.appendChild(c);
+  document.documentElement.classList.add('cortinilla-echada');
+  document.documentElement.style.backgroundColor = '#E3A62B';
+}
+function abrirCortinillaDeVuelta() {
+  const c = document.querySelector('#cortinilla[data-vuelta]');
+  const destapar = () => { document.documentElement.classList.remove('cortinilla-echada'); document.documentElement.style.backgroundColor = window.gofioFondo || '#1B1917'; };
+  if (!c) { destapar(); return; }
+  if (c.dataset.abriendo) return;
+  c.dataset.abriendo = '1';
+  if (reduceMovimiento()) {
+    destapar();
+    c.classList.add('fuera');
+    c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).finished.then(() => c.remove());
+    return;
+  }
+  abrirOjo(c, { dur: 620, alRevelar: destapar });
+  setTimeout(() => { destapar(); c.remove(); }, 1500);   // por si el navegador no llega a pintar la animación
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) echarCortinilla();
+  else setTimeout(abrirCortinillaDeVuelta, 200);       // que se vea un momento entera antes de abrirse
+});
+addEventListener('pagehide', echarCortinilla);
+addEventListener('pageshow', (e) => { if (e.persisted) setTimeout(abrirCortinillaDeVuelta, 200); });
 
 // iOS (app instalada) encoge la pantalla al abrir el teclado y no la devuelve: quedaba una franja negra abajo, la barra
 // de pestañas subía y los botones se montaban (G58). Se le obliga a medir de nuevo al cerrarlo.
