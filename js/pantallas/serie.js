@@ -6,7 +6,7 @@ import * as G from '../cerebro/index.js';
 import { estado, prescripcion, seriesDelHueco, siguienteHueco, guardarSerie, borrarSerie, guardarSesion, terminarSesion,
   escalonDe, descansoDe, ponerNota, musculoCorto, ajuste, ponerAjuste, historialArrimar, mejorReciente } from '../logica.js';
 import { el, esc, kg, mmss, icono, grano, granos, ajustarTitulo, hoja, pedirNumero, vibrar, reduceMovimiento, escalonar, pop, avisar,
-  pintadera, coronaGranos, piedra, vibrarTambor, encajar } from '../ui.js';
+  pintadera, coronaGranos, piedra, vibrarTambor, encajar, vigilarChips } from '../ui.js';
 import * as S from '../sonidos.js';
 import { descansoEnCurso, molienda } from '../avisos.js';
 import { aLaBrega } from '../amoler.js';
@@ -502,6 +502,7 @@ export function seriePantalla(params, nav) {
       requestAnimationFrame(() => {
         ajustarTitulo(nodo.querySelector('.serie-titulo'), { max: 42, min: 30, lineas: 2, alto: 0.95 });
         encajar(nodo.querySelector('[data-ahora-peso]')); encajar(molQue, { caja: nodo.querySelector('.moliendo') });
+        vigilarChips(nodo);
       });
       if (momento0 === 'moliendo') { girarMuela(true); entrarMolienda(); }
       if (anima) escalonar(nodo.querySelectorAll('.aviso-serie, .senal-fuerte, .piedras, .ahora > *, .pie-fuerza.ahora-solo .chip, .pie-fuerza.ahora-solo .boton'), { desde: 0, retraso: 35 });
@@ -511,7 +512,7 @@ export function seriePantalla(params, nav) {
         S.suena('marca');
       }
     },
-    alSalir() { girarMuela(false); window.removeEventListener('gofio:ir', alAviso); },
+    alSalir() { girarMuela(false); window.removeEventListener('gofio:ir', alAviso); vigilarChips(nodo, false); },
   };
 }
 
@@ -1004,7 +1005,7 @@ export function descansoPantalla(params, nav) {
     nodo, pestana: null,
     alEntrar(o = {}) {
       mantenerEncendida(true); cancelAnimationFrame(raf);
-      requestAnimationFrame(() => { pintarLinea(); nodo.querySelectorAll('.lqv-que, .mol-mejor b, .mol-proxima b').forEach((b) => encajar(b)); });
+      requestAnimationFrame(() => { pintarLinea(); nodo.querySelectorAll('.lqv-que, .mol-mejor b, .mol-proxima b').forEach((b) => encajar(b)); vigilarChips(nodo); });
       if (d.hasta > Date.now()) setTimeout(() => S.ambienteOn(), 500);
       raf = requestAnimationFrame(cuadro);
       if (quieto || o.refresco) return;
@@ -1023,6 +1024,6 @@ export function descansoPantalla(params, nav) {
         escalonar(nodo.querySelectorAll('.linea-sig'), { desde: 60, retraso: 50 });
       }
     },
-    alSalir() { parar(); guardarPrep(true); },
+    alSalir() { parar(); guardarPrep(true); vigilarChips(nodo, false); },
   };
 }

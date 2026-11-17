@@ -917,3 +917,13 @@
 @media (max-height: 720px) { .lo-molido .muela-descanso { display: none; } .lo-molido .descanso-reloj { margin-top: auto; font-size: 60px; } }
 .moliendo-muela { width: min(184px, 46vw, 21dvh); height: min(184px, 46vw, 21dvh); }
 @media (max-height: 720px) { .moliendo-muela { width: min(130px, 19dvh); height: min(130px, 19dvh); } }
+
+/* G121 · Los chips del pie: si caben, iguales y centrados (sin hueco a un lado); si no, desde la izquierda y se desplazan.
+   La altura no cambia: la regla de distancias (G119) sigue igual. */
+.pie-chips { justify-content: center; }
+.pie-chips .chip { flex: 1 1 0; max-width: 176px; justify-content: center; }
+.pie-chips.mide, .pie-chips.desborda { justify-content: flex-start; }
+.pie-chips.mide .chip, .pie-chips.desborda .chip { flex: none; max-width: none; }
+.fila-pregunta { justify-content: center; }
+.fila-pregunta h3 { text-align: center; }
+.pie-chips .chip { white-space: nowrap; }

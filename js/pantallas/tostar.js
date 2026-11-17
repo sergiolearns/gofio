@@ -5,7 +5,7 @@
 // Regla del vistazo (G116): nombre y dosis, nada más. El porqué, en la libreta.
 import * as G from '../cerebro/index.js';
 import { estado, guardarSesion, siguienteHueco, seriesDelHueco, ajuste, ponerAjuste } from '../logica.js';
-import { el, esc, icono, grano, hoja, vibrar, reduceMovimiento, escalonar, pop, selloTri, avisar } from '../ui.js';
+import { el, esc, icono, grano, hoja, vibrar, reduceMovimiento, escalonar, pop, selloTri, avisar, vigilarChips } from '../ui.js';
 import * as S from '../sonidos.js';
 import { mantenerEncendida } from './serie.js';
 import { abrirLibreta } from './libreta.js';
@@ -276,7 +276,7 @@ export function tostarPantalla(params, nav) {
     nodo, pestana: null,
     alEntrar(o = {}) {
       mantenerEncendida(true);
-      requestAnimationFrame(() => colocarFondo(false));
+      requestAnimationFrame(() => { colocarFondo(false); vigilarChips(nodo); });
       cancelAnimationFrame(raf); raf = requestAnimationFrame(cuadro);
       if (o.refresco) return;
       tostando(); crepitar(2600);
@@ -285,7 +285,7 @@ export function tostarPantalla(params, nav) {
         escalonar(nodo.querySelectorAll('.tostar-titulo, .tostar-sub, .segmentado, .tostar-lista li, .tostar-pista, .pie-fuerza .chip, .boton-tostado'), { desde: 160, retraso: 35 });
       }
     },
-    alSalir() { cancelAnimationFrame(raf); anims.forEach((a) => a.cancel()); clearInterval(pops); clearTimeout(tCrep); S.tostarOff(); },
+    alSalir() { cancelAnimationFrame(raf); anims.forEach((a) => a.cancel()); clearInterval(pops); clearTimeout(tCrep); S.tostarOff(); vigilarChips(nodo, false); },
   };
 }
 

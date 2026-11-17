@@ -95,6 +95,24 @@ export function encajar(nodo, { min = 18, caja = nodo?.parentElement } = {}) {
   while (t > min && mide() > ancho + 1) { t -= 2; nodo.style.fontSize = t + 'px'; }
 }
 
+/**
+ * G121 · Los chips del pie: si caben, iguales y centrados (sin hueco a un lado); si no caben, desde la izquierda y
+ * la fila se desplaza. Se mide al pintar y cada vez que la fila cambia de tamaño (también al aparecer, de un momento
+ * de la serie a otro).
+ */
+export function medirChips(fila) {
+  if (!fila || !fila.clientWidth) return;
+  fila.classList.add('mide'); fila.classList.remove('desborda');
+  const desborda = fila.scrollWidth > fila.clientWidth + 1;
+  fila.classList.remove('mide'); fila.classList.toggle('desborda', desborda);
+}
+const vigiaChips = typeof ResizeObserver === 'function' ? new ResizeObserver((es) => es.forEach((e) => medirChips(e.target))) : null;
+export function vigilarChips(raiz, si = true) {
+  raiz.querySelectorAll('.pie-chips:not(.fila-pregunta)').forEach((f) => {
+    if (si) { medirChips(f); vigiaChips?.observe(f); } else vigiaChips?.unobserve(f);
+  });
+}
+
 /** Respuesta háptica: vibrate donde exista; en iOS 18+ el truco del interruptor (un clic en un <input switch>). */
 let interruptor;
 export function vibrar() {
