@@ -67,6 +67,7 @@ export function hoyPantalla(params = {}, nav) {
   else if (eleccion) porque = esc(sesion.diaId === plan.diaId ? 'Lo eliges tú. Y Gofio también.' : `Lo eliges tú. Gofio decía ${plan.nombre.toLowerCase()}.`);
   else porque = esc(porQue(plan));
   const titulo = mostrarHecho ? hechaHoy.nombre : sesion.nombre;
+  const bajo = mostrarHecho && window.innerHeight < 720;
 
   const filas = ejercicios.map((e, i) => {
     const p = presc[i]; const ej = G.ejercicio(e.ej);
@@ -83,8 +84,9 @@ export function hoyPantalla(params = {}, nav) {
     let manana = '';
     try { const m = G.sumarDias(fecha, 1); manana = planDeHoy(m, Date.parse(m + 'T18:00:00')).nombre.toLowerCase(); } catch { /* sin plan */ }
     cabezaTexto = '<p class="hoy-hecho-1">Hecho gofio. Ahora, a descansar.</p>';
-    cuerpo = `${cuentaMolienda(hechaHoy, r, dNum, fecha)}
-      ${manana ? `<p class="hoy-manana">Mañana, si vienes: <b>${esc(manana)}</b>.</p>` : ''}
+    // «Mañana» va dentro del papel: así nada se escribe nunca encima del borde de la muela (G111). Con poca molienda,
+    // el papel se centra en el hueco que queda; con mucha, va justo debajo del texto.
+    cuerpo = `<div class="relleno hueco-arriba"></div>${cuentaMolienda(hechaHoy, r, dNum, fecha, manana)}
       <div class="relleno"></div>
       <div class="hoy-pie-hecho"><button class="enlace" type="button" data-resumen>Ver la molienda</button><button class="enlace tenue" type="button" data-otro>Otra molienda</button></div>`;
   } else {
@@ -102,7 +104,7 @@ export function hoyPantalla(params = {}, nav) {
         <div class="fecha-hoy cifra" aria-label="Hoy, ${G.NOMBRE_DIA[G.diaSemana(fecha)]} ${dNum}">${dNum}</div>
         <div class="semana-triangulos" role="img" aria-label="Esta semana: ${entrenados} ${entrenados === 1 ? 'día entrenado' : 'días entrenados'}">${tri}</div>
       </div>
-      <h1 class="titulo-gigante hoy-titulo" id="titulo-hoy">${esc(titulo).replace(' + ', '<br>+ ')}</h1>
+      <h1 class="titulo-gigante hoy-titulo" id="titulo-hoy">${bajo ? esc(titulo) : esc(titulo).replace(' + ', '<br>+ ')}</h1>
       ${cabezaTexto}
     </header>
     <div class="hoy-cuerpo">${cuerpo}</div>
@@ -156,7 +158,8 @@ export function hoyPantalla(params = {}, nav) {
     nodo, pestana: 'hoy', cinta: false,
     alEntrar({ refresco } = {}) {
       requestAnimationFrame(() => {
-        ajustarTitulo(nodo.querySelector('.hoy-titulo'), { max: 92, min: 56, lineas: 2, alto: 0.86 });
+        // En un iPhone bajo, con la molienda hecha, el título va en una línea para que la cuenta y su sello se vean enteros.
+        ajustarTitulo(nodo.querySelector('.hoy-titulo'), bajo ? { max: 64, min: 36, lineas: 1, alto: 0.9 } : { max: 92, min: 56, lineas: 2, alto: 0.86 });
         colocarMuela(nodo, mostrarHecho);
       });
       if (refresco) { escalonar(nodo.querySelectorAll('.lista-hoy li'), { desde: 0, retraso: 35 }); return; }
@@ -198,7 +201,7 @@ function selloTinta(dia, mes) {
 }
 /** Kilos «molidos»: la suma de peso × reps de la sesión. Un dato, no una regla (con lastre cuenta solo el lastre). */
 const kilosMolidos = (ss) => Math.round(ss.reduce((a, x) => a + (x.peso ?? 0) * x.reps, 0));
-function cuentaMolienda(sesion, r, dia, fecha) {
+function cuentaMolienda(sesion, r, dia, fecha, manana = '') {
   const ss = seriesDe(sesion.id);
   const porEj = [];
   for (const x of [...ss].sort((a, b) => a.ts - b.ts)) {
@@ -224,6 +227,7 @@ function cuentaMolienda(sesion, r, dia, fecha) {
       <div class="cuenta-total"><span class="cuenta-etiqueta">Total</span>
         <b class="titular"><span data-contar="${r.series}">${r.series}</span> ${r.series === 1 ? 'grano' : 'granos'}</b>
         <p>${kgs ? `<span data-contar-kg="${kgs}">${kgs.toLocaleString('es-ES')}</span> kg molidos` : ''}${esc(mejor)}</p></div>
+      ${manana ? `<p class="cuenta-manana">Mañana, si vienes: <b>${esc(manana)}</b>.</p>` : ''}
       <div class="sello-sitio">${selloTinta(dia, mes)}<i class="aro-tinta" aria-hidden="true"></i></div>
     </div>
     ${sierra(true)}
@@ -232,12 +236,15 @@ function cuentaMolienda(sesion, r, dia, fecha) {
 /** G110 · Cómo entra: la primera vez tras la molienda, el sello se estampa con su golpe; luego las líneas y los números. */
 function entraLaCuenta(nodo, sesion) {
   const sitio = nodo.querySelector('.sello-sitio'), sello = sitio?.querySelector('.sello-tinta');
-  const lineas = nodo.querySelectorAll('.cuenta-lineas li, .cuenta-total, .hoy-manana, .hoy-pie-hecho > *');
+  const lineas = nodo.querySelectorAll('.cuenta-lineas li, .cuenta-total, .cuenta-manana, .hoy-pie-hecho > *');
   let visto = null;
-  try { visto = sessionStorage.getItem('gofio-sello'); } catch { /* sin almacenamiento */ }
+  // Una sola vez por molienda (también entre aperturas de la app).
+  try { visto = localStorage.getItem('gofio-sello'); } catch { /* sin almacenamiento */ }
   if (reduceMovimiento() || visto === sesion.id || !sello) return;
-  try { sessionStorage.setItem('gofio-sello', sesion.id); } catch { /* */ }
-  const ocultos = [sello, ...lineas].map((n) => n.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1e6 }));
+  try { localStorage.setItem('gofio-sello', sesion.id); } catch { /* */ }
+  // G111 · El sello no se ve hasta que se estampa (antes asomaba quieto un momento y luego caía).
+  const tapaSello = sello.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1e6 });
+  const ocultos = [...lineas].map((n) => n.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1e6 }));
   cuandoRevelada(() => setTimeout(() => {
     ocultos.forEach((a) => a.cancel());
     escalonar(lineas, { desde: 0, retraso: 45 });
@@ -246,7 +253,9 @@ function entraLaCuenta(nodo, sesion) {
     const k = nodo.querySelector('[data-contar-kg]');
     if (k) { const hasta = Number(k.dataset.contarKg), t0 = performance.now(); const paso = (t) => { const p = Math.min(1, (t - t0) / 900); k.textContent = Math.round(hasta * (1 - Math.pow(1 - p, 3))).toLocaleString('es-ES'); if (p < 1) requestAnimationFrame(paso); }; requestAnimationFrame(paso); }
     // El golpe del sello: llega grande y ladeado, baja de golpe (tambor y vibración), rebota y deja un aro de tinta.
-    setTimeout(() => {
+    // Si el sello queda fuera de la pantalla (iPhone pequeño, molienda larga), se estampa cuando aparece al bajar.
+    const estampar = () => {
+      tapaSello.cancel();
       sello.animate([
         { transform: 'rotate(-40deg) scale(1.6)', opacity: 0 },
         { transform: 'rotate(-14deg) scale(.93)', opacity: 1, offset: 0.55 },
@@ -257,7 +266,13 @@ function entraLaCuenta(nodo, sesion) {
         S.suena('tambor'); vibrar();
         sitio.querySelector('.aro-tinta')?.animate([{ transform: 'scale(.8)', opacity: 0.45 }, { transform: 'scale(1.5)', opacity: 0 }], { duration: 520, easing: 'ease-out' });
       }, 300);
-    }, 420);
+    };
+    const r0 = sitio.getBoundingClientRect(), alto = nodo.getBoundingClientRect().bottom - 70;
+    if (r0.top + r0.height * 0.6 < alto || !('IntersectionObserver' in window)) setTimeout(estampar, 420);
+    else {
+      const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); setTimeout(estampar, 120); } }, { root: nodo, threshold: 0.8, rootMargin: '0px 0px -90px 0px' });  // sin contar lo que tapan las pestañas
+      io.observe(sitio);
+    }
   }, 120));
 }
 
