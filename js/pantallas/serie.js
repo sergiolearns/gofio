@@ -184,38 +184,38 @@ export function seriePantalla(params, nav) {
         <div class="valor"><span class="cifra reps num" data-v-reps>${reps}</span><span class="unidad">reps</span></div>
         <button class="redondo" type="button" data-reps="1" data-son="1" aria-label="Una rep más">${icono('mas')}</button>
       </div>
-      <div class="rir" role="group" aria-labelledby="rir-t">
-        <h3 class="titular" id="rir-t">¿Cuántas te quedaban?</h3>
-        <div class="rir-botones">${G.BOTONES_RIR.map((v) => `<button type="button" data-rir="${v}" data-son="none" aria-pressed="false">${v === 4 ? '4+' : v}</button>`).join('')}</div>
-        <div class="rir-pie"><span>al fallo</span><span>sobrado</span></div>
+      <p class="como-pista" data-como-pista></p>
+      <button class="enlace como-aun-no" type="button" data-aun-no>‹ Aún no la he hecho</button>
+    </div>
+    <div class="pie-fuerza como-solo">
+      <div class="pie-chips fila-pregunta"><h3 class="titular" id="rir-t">¿Cuántas te quedaban?</h3></div>
+      <div class="fila-accion rir-botones" role="group" aria-labelledby="rir-t">${G.BOTONES_RIR.map((v) => `<button type="button" data-rir="${v}" data-son="none" aria-pressed="false" aria-label="${v === 0 ? '0, al fallo' : v === 4 ? '4 o más, sobrado' : v}"><b>${v === 4 ? '4+' : v}</b>${v === 0 ? '<small>al fallo</small>' : v === 4 ? '<small>sobrado</small>' : ''}</button>`).join('')}</div>
+    </div>
+    <div class="pie-fuerza moliendo-solo">
+      <div class="pie-chips">
+        <button class="chip" type="button" data-aun-no-mol>Aún no</button>
+        <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
+        <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>
       </div>
+      <div class="fila-accion"><button class="boton boton-hecha" type="button" data-hecha data-son="none">${icono('check')}Hecha</button></div>
     </div>
-    <div class="relleno"></div>
-    <div class="como-pie como-solo">
-      <p data-como-pista></p>
-      <button class="enlace" type="button" data-aun-no>‹ Aún no la he hecho</button>
+    <div class="pie-fuerza ahora-solo">
+      <div class="pie-chips">${arrimando ? `
+        <button class="chip" type="button" data-saltar-piedras>Saltar las piedras</button>
+        <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
+        <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>` : `
+        ${sePuedeArrimar ? `<button class="chip" type="button" data-arrimar>${icono('piedra')}Arrimar</button>` : ''}
+        <button class="chip" type="button" data-una-mas>${icono('grano')}La ñapa</button>
+        <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
+        <button class="chip" type="button" data-nota>${icono('nota')}Nota</button>
+        <button class="chip" type="button" data-lista>${icono('lista')}Ejercicios</button>
+        <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>
+        ${n > 0 ? '<button class="chip" type="button" data-deshacer>Borrar la última</button>' : ''}`}
+      </div>
+      <div class="fila-accion">${arrimando
+        ? `<button class="boton boton-hecha" type="button" data-hecha-piedra data-son="none">${icono('check')}Hecha</button>`
+        : `<button class="boton boton-brega" type="button" data-brega data-son="none">¡A la brega!</button>`}</div>
     </div>
-    <div class="moliendo-pie moliendo-solo">
-      <button class="chip" type="button" data-aun-no-mol>Aún no</button>
-      <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
-      <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>
-    </div>
-    <div class="serie-herramientas ahora-solo">${arrimando ? `
-      <button class="chip" type="button" data-saltar-piedras>Saltar las piedras</button>
-      <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
-      <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>` : `
-      ${sePuedeArrimar ? `<button class="chip" type="button" data-arrimar>${icono('piedra')}Arrimar</button>` : ''}
-      <button class="chip" type="button" data-una-mas>${icono('grano')}La ñapa</button>
-      <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
-      <button class="chip" type="button" data-nota>${icono('nota')}Nota</button>
-      <button class="chip" type="button" data-lista>${icono('lista')}Ejercicios</button>
-      <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>
-      ${n > 0 ? '<button class="chip" type="button" data-deshacer>Borrar la última</button>' : ''}`}
-    </div>
-    ${arrimando
-      ? `<button class="boton boton-guardar boton-hecha ahora-solo" type="button" data-hecha-piedra data-son="none">${icono('check')}Hecha</button>`
-      : `<button class="boton boton-guardar boton-brega ahora-solo" type="button" data-brega data-son="none">¡A la brega!</button>`}
-    <button class="boton boton-guardar boton-hecha moliendo-solo" type="button" data-hecha data-son="none">${icono('check')}Hecha</button>
   </section>`);
 
   const vPeso = nodo.querySelector('[data-v-peso]');
@@ -352,14 +352,14 @@ export function seriePantalla(params, nav) {
       if (de === 'ahora') { flip(desdeP, vPeso); flip(desdeR, vReps); } else aparece([vPeso, vReps], 60, 18);
       aparece([...nodo.querySelectorAll('.como-cabeza > *')], 0, -10);
       aparece([...nodo.querySelectorAll('.contador .redondo, .contador .unidad')], 200, 0);
-      aparece([nodo.querySelector('.rir h3'), ...nodo.querySelectorAll('.rir-botones button'), nodo.querySelector('.rir-pie')], 260, 16);
-      aparece([...nodo.querySelectorAll('.como-pie > *')], 420, 8);
+      aparece([nodo.querySelector('.fila-pregunta h3'), ...nodo.querySelectorAll('.rir-botones button')], 260, 16);
+      aparece([...nodo.querySelectorAll('.como-pista, .como-aun-no')], 420, 8);
     } else if (m === 'moliendo') {
       aparece([nodo.querySelector('.moliendo-que'), nodo.querySelector('.moliendo-etiqueta')], 0, -8);
       muelaMol.animate([{ opacity: 0, transform: 'scale(.6) rotate(-90deg)' }, { opacity: 1, transform: 'none' }], { duration: 560, easing: 'cubic-bezier(.34,1.3,.64,1)', fill: 'backwards' });
-      aparece([nodo.querySelector('.moliendo-animo'), nodo.querySelector('.moliendo-pista'), nodo.querySelector('.moliendo-pie'), nodo.querySelector('[data-hecha]')], 260, 14);
+      aparece([nodo.querySelector('.moliendo-animo'), nodo.querySelector('.moliendo-pista'), ...nodo.querySelectorAll('.pie-fuerza.moliendo-solo .chip'), nodo.querySelector('[data-hecha]')], 260, 14);
     } else {
-      escalonar(nodo.querySelectorAll('.serie-titulo, .aviso-serie, .senal-fuerte, .piedras, .ahora > *, .serie-herramientas, .boton-brega, .boton-hecha:not(.moliendo-solo)'), { desde: 0, retraso: 35 });
+      escalonar(nodo.querySelectorAll('.serie-titulo, .aviso-serie, .senal-fuerte, .piedras, .ahora > *, .pie-fuerza.ahora-solo .chip, .pie-fuerza.ahora-solo .boton'), { desde: 0, retraso: 35 });
     }
   }
   // «¡A la brega!» (G115): la cortinilla de la serie y, detrás, Moliendo.
@@ -504,7 +504,7 @@ export function seriePantalla(params, nav) {
         encajar(nodo.querySelector('[data-ahora-peso]')); encajar(molQue, { caja: nodo.querySelector('.moliendo') });
       });
       if (momento0 === 'moliendo') { girarMuela(true); entrarMolienda(); }
-      if (anima) escalonar(nodo.querySelectorAll('.aviso-serie, .senal-fuerte, .piedras, .ahora > *, .serie-herramientas .chip, .boton-brega, .boton-hecha:not(.moliendo-solo)'), { desde: 0, retraso: 35 });
+      if (anima) escalonar(nodo.querySelectorAll('.aviso-serie, .senal-fuerte, .piedras, .ahora > *, .pie-fuerza.ahora-solo .chip, .pie-fuerza.ahora-solo .boton'), { desde: 0, retraso: 35 });
       if (vasFuerte && !reduceMovimiento()) {
         const sf = nodo.querySelector('.senal-fuerte b');
         sf?.animate([{ transform: 'scale(1.4)', opacity: 0 }, { transform: 'scale(.96)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' });
@@ -768,16 +768,17 @@ export function descansoPantalla(params, nav) {
     ${molido ? `<div class="molido-reloj">${muelaHTML('chica')}${relojHTML}</div>${resumen}` : `${muelaHTML()}${relojHTML}`}
     <p class="titular descanso-frase suelta" data-frase aria-live="polite"></p>
     ${mismo ? tarjetaMismo : loQueViene}
-    <div class="descanso-herramientas">
-      <button class="chip" type="button" data-d-cambiar>${icono('cambiar')}Cambiar</button>
-      ${ultima ? '<button class="chip" type="button" data-d-borrar>Borrar la última</button>' : ''}
-      <button class="chip" type="button" data-d-terminar>${icono('fin')}Terminar</button>
-    </div>
     <div class="puntos" data-puntos aria-hidden="true"><span></span><span></span><span></span></div>
-    <div class="relleno"></div>
-    <div class="descanso-pie">
-      <button class="boton-pintadera" type="button" data-mas data-son="aire" aria-label="Treinta segundos más">${pintadera('+30')}</button>
-      <button class="boton ${mismo ? 'boton-brega' : ''}" type="button" data-ya data-son="none">${mismo ? '¡A la brega!' : 'Al siguiente'}</button>
+    <div class="pie-fuerza">
+      <div class="pie-chips">
+        <button class="chip" type="button" data-d-cambiar>${icono('cambiar')}Cambiar</button>
+        ${ultima ? '<button class="chip" type="button" data-d-borrar>Borrar la última</button>' : ''}
+        <button class="chip" type="button" data-d-terminar>${icono('fin')}Terminar</button>
+      </div>
+      <div class="fila-accion descanso-accion">
+        <button class="boton-pintadera" type="button" data-mas data-son="aire" aria-label="Treinta segundos más">${pintadera('+30')}</button>
+        <button class="boton ${mismo ? 'boton-brega' : ''}" type="button" data-ya data-son="none">${mismo ? '¡A la brega!' : 'Al siguiente'}</button>
+      </div>
     </div>
   </section>`);
 
@@ -984,7 +985,7 @@ export function descansoPantalla(params, nav) {
         // La muela llega rodando desde la derecha y frena largo en el centro (storyboard, 600-1000 ms).
         nodo.querySelector('.muela-descanso').animate([{ translate: '120vw 0', rotate: '540deg' }, { translate: '0 0', rotate: '0deg' }], { duration: 520, easing: 'cubic-bezier(.22,1,.36,1)' });
         cgs.forEach((g, k) => g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 380 + k * 14, fill: 'backwards' }));
-        escalonar(nodo.querySelectorAll('.molido-cuerpo > *, .tarjeta-sig, .lo-que-viene, .descanso-pie > *'), { desde: 260, retraso: 45 });
+        escalonar(nodo.querySelectorAll('.molido-cuerpo > *, .tarjeta-sig, .lo-que-viene, .pie-fuerza .chip, .descanso-accion > *'), { desde: 260, retraso: 45 });
       }
       if (params.nyapa) {
         params.nyapa = false;

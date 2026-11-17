@@ -591,7 +591,7 @@
 .cg { fill: var(--millo); stroke: var(--basalto-3); stroke-width: 0; transition: fill .5s ease, stroke-width .5s ease; }
 .cg.cg-molido { fill: rgba(212,146,43,0); stroke-width: 16; }
 .descanso.reanima .cg:not(.cg-molido) { fill: #F0B04A; }
-.descanso .muela-descanso { width: min(272px, 66vw, calc(100dvh - 618px - var(--abajo))); height: min(272px, 66vw, calc(100dvh - 618px - var(--abajo))); min-width: 112px; min-height: 112px; margin-top: 14px; }
+.descanso .muela-descanso { width: min(272px, 66vw, calc(100dvh - 642px - var(--abajo))); height: min(272px, 66vw, calc(100dvh - 642px - var(--abajo))); min-width: 112px; min-height: 112px; margin-top: 14px; }
 .descanso .muela-descanso img { will-change: transform; }
 .descanso-reloj { margin-top: min(18px, 2dvh); font-size: min(96px, 11.5dvh); }
 .descanso-frase { margin-top: 10px; font-size: 26px; }
@@ -798,4 +798,65 @@
   .nyapa { min-height: 44px; margin-top: 8px; }
   .lo-que-viene { margin-top: 8px; padding: 8px 14px 10px; }
   .lqv-nombre { font-size: 22px; }
+}
+
+/* ════════ G119 · La regla de distancias de las pantallas de fuerza (Tostar, la serie y el descanso) ════════
+   Tres zonas, iguales en todas: la cabecera arriba (Hoy, granos, libreta: 44 px), el cuerpo en medio (centrado en el
+   hueco que quede, salvo las listas, que van arriba) y EL PIE abajo, siempre en el mismo sitio: una fila de chips (o la
+   pregunta) de 44 px, 12 px de aire y la acción de 72 px (62 en un iPhone bajo), a 20 px de la barra de inicio. Si no
+   cabe todo, el cuerpo se desplaza por detrás del pie, que no se mueve. */
+:root { --f-chips: 44px; --f-hueco: 12px; --f-boton: 72px; }
+@media (max-height: 720px) { :root { --f-boton: 62px; } }
+.pantalla.serie, .pantalla.descanso, .pantalla.tostar { --f-abajo: calc(var(--abajo) + 20px); padding-bottom: var(--f-abajo); }
+.serie, .tostar { --fondo: var(--basalto); }
+.pie-fuerza { position: sticky; bottom: var(--f-abajo); z-index: 3; flex: none; margin: auto -24px 0; padding: 16px 24px 0; display: flex; flex-direction: column; gap: var(--f-hueco);
+  background: linear-gradient(to bottom, rgba(27,25,23,0), var(--fondo) 16px); }
+.descanso .pie-fuerza { background: linear-gradient(to bottom, rgba(22,20,18,0), var(--fondo) 16px); }
+.pie-fuerza::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: var(--f-abajo); background: var(--fondo); }
+.pie-chips { flex: none; height: var(--f-chips); margin: 0 -24px; padding: 0 24px; display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; touch-action: pan-x; }
+.pie-chips::-webkit-scrollbar { display: none; }
+.pie-chips .chip { flex: none; height: 40px; padding: 0 14px; border-radius: 20px; font-size: 14px; }
+.pie-chips .chip svg { width: 16px; height: 16px; color: var(--millo); }
+.fila-accion { flex: none; height: var(--f-boton); display: flex; align-items: center; gap: 12px; }
+.fila-accion > .boton { flex: 1; align-self: stretch; min-height: 0; height: auto; margin: 0; }
+.fila-accion > .boton-hecha, .fila-accion > .boton-brega { font-size: 34px; }
+.fila-accion .boton-pintadera { width: var(--f-boton); height: var(--f-boton); }
+.fila-pregunta { overflow: visible; }
+.fila-pregunta h3 { margin: 0; font-size: 26px; font-weight: 800; line-height: 1; }
+.fila-accion.rir-botones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; align-items: stretch; }
+.fila-accion.rir-botones button { height: auto; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.fila-accion.rir-botones button b { font-size: 28px; line-height: 1; }
+.fila-accion.rir-botones button small { margin-top: 3px; font-family: var(--letra-texto); font-stretch: normal; font-size: 10px; font-weight: 700; color: var(--piedra); }
+.fila-accion.rir-botones button[aria-pressed="true"] small { color: var(--basalto); }
+/* El cuerpo: centrado en el hueco entre la cabecera y el pie. */
+.serie .pie-fuerza, .descanso:not(.lo-molido) .pie-fuerza { margin-top: 0; }
+.serie .ahora, .serie .moliendo, .serie .numeros { margin-top: auto; margin-bottom: auto; }
+.serie .numeros { gap: min(22px, 2.6dvh); padding: 12px 0; }
+.como-pista { margin: 0; min-height: 0; text-align: center; font-size: 14px; color: var(--piedra); }
+.como-pista.marca { align-self: center; display: inline-flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 16px; background: var(--millo); color: var(--basalto); font-size: 16px; font-weight: 800; }
+.como-pista.marca svg { width: 22px; height: 22px; color: var(--almagre); }
+.como-pista:empty { display: none; }
+.como-aun-no { align-self: center; min-height: 44px; color: var(--millo); }
+.descanso:not(.lo-molido) .muela-descanso { margin-top: auto; }
+.descanso:not(.lo-molido) .puntos { margin-bottom: auto; }
+.descanso-accion .boton { font-size: 26px; background: #3A2620; color: #D9A79A; box-shadow: none; transition: background-color .5s ease, color .5s ease, box-shadow .5s ease, transform .14s var(--curva-salida); }
+.descanso-accion .boton::before { display: none; }
+.descanso.mira .descanso-accion .boton { background: #4A2A22; color: #E8B8AA; }
+.descanso.reanima .descanso-accion .boton, .descanso.ya .descanso-accion .boton { background: var(--almagre); color: var(--almagre-texto); box-shadow: 0 0 0 4px rgba(212,146,43,.35), 0 8px 28px rgba(184,66,46,.5); }
+.tostador { width: min(176px, 46vw); }
+.tt-fila { min-height: 48px; }
+.moliendo-muela { width: min(200px, 50vw, 24dvh); height: min(200px, 50vw, 24dvh); }
+.serie .contador .cifra.peso { font-size: min(104px, 12dvh); }
+.serie .contador .cifra.reps { font-size: min(84px, 10dvh); }
+@media (max-height: 720px) {
+  .fila-accion > .boton-hecha, .fila-accion > .boton-brega { font-size: 30px; }
+  .fila-pregunta h3 { font-size: 22px; }
+  .tostador { width: min(140px, 38vw); }
+}
+.tostar-lista { margin-top: 6px; }
+.tostar-pista { margin-top: 4px; }
+@media (max-height: 720px) {
+  .tt-fila { min-height: 42px; }
+  .moliendo-muela { width: min(130px, 19dvh); height: min(130px, 19dvh); }
+  .tostar-pista { display: none; } /* en un iPhone bajo, la lista entera antes que la pista */
 }

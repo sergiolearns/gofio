@@ -79,10 +79,9 @@ export function tostarPantalla(params, nav) {
     </div>
     <ul class="tostar-lista" data-lista></ul>
     ${ajuste('pistaTostar') ? '' : '<p class="tostar-pista" data-pista>Toca cada uno al hacerlo.</p>'}
-    <div class="relleno"></div>
-    <div class="tostar-pie">
-      <button class="tostar-saltar" type="button" data-saltar>Saltar<br>por hoy</button>
-      <button class="boton boton-guardar boton-tostado" type="button" data-tostado data-son="none">${selloTri('st-boton')}Ya está tostado</button>
+    <div class="pie-fuerza">
+      <div class="pie-chips"><button class="chip" type="button" data-saltar>Saltar por hoy</button></div>
+      <div class="fila-accion"><button class="boton boton-tostado" type="button" data-tostado data-son="none">${selloTri('st-boton')}Ya está tostado</button></div>
     </div>
   </section>`);
 
@@ -283,7 +282,7 @@ export function tostarPantalla(params, nav) {
       tostando(); crepitar(2600);
       if (!quieto) {
         nodo.querySelector('.tostador-caja').animate([{ opacity: 0, transform: 'translateY(16px) scale(.92)' }, { opacity: 1, transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.34,1.3,.64,1)', fill: 'backwards' });
-        escalonar(nodo.querySelectorAll('.tostar-titulo, .tostar-sub, .segmentado, .tostar-lista li, .tostar-pista, .tostar-saltar, .boton-tostado'), { desde: 160, retraso: 35 });
+        escalonar(nodo.querySelectorAll('.tostar-titulo, .tostar-sub, .segmentado, .tostar-lista li, .tostar-pista, .pie-fuerza .chip, .boton-tostado'), { desde: 160, retraso: 35 });
       }
     },
     alSalir() { cancelAnimationFrame(raf); anims.forEach((a) => a.cancel()); clearInterval(pops); clearTimeout(tCrep); S.tostarOff(); },
