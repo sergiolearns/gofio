@@ -137,10 +137,15 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
     nodo, pestana: null, sinGesto: paso === 0, cinta: paso !== 0,
     alEntrar() {
       // G75 · El disco de la portada sigue el giro que trae la muela de la cortinilla y frena largo, sin parón.
+      // Arranca cuando la cortinilla se abre (antes giraba detrás de ella y al verse ya estaba quieto).
       const disco = nodo.querySelector('.bienvenida-disco img');
       if (disco && !reduceMovimiento()) {
-        disco.animate([{ transform: 'rotate(-70deg)' }, { transform: 'rotate(0deg)' }], { duration: 1600, easing: 'cubic-bezier(.16,1,.3,1)' });
-        cuandoRevelada(() => escalonar(nodo.querySelectorAll('.portada-pie > *, .portada-granos .grano'), { desde: 120, retraso: 50 }));
+        if (!window.gofioRevelada) disco.style.transform = 'rotate(-80deg)';
+        cuandoRevelada(() => {
+          disco.animate([{ transform: 'rotate(-80deg)' }, { transform: 'rotate(0deg)' }], { duration: 1800, easing: 'cubic-bezier(.16,1,.3,1)' });
+          disco.style.transform = '';
+          escalonar(nodo.querySelectorAll('.portada-pie > *, .portada-granos .grano'), { desde: 160, retraso: 50 });
+        });
       }
       escalonar(nodo.querySelectorAll('.tarjeta-eleccion, .fila-opciones .chip, .vista-rutina > *, .tarjeta .fila')); },
   };

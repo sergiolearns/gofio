@@ -39,8 +39,9 @@ export const descansoDe = (ejId) => ajuste('descanso')[G.ejercicio(ejId).tipo ==
 export function ultimaVez(ejId, antesDe = Infinity, { sinDiaMalo = false } = {}) {
   let ids = idsHechas();
   // R21: un día malo lleva más margen a propósito; para progresar (R12) se mira la última sesión normal, si la hay.
+  // Lo mismo con la semana de descarga (R13): su −10 % y su margen no hacen subir ni bajar el peso de después.
   if (sinDiaMalo) {
-    const normales = new Set(sesionesHechas().filter((x) => x.modo !== 'dia-malo').map((x) => x.id));
+    const normales = new Set(sesionesHechas().filter((x) => x.modo !== 'dia-malo' && x.modo !== 'descarga').map((x) => x.id));
     if (estado.series.some((x) => x.ejercicioId === ejId && normales.has(x.sesionId) && x.ts < antesDe)) ids = normales;
   }
   const s = estado.series.filter((x) => x.ejercicioId === ejId && ids.has(x.sesionId) && x.ts < antesDe);
@@ -70,8 +71,10 @@ export function prescripcion(slot, vuelta = vueltaHoy()) {
     p = { peso: inicial ?? null, accion: inicial != null ? 'inicial' : 'primera', rir: G.rirObjetivo(ej.tipo), reps: Array(slot.series).fill(slot.repMin), otraVez: null };
   }
   p.series = slot.series;
-  const conVuelta = G.aplicarVuelta(p, vuelta, escalon);
-  if (vuelta.tipo === 'larga') conVuelta.reps = conVuelta.reps.slice(0, conVuelta.series);
+  let conVuelta = G.aplicarVuelta(p, vuelta, escalon);
+  // R13 · Semana de descarga: la mitad de series, −10 % y dos más de margen (no se suma a una vuelta larga, que ya afloja).
+  if (descargaActiva() && vuelta.tipo !== 'larga' && !slot.diaMalo) conVuelta = { ...G.aplicarDescarga(conVuelta, escalon), descarga: true };
+  if (vuelta.tipo === 'larga' || conVuelta.descarga) conVuelta.reps = conVuelta.reps.slice(0, conVuelta.series);
   if (slot.diaMalo) { conVuelta.rir = slot.rir; conVuelta.series = slot.series; conVuelta.reps = conVuelta.reps.slice(0, slot.series); }
   return { ...conVuelta, vuelta: vuelta.tipo };
 }
@@ -112,8 +115,9 @@ export async function empezarSesion({ diaId, nombre, ejercicios, modo = 'normal'
     id: D.id(), fecha: hoy(), diaId, nombre, modo, vuelta: vuelta.tipo, inicio: Date.now(), fin: null, estado: 'en-curso',
     plan: ejercicios.map((e) => ({ ej: e.ej, series: e.series, repMin: e.repMin, repMax: e.repMax, ...(e.diaMalo ? { diaMalo: true, rir: e.rir } : {}) })),
   };
-  // La vuelta larga recorta series desde el principio (R14).
+  // La vuelta larga recorta series desde el principio (R14); la descarga, a la mitad (R13).
   if (vuelta.tipo === 'larga') s.plan = s.plan.map((p) => ({ ...p, series: Math.max(1, Math.round(p.series * vuelta.factorSeries)) }));
+  else if (descargaActiva() && modo !== 'dia-malo') { s.modo = 'descarga'; s.plan = s.plan.map((p) => ({ ...p, series: Math.max(1, Math.round(p.series / 2)) })); }
   estado.sesiones.push(s);
   await D.guardar('sesiones', s);
   return s;
@@ -186,3 +190,80 @@ export function resumen(sesion) {
   }
   return { series: ss.length, minutos, ejercicios: ejercicios.length, mejor, duro: ss.length >= 20 || minutos >= 70 || sesion.modo === 'dia-malo' };
 }
+
+// ── v0.2 · Progresión ──────────────────────────────────────────────────────────
+
+/** R13 · ¿Hay una semana de descarga en marcha? (la empieza Sergio desde Progreso; dura 7 días). */
+export function descargaActiva(fecha = hoy()) {
+  const d = ajuste('descarga');
+  return !!d && fecha >= d.desde && fecha <= d.hasta;
+}
+export async function empezarDescarga() {
+  await ponerAjuste('descarga', { desde: hoy(), hasta: G.sumarDias(hoy(), G.DIAS_DESCARGA - 1) });
+}
+export async function terminarDescarga() { await ponerAjuste('descarga', null); }
+export async function apartarDescarga() { await ponerAjuste('descargaApartada', hoy()); }
+
+/** Las sesiones que cuentan para la tendencia de fuerza: las normales (sin día malo ni descarga, como en R12). */
+const sesionesNormales = () => new Set(sesionesHechas().filter((x) => x.modo !== 'dia-malo' && x.modo !== 'descarga').map((x) => x.id));
+
+/**
+ * R11 + R12 · La fuerza de cada ejercicio hecho en las últimas `semanas` semanas: su serie por sesión, su estado,
+ * su fuerza de ahora y cuánto ha cambiado en esa ventana (diseño de Gofio: 6 semanas).
+ */
+export function fuerzaEjercicios(semanas = 6, fecha = hoy()) {
+  const desde = G.sumarDias(fecha, -7 * semanas + 1);
+  const normales = sesionesNormales();
+  const porEj = new Map();
+  for (const s of estado.series) {
+    if (!normales.has(s.sesionId)) continue;
+    if (!porEj.has(s.ejercicioId)) porEj.set(s.ejercicioId, []);
+    porEj.get(s.ejercicioId).push(s);
+  }
+  const res = [];
+  for (const [ej, xs] of porEj) {
+    const todas = G.fuerzaPorSesion(xs);
+    const ventana = todas.filter((x) => x.fecha >= desde);
+    if (!ventana.length) continue;
+    const estadoF = G.estadoFuerza(todas);
+    res.push({ ej, sesiones: ventana, todas, estado: estadoF, ahora: ventana.at(-1).e1rm, cambio: ventana.length > 1 ? ventana.at(-1).e1rm - ventana[0].e1rm : null, ultima: ventana.at(-1).fecha });
+  }
+  // Primero lo que se hizo hace menos.
+  return res.sort((a, b) => (a.ultima < b.ultima ? 1 : a.ultima > b.ultima ? -1 : 0));
+}
+
+/** R13 · ¿Toca proponer una descarga? (y no si ya está en marcha o se apartó hace menos de una semana). */
+export function propuestaDescarga(fuerza = fuerzaEjercicios()) {
+  if (descargaActiva()) return null;
+  const apartada = ajuste('descargaApartada');
+  if (apartada && G.diasEntre(apartada, hoy()) < 7) return null;
+  const hechas = sesionesHechas();
+  const r = G.senalesDescarga({
+    atascados: fuerza.filter((f) => f.estado === 'atascado').length,
+    sensaciones: hechas.map((x) => x.sensacion ?? null),
+    fechas: hechas.map((x) => x.fecha), hoy: hoy(),
+  });
+  return r.proponer ? r : null;
+}
+
+/** Guarda cómo dejó una molienda (R13.2): 'entero', 'molido' o 'molesta'. */
+export async function ponerSensacion(sesion, valor) { sesion.sensacion = valor; await D.guardar('sesiones', sesion); }
+
+/** Una copia editable de la plantilla (la de Sergio vive en el código: se copia a Ajustes al primer cambio). */
+const plantillaEditable = () => JSON.parse(JSON.stringify(ajuste('plantilla')));
+/** R12 → R22 · Cambia un ejercicio atascado por otro del mismo patrón en toda la plantilla. */
+export async function cambiarEnPlantilla(viejo, nuevo) {
+  const p = plantillaEditable();
+  for (const d of p.dias) for (const e of d.ejercicios) if (e.ej === viejo) e.ej = nuevo;
+  await ponerAjuste('plantilla', p);
+}
+/** R12 · Baja el rango de repeticiones de un ejercicio atascado en toda la plantilla. */
+export async function cambiarRango(ej, { repMin, repMax }) {
+  const p = plantillaEditable();
+  for (const d of p.dias) for (const e of d.ejercicios) if (e.ej === ej) { e.repMin = repMin; e.repMax = repMax; }
+  await ponerAjuste('plantilla', p);
+}
+/** El rango que tiene un ejercicio en la plantilla (el primero que aparece). */
+export const rangoEnPlantilla = (ej) => ajuste('plantilla').dias.flatMap((d) => d.ejercicios).find((e) => e.ej === ej) ?? null;
+/** El hueco de plantilla de un ejercicio, para pedir su prescripción (R12) desde Progreso. */
+export const huecoDe = (ej) => { const e = rangoEnPlantilla(ej); return e ? { ...e } : { ej, series: 3, repMin: 8, repMax: 12 }; };

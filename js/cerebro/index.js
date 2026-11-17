@@ -12,3 +12,4 @@ export * from './dia-malo.js';     // R21
 export * from './sustituciones.js';// R22
 export * from './constancia.js';   // R23
 export * from './generador.js';    // R25
+export * from './fuerza.js';     // R11-R13 (v0.2)
