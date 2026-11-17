@@ -71,7 +71,7 @@
 .hoy .fila-titulo { min-height: 0; padding-bottom: 8px; align-items: baseline; }
 .hoy .fila-titulo h2 { color: var(--harina-texto); font-size: 15px; }
 .hoy .fila-titulo .enlace { font-size: 14px; font-weight: 600; padding: 6px 0; }
-.lista-hoy { list-style: none; margin: 0; padding: 2px 16px; background: var(--basalto-2); border-radius: 18px; }
+.lista-hoy { list-style: none; margin: 0; padding: 0 16px; background: var(--basalto-2); border-radius: 18px; }
 .lista-hoy li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 50px; border-top: 1px solid var(--basalto-3); cursor: pointer; }
 .lista-hoy li:first-child { border-top: 0; }
 .lista-hoy .nombre { flex: 1 1 auto; font-size: 15px; font-weight: 600; line-height: 1.2; }
@@ -84,13 +84,13 @@
 .lista-hoy li { transition: transform .12s var(--curva-salida); position: relative; overflow: hidden; }
 .lista-hoy li:active { transform: scale(.985); }
 /* G100 · Deslizar: la fila se mueve sobre su fondo (almagre «Quitar» a la izquierda, millo «Cambiar» a la derecha). */
-.lista-hoy { overflow: hidden; }
+.lista-hoy { overflow: hidden; clip-path: inset(0 round 18px); } /* en iOS, overflow + radio no recorta lo que se mueve con transform */
 .lista-hoy li { margin: 0 -16px; padding: 0; display: block; touch-action: pan-y; border-top: 0; }
 .lista-hoy li + li .fila-mueve::before { content: ''; position: absolute; left: 16px; right: 16px; top: 0; height: 1px; background: var(--basalto-3); }
 .lista-hoy .fila-mueve { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   min-height: 50px; padding: 0 16px; background: var(--basalto-2); will-change: transform; }
 .lista-hoy li.arrastrando, .lista-hoy li.arrastrando:active { transform: none; }
-.fondo-accion { position: absolute; inset: 0; display: flex; align-items: center; gap: 8px; padding: 0 22px; opacity: 0;
+.fondo-accion { position: absolute; inset: -1px 0; display: flex; align-items: center; gap: 8px; padding: 0 22px; opacity: 0;
   font-weight: 700; font-size: 15px; letter-spacing: .02em; }
 .fondo-accion svg { width: 18px; height: 18px; flex: none; transition: transform .18s cubic-bezier(.34,1.56,.64,1); }
 .fondo-accion.quitar { justify-content: flex-end; background: var(--almagre); color: var(--almagre-texto); }
