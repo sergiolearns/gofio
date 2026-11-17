@@ -81,9 +81,10 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
   let rir = null;   // G105: la reserva no viene marcada; la eliges al acabar la serie
   let fallo = false; // R27 (G106): al fallo, solo esta serie y solo si lo eliges tú
   const escalon = escalonDe(slot.ej);
+  const lastre = !!ej.lastre;
   // R26 · Calentar (G106): solo antes de la primera serie de trabajo del ejercicio. No cuenta: se guarda en la sesión.
   const calHechos = (s.calentamientos ?? []).filter((c) => c.i === i);
-  const listaCal = n === 0 ? G.calentamiento(peso, escalon) : [];
+  const listaCal = n === 0 ? G.calentamiento(peso, escalon, { lastre }) : [];
   const calentando = cal != null && n === 0;
   const totalCal = calentando ? Math.max(calN ?? listaCal.length, 1) : 0;
   if (calentando) {
@@ -91,7 +92,6 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     peso = c.peso; reps = c.reps;
   }
   const repsMeta = reps, pesoMeta = peso;
-  const lastre = !!ej.lastre;
   const aviso = avisoDe(p, slot, n);
   const record = mejorAntes(slot.ej, s.id);
   const restoTotal = s.plan.reduce((acc, _, k) => acc + Math.max(0, s.plan[k].series - seriesDelHueco(s, k).length), 0);
@@ -321,7 +321,7 @@ export function seriePantalla({ sesionId, i = 0, cal = null, calN = null, anima 
     if (w == null) {
       const v = await pedirNumero({ titulo: '¿Con cuánto vas?', sub: 'El peso de las series de trabajo. Con eso salen las ligeras.', valor: '' });
       if (v == null) return;
-      w = v; lista = G.calentamiento(w, escalon);
+      w = v; lista = G.calentamiento(w, escalon, { lastre });
       if (!lista.length) { avisar('Con ese peso no hace falta calentar.'); return; }
     }
     S.toque('aire'); nav.reemplazar('serie', { sesionId: s.id, i, cal: 0, calN: lista.length, anima: true, pesoTrabajo: w }, { sinAnimacion: true });

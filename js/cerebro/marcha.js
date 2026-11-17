@@ -11,7 +11,11 @@ import { volumen, TOPE_SESION } from './volumen.js';
  * (R9), la fuerza (R11) ni la progresión (R12): la app las guarda aparte, en la sesión.
  */
 export const CALENTAMIENTO = [{ f: 0.5, reps: 8 }, { f: 0.75, reps: 4 }];
-export function calentamiento(peso, escalon) {
+export function calentamiento(peso, escalon, { lastre = false } = {}) {
+  // Con lastre, si el lastre es poco (o ninguno), la ligera es sin lastre: con tu peso, pocas y fáciles (G109).
+  if (lastre && !(peso >= 2 * (Array.isArray(escalon) ? Math.min(...escalon) : escalon || 2.5))) {
+    return peso >= 0 ? [{ peso: 0, reps: peso > 0 ? 5 : 3 }] : [];
+  }
   if (!(peso > 0)) return [];
   const out = [];
   for (const { f, reps } of CALENTAMIENTO) {

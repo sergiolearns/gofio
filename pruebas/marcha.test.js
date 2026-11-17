@@ -26,6 +26,12 @@ test('R26 · calentamiento: 50 % × 8 y 75 % × 4, a tu escalón', () => {
   assert.deepEqual(G.calentamiento(null, 2.5), []);
 });
 
+test('R26 · con lastre ligero o sin lastre, la ligera es con tu peso (G109)', () => {
+  assert.deepEqual(G.calentamiento(2, 2.5, { lastre: true }), [{ peso: 0, reps: 5 }]);
+  assert.deepEqual(G.calentamiento(0, 2.5, { lastre: true }), [{ peso: 0, reps: 3 }]);
+  assert.deepEqual(G.calentamiento(20, 2.5, { lastre: true }), [{ peso: 10, reps: 8 }, { peso: 15, reps: 4 }]);
+});
+
 test('R27 · al fallo: mejor visto en aislamiento y máquinas que en libres pesados', () => {
   assert.equal(G.falloBienVisto('laterales-polea'), true);
   assert.equal(G.falloBienVisto('sentadilla-hack'), true);
