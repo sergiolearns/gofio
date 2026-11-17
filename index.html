@@ -71,6 +71,27 @@
   window.gofioMedir = medir;
 })();
 </script>
+<script>
+// G93 · Actualizar sin depender del aviso. La página (index.html) siempre llega nueva de la red (G63), pero el resto
+// de la app sale de lo guardado: si hay una versión nueva esperando y aún no has tocado nada, se aplica al abrir
+// (la cortinilla tapa la recarga). Si llega más tarde, sale el aviso «Hay versión nueva» y decides tú.
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  var tocado = false, recargado = false;
+  addEventListener('pointerdown', function () { tocado = true; }, { once: true, capture: true });
+  function aplicar(w) { if (w && !tocado && navigator.serviceWorker.controller) w.postMessage('saltar'); }
+  navigator.serviceWorker.getRegistration().then(function (reg) {
+    if (!reg) return;
+    if (reg.waiting) aplicar(reg.waiting);
+    reg.addEventListener('updatefound', function () {
+      var w = reg.installing;
+      if (w) w.addEventListener('statechange', function () { if (w.state === 'installed') aplicar(w); });
+    });
+    reg.update().catch(function () {});
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', function () { if (!recargado && !tocado) { recargado = true; location.reload(); } });
+})();
+</script>
 <link rel="preload" href="letras/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="letras/hanken-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>

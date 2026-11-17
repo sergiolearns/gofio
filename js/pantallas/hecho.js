@@ -3,7 +3,7 @@
 // caen escalonados, la sierra se dibuja de izquierda a derecha y «Lo más fino» entra al final. Sonido: G83.
 import * as G from '../cerebro/index.js';
 import { estado, resumen, planDeHoy, seriesDe } from '../logica.js';
-import { el, esc, kg, num, grano, contar, vibrar, reduceMovimiento, escalonar } from '../ui.js';
+import { el, esc, kg, num, grano, contar, vibrar, reduceMovimiento, escalonar, avisar } from '../ui.js';
 import { suena } from '../sonidos.js';
 
 /** R11 · Marcas nuevas de la sesión: ejercicios cuya mejor fuerza estimada supera la de antes. */
@@ -68,6 +68,8 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
       const sello = nodo.querySelector('.sello');
       const quieto = reduceMovimiento() || soloVer;
       if (!soloVer) setTimeout(() => suena('hecho'), 260);
+      // Si llegó una versión nueva durante el entreno, se ofrece ahora (G93).
+      if (!soloVer && window.gofioPendiente) setTimeout(() => { const w = window.gofioPendiente; window.gofioPendiente = null; avisar('Hay versión nueva', { texto: 'Actualizar', fijo: true, hacer: () => w.postMessage('saltar') }); }, 2600);
       nodo.querySelectorAll('[data-n]').forEach((c) => contar(c, Number(c.dataset.n), quieto ? 0 : 900));
       if (quieto) { if (reduceMovimiento() && !soloVer) nodo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 }); return; }
       // Se aclara a harina; el sello cae (140 ms, la única caída con aceleración) y se asienta con su golpe (220 ms).

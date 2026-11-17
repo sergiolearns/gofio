@@ -177,10 +177,14 @@ const aplicarSonidos = () => S.configurar({ sonidos: ajuste('sonidos') !== false
 function registrarSW() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
   navigator.serviceWorker.register('sw.js').then((reg) => {
+    // El aviso se queda hasta que lo toques (antes se iba a los 8 s y se perdía). Nunca a mitad de un entreno: con una
+    // molienda en curso se ofrece al terminarla o al volver a abrir la app (G93).
     const ofrecer = (w) => {
-      if (!w || sesionEnCurso()) return;
-      avisar('Hay versión nueva', { texto: 'Actualizar', hacer: () => w.postMessage('saltar') });
+      if (!w) return;
+      if (sesionEnCurso()) { window.gofioPendiente = w; return; }
+      avisar('Hay versión nueva', { texto: 'Actualizar', fijo: true, hacer: () => w.postMessage('saltar') });
     };
+    window.gofioBuscarVersion = async () => { await reg.update().catch(() => {}); if (reg.waiting) { reg.waiting.postMessage('saltar'); return true; } return !!reg.installing; };
     if (reg.waiting && navigator.serviceWorker.controller) ofrecer(reg.waiting);
     reg.addEventListener('updatefound', () => {
       const w = reg.installing;

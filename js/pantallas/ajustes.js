@@ -7,7 +7,7 @@ import * as S from '../sonidos.js';
 import { SERVIDOR, avisosPosibles, avisosActivos, encenderAvisos, apagarAvisos } from '../avisos.js';
 
 const NOMBRE_EQUIPO = { barra: 'Barra', smith: 'Smith', mancuernas: 'Mancuernas', maquina: 'Máquinas', polea: 'Poleas', lastre: 'Lastre' };
-export const VERSION = '0.1.10';
+export const VERSION = '0.1.11';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {
@@ -120,6 +120,7 @@ ${instalacionVieja() ? `
     <div class="pie-ajustes">
       <button class="enlace" type="button" data-borrar>Borrar todo</button>
       <p>Gofio ${VERSION} · Hecho en Canarias</p>
+      <button class="enlace" type="button" data-version style="font-size:14px">Buscar versión nueva</button>
     </div>
     <p class="legal">App de bienestar, no médica. Si notas dolor en el pecho, mareo fuerte o dolor en una articulación, para y consulta. Letras: Bricolage Grotesque y Hanken Grotesk (licencia OFL). <a href="https://sergiolearns.com" target="_blank" rel="noopener">Hecho por Sergio Learns</a>.</p>
   </section>`);
@@ -151,6 +152,11 @@ ${instalacionVieja() ? `
   $('[data-escalones]').onclick = () => editarEscalones(() => nav.refrescar());
   $('[data-cargas]').onclick = () => editarCargas(() => nav.refrescar());
   $('[data-perfil]').onclick = () => editarPerfil();
+  $('[data-version]').onclick = async (e) => {
+    e.currentTarget.textContent = 'Buscando…';
+    const hay = await window.gofioBuscarVersion?.();
+    e.currentTarget.textContent = hay ? 'Actualizando…' : 'Ya tienes la última';
+  };
   $('[data-plan]').onclick = () => nav.ir('bienvenida', { paso: 1, desdeAjustes: true });
   $('[data-borrar]').onclick = async () => {
     const ok = await confirmar({ titulo: '¿Borrar todo?', texto: 'Sesiones, series, notas y ajustes de este móvil. Sin nada en el zurrón, no hay vuelta atrás.', si: 'Borrar todo', peligro: true });

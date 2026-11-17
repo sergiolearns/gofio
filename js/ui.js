@@ -99,7 +99,7 @@ export function avisar(texto, accion) {
   requestAnimationFrame(() => a.classList.add('visible'));
   clearTimeout(tAviso);
   const ocultar = () => { a.classList.remove('visible'); setTimeout(() => { a.hidden = true; }, 420); };
-  tAviso = setTimeout(ocultar, accion ? 8000 : 2800);
+  if (!accion?.fijo) tAviso = setTimeout(ocultar, accion ? 8000 : 2800);
 }
 
 // ── Hojas que suben desde abajo (con arrastre para cerrar) ─────
