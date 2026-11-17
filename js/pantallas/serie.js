@@ -6,7 +6,7 @@ import * as G from '../cerebro/index.js';
 import { estado, prescripcion, seriesDelHueco, siguienteHueco, guardarSerie, borrarSerie, guardarSesion, terminarSesion,
   escalonDe, descansoDe, ponerNota, musculoCorto, ajuste, ponerAjuste, historialArrimar, mejorReciente } from '../logica.js';
 import { el, esc, kg, mmss, icono, grano, granos, ajustarTitulo, hoja, pedirNumero, vibrar, reduceMovimiento, escalonar, pop, avisar,
-  pintadera, coronaGranos, piedra, vibrarTambor } from '../ui.js';
+  pintadera, coronaGranos, piedra, vibrarTambor, encajar } from '../ui.js';
 import * as S from '../sonidos.js';
 import { descansoEnCurso, molienda } from '../avisos.js';
 import { aLaBrega } from '../amoler.js';
@@ -89,7 +89,9 @@ export function seriePantalla(params, nav) {
   const n = hechas.length;                // índice de la serie que toca
   const p = prescripcion(slot);
   const total = slot.series;
-  const ultimaHoy = hechas.at(-1);
+  const ultimaHueco = hechas.at(-1);
+  // El peso de hoy, del mismo ejercicio: si cambiaste de maña a mitad, lo del otro no vale para este.
+  const ultimaHoy = hechas.filter((x) => x.ejercicioId === slot.ej).at(-1);
   const escalon = escalonDe(slot.ej);
   const lastre = !!ej.lastre;
   // La siguiente, preparada en el descanso (R29, G115): lo que dejes ahí es lo que sale aquí.
@@ -193,10 +195,15 @@ export function seriePantalla(params, nav) {
       <p data-como-pista></p>
       <button class="enlace" type="button" data-aun-no>‹ Aún no la he hecho</button>
     </div>
-    <div class="moliendo-pie moliendo-solo"><button class="enlace" type="button" data-aun-no-mol>Aún no</button></div>
+    <div class="moliendo-pie moliendo-solo">
+      <button class="chip" type="button" data-aun-no-mol>Aún no</button>
+      <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
+      <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>
+    </div>
     <div class="serie-herramientas ahora-solo">${arrimando ? `
       <button class="chip" type="button" data-saltar-piedras>Saltar las piedras</button>
-      <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>` : `
+      <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
+      <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>` : `
       ${sePuedeArrimar ? `<button class="chip" type="button" data-arrimar>${icono('piedra')}Arrimar</button>` : ''}
       <button class="chip" type="button" data-una-mas>${icono('grano')}La ñapa</button>
       <button class="chip" type="button" data-cambiar>${icono('cambiar')}Cambiar</button>
@@ -234,6 +241,7 @@ export function seriePantalla(params, nav) {
   const cambioEl = nodo.querySelector('[data-ahora-cambio]');
   // La regla del vistazo (G116): lo cambiado, en millo; lo que decía Gofio, tachado al lado. Sin frases.
   function pintarCambio() {
+    encajar(ahoraPesoEl); encajar(molQue, { caja: nodo.querySelector('.moliendo') });
     const cp = pesoMeta != null && peso !== pesoMeta, cr = reps !== repsMeta;
     ahoraPesoEl?.classList.toggle('cambiado', cp); nodo.querySelector('[data-ahora-reps]')?.classList.toggle('cambiado', cr);
     if (molQue) molQue.textContent = peso == null ? rep : `${kg(peso)} × ${reps}`;
@@ -460,8 +468,8 @@ export function seriePantalla(params, nav) {
   }
 
   nodo.querySelector('[data-deshacer]')?.addEventListener('click', async () => {
-    const ok = await confirmarHoja({ titulo: '¿Borrar la última?', texto: `${kg(ultimaHoy.peso)} kg × ${ultimaHoy.reps}, te quedaban ${ultimaHoy.rir === 4 ? '4 o más' : ultimaHoy.rir}.`, si: 'Borrar', no: 'Dejarla' });
-    if (ok) { await borrarSerie(ultimaHoy); delete s.prep; await guardarSesion(s); nav.refrescar(); }
+    const ok = await confirmarHoja({ titulo: '¿Borrar la última?', texto: `${kg(ultimaHueco.peso)} kg × ${ultimaHueco.reps}, te quedaban ${ultimaHueco.rir === 4 ? '4 o más' : ultimaHueco.rir}.`, si: 'Borrar', no: 'Dejarla' });
+    if (ok) { await borrarSerie(ultimaHueco); delete s.prep; await guardarSesion(s); nav.refrescar(); }
   });
   const _nota = nodo.querySelector('[data-nota]'); if (_nota) _nota.onclick = () => {
     const nota = estado.notas[slot.ej]?.texto;
@@ -469,23 +477,12 @@ export function seriePantalla(params, nav) {
       <textarea aria-label="Nota" maxlength="400" enterkeyhint="done">${esc(nota ?? '')}</textarea><div class="botones"><button class="boton" type="button">Guardar</button></div>`);
     h.querySelector('.boton').onclick = async () => { await ponerNota(slot.ej, h.querySelector('textarea').value); cerrar(); };
   };
-  // «Otra maña» (R22): lo del mismo patrón primero, luego lo que comparte músculo.
-  const _cambiar = nodo.querySelector('[data-cambiar]'); if (_cambiar) _cambiar.onclick = () => {
-    const sust = G.sustitutos(slot.original ?? slot.ej);
-    const lista = [...sust.filter((x) => x.id !== slot.ej), ...(slot.original ? [{ ...G.ejercicio(slot.original), vuelta: true }] : [])];
-    const { nodo: h, cerrar } = hoja(`<h2>Otra maña</h2><p class="sub">¿Máquina ocupada? Mismo trabajo.</p>
-      <ul class="opciones">${lista.map((x) => `<li><button type="button" data-ej="${x.id}"><span class="que"><b>${esc(x.vuelta ? 'El de tu rutina' : x.nombre)}</b><span>${x.vuelta ? esc(x.nombre) : x.mismoPatron ? 'Mismo movimiento' : 'Mismo músculo'}</span></span>${icono('sigue', 'class="flecha-der"')}</button></li>`).join('')}</ul>`);
-    escalonar(h.querySelectorAll('.opciones li'), { desde: 120, retraso: 30 });
-    h.querySelectorAll('[data-ej]').forEach((b) => b.addEventListener('click', async () => {
-      slot.original = slot.original ?? slot.ej;
-      slot.ej = b.dataset.ej;
-      if (slot.ej === slot.original) delete slot.original;
-      // Otro ejercicio: lo preparado y las piedras eran del de antes.
-      if (s.prep?.i === i) delete s.prep;
-      s.calentamientos = (s.calentamientos ?? []).filter((c) => c.i !== i);
-      await guardarSesion(s); cerrar(); vibrar(); nav.refrescar();
-    }));
+  // «Otra maña» (R22). En «Ahora» se repinta; en Moliendo, la serie que estabas moliendo era del otro: vuelta a «Ahora».
+  const alCambiar = async () => {
+    if (nodo.dataset.momento === 'moliendo') { molienda(null); delete s.moliendo; await guardarSesion(s); }
+    nav.reemplazar('serie', { sesionId: s.id, i, anima: true }, { sinAnimacion: true });
   };
+  nodo.querySelectorAll('[data-cambiar]').forEach((b) => { b.onclick = () => otraMana(s, i, alCambiar); });
   const _lista = nodo.querySelector('[data-lista]'); if (_lista) _lista.onclick = () => {
     const { nodo: h, cerrar } = hoja(`<h2>${esc(s.nombre)}</h2><ul class="opciones">${s.plan.map((x, k) => {
       const hh = seriesDelHueco(s, k).length;
@@ -496,27 +493,16 @@ export function seriePantalla(params, nav) {
     h.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => { cerrar(); nav.reemplazar('serie', { sesionId: s.id, i: Number(b.dataset.k) }); }));
     h.querySelector('[data-tolva]').onclick = () => { cerrar(); setTimeout(() => aLaTolva(s, nav), 220); };
   };
-  // «Chacho, ¿lo dejas aquí?» (G78)
-  const _terminar = nodo.querySelector('[data-terminar]'); if (_terminar) _terminar.onclick = async () => {
-    const hay = estado.series.some((x) => x.sesionId === s.id);
-    const hechasSes = estado.series.filter((x) => x.sesionId === s.id).length;
-    const totalSes = s.plan.reduce((a, x) => a + x.series, 0);
-    const ok = await confirmarHoja({
-      titulo: 'Chacho, ¿lo dejas aquí?', texto: hay ? 'Lo que falte se queda. La semana se reajusta sola.' : 'No has guardado ninguna serie: no cuenta.',
-      extra: `<div class="granos-sesion" role="img" aria-label="${hechasSes} de ${totalSes} series">${Array.from({ length: totalSes }, (_, k) => grano(k < hechasSes)).join('')}</div>`,
-      si: 'Sí, a casa', no: 'Sigo moliendo',
-    });
-    if (!ok) return;
-    molienda(null); delete s.moliendo; delete s.prep;
-    const r = await terminarSesion(s); mantenerEncendida(false);
-    if (r) nav.reemplazar('hecho', { sesionId: s.id }); else nav.ir('hoy', {}, { modo: 'pestana' });
-  };
+  nodo.querySelectorAll('[data-terminar]').forEach((b) => { b.onclick = () => dejarlo(s, nav); });
 
   return {
     nodo, pestana: null,
     alEntrar() {
       mantenerEncendida(true);
-      requestAnimationFrame(() => ajustarTitulo(nodo.querySelector('.serie-titulo'), { max: 42, min: 30, lineas: 2, alto: 0.95 }));
+      requestAnimationFrame(() => {
+        ajustarTitulo(nodo.querySelector('.serie-titulo'), { max: 42, min: 30, lineas: 2, alto: 0.95 });
+        encajar(nodo.querySelector('[data-ahora-peso]')); encajar(molQue, { caja: nodo.querySelector('.moliendo') });
+      });
       if (momento0 === 'moliendo') { girarMuela(true); entrarMolienda(); }
       if (anima) escalonar(nodo.querySelectorAll('.aviso-serie, .senal-fuerte, .piedras, .ahora > *, .serie-herramientas .chip, .boton-brega, .boton-hecha:not(.moliendo-solo)'), { desde: 0, retraso: 35 });
       if (vasFuerte && !reduceMovimiento()) {
@@ -545,6 +531,43 @@ function repetir(b, paso) {
 }
 
 /** Hoja de sí/no con la voz de Gofio (los dos botones grandes del lienzo). */
+/** «Otra maña» (R22) para el hueco k: lo del mismo patrón primero, luego lo que comparte músculo. */
+export function otraMana(s, k, alCambiar) {
+  const slot = s.plan[k];
+  const sust = G.sustitutos(slot.original ?? slot.ej);
+  const lista = [...sust.filter((x) => x.id !== slot.ej), ...(slot.original ? [{ ...G.ejercicio(slot.original), vuelta: true }] : [])];
+  const { nodo: h, cerrar } = hoja(`<h2>Otra maña</h2><p class="sub">¿Máquina ocupada? Mismo trabajo.</p>
+    <ul class="opciones">${lista.map((x) => `<li><button type="button" data-ej="${x.id}"><span class="que"><b>${esc(x.vuelta ? 'El de tu rutina' : x.nombre)}</b><span>${x.vuelta ? esc(x.nombre) : x.mismoPatron ? 'Mismo movimiento' : 'Mismo músculo'}</span></span>${icono('sigue', 'class="flecha-der"')}</button></li>`).join('')}</ul>`);
+  escalonar(h.querySelectorAll('.opciones li'), { desde: 120, retraso: 30 });
+  h.querySelectorAll('[data-ej]').forEach((b) => b.addEventListener('click', async () => {
+    slot.original = slot.original ?? slot.ej;
+    slot.ej = b.dataset.ej;
+    if (slot.ej === slot.original) delete slot.original;
+    // Otro ejercicio: lo preparado y las piedras eran del de antes.
+    if (s.prep?.i === k) delete s.prep;
+    s.calentamientos = (s.calentamientos ?? []).filter((c) => c.i !== k);
+    await guardarSesion(s); cerrar(); vibrar(); S.toque('barrido');
+    setTimeout(alCambiar, 200);
+  }));
+}
+
+/** «Chacho, ¿lo dejas aquí?» (G78): terminar la molienda desde cualquier momento (G118). */
+export async function dejarlo(s, nav, antes = () => {}) {
+  const hay = estado.series.some((x) => x.sesionId === s.id);
+  const hechasSes = estado.series.filter((x) => x.sesionId === s.id).length;
+  const totalSes = s.plan.reduce((a, x) => a + x.series, 0);
+  const ok = await confirmarHoja({
+    titulo: 'Chacho, ¿lo dejas aquí?', texto: hay ? 'Lo que falte se queda. La semana se reajusta sola.' : 'No has guardado ninguna serie: no cuenta.',
+    extra: `<div class="granos-sesion" role="img" aria-label="${hechasSes} de ${totalSes} series">${Array.from({ length: totalSes }, (_, k) => grano(k < hechasSes)).join('')}</div>`,
+    si: 'Sí, a casa', no: 'Sigo moliendo',
+  });
+  if (!ok) return;
+  antes();
+  molienda(null); descansoEnCurso(null); delete s.moliendo; delete s.prep; delete s.descanso;
+  const r = await terminarSesion(s); mantenerEncendida(false);
+  if (r) nav.reemplazar('hecho', { sesionId: s.id }); else nav.ir('hoy', {}, { modo: 'pestana' });
+}
+
 function confirmarHoja({ titulo, texto, extra = '', si, no }) {
   return new Promise((ok) => {
     const { nodo, cerrar } = hoja(`<h2>${esc(titulo)}</h2><p class="sub">${esc(texto)}</p>${extra}
@@ -649,16 +672,18 @@ export function descansoPantalla(params, nav) {
   if (!s || !d) return seriePantalla({ sesionId, i: s?.actual ?? 0 }, nav);
   const desde = s.plan[d.desde], sig = s.plan[d.siguiente];
   const ejDesde = G.ejercicio(desde.ej), ejSig = G.ejercicio(sig.ej);
-  const mismo = d.siguiente === d.desde;
   const hechasDesde = seriesDelHueco(s, d.desde);
   const hechasSig = seriesDelHueco(s, d.siguiente).length;
   const pSig = prescripcion(sig);
   const ultima = hechasDesde.at(-1);
+  // El mismo ejercicio (si en el descanso lo cambias por otra maña, ya no: entra su «Ahora», con sus piedras si tocan).
+  const mismoHueco = d.siguiente === d.desde;
+  const mismo = mismoHueco && (!ultima || ultima.ejercicioId === sig.ej);
   const escSig = escalonDe(sig.ej);
   const lastreSig = !!ejSig.lastre;
   const objetivoSig = pSig.reps[Math.min(hechasSig, pSig.reps.length - 1)] ?? sig.repMin;
   // «Lo molido» (G115): acabas un ejercicio. Resumen, la ñapa y lo que viene.
-  const molido = !mismo && hechasDesde.length >= desde.series;
+  const molido = !mismoHueco && hechasDesde.length >= desde.series;
 
   // R29 · La siguiente del mismo ejercicio, preparada (la dejó guardar(); si no está, se calcula ahora).
   let prep = null;
@@ -672,13 +697,13 @@ export function descansoPantalla(params, nav) {
     if (prep && !prep.gofio) prep.gofio = { peso: prep.peso, reps: prep.reps };
   }
   // Lo que viene, si es otro ejercicio: su peso y, si toca arrimar (R28, con tu jeito), sus piedras.
-  const pesoOtro = seriesDelHueco(s, d.siguiente).at(-1)?.peso ?? pSig.peso;
+  const pesoOtro = seriesDelHueco(s, d.siguiente).filter((x) => x.ejercicioId === sig.ej).at(-1)?.peso ?? pSig.peso;
   const arOtro = !mismo && hechasSig === 0 && pesoOtro != null ? (() => {
     const estilo = G.estiloArrimar(historialArrimar(sig.ej, s.id));
     const a = G.arrimar({ trabajo: pesoOtro, escalon: escSig, tipo: ejSig.tipo, repsObjetivo: objetivoSig, lastre: lastreSig, hechas: (s.calentamientos ?? []).filter((c) => c.i === d.siguiente), estilo });
     return estilo?.n === 0 || (s.arrimarSaltado ?? []).includes(d.siguiente) ? { piedras: [] } : a;
   })() : { piedras: [] };
-  const queSig = () => (mismo && prep ? `${kg(prep.peso)} × ${prep.reps}` : `${pesoOtro != null ? `${kg(pesoOtro)} × ` : ''}${objetivoSig}`);
+  const queSig = () => (mismo && prep ? `${kg(prep.peso)} × ${prep.reps}` : pesoOtro != null ? `${kg(pesoOtro)} × ${objetivoSig}` : `${objetivoSig} reps`);
 
   // Las frases del segundo tramo, solo si son verdad (concepto, sección 2).
   const F2 = ['La siguiente, con jeito.'];
@@ -697,12 +722,12 @@ export function descansoPantalla(params, nav) {
   const [senalIco, senalTxt] = SENALES[prep?.senal ?? 'igual'];
   const tarjetaMismo = prep ? `<div class="tarjeta-sig" data-tarjeta>
       <div class="ts-cabeza"><span class="ts-etiqueta">Serie ${hechasSig + 1}</span>
-        <button class="ts-senal senal-${prep.senal}" type="button" data-senal aria-label="${senalTxt}. Ver por qué">${icono(senalIco === 'mas' ? 'sube' : senalIco)}${senalTxt}</button></div>
+        <span class="ts-senal senal-${prep.senal}" data-senal>${icono(senalIco === 'mas' ? 'sube' : senalIco)}${senalTxt}</span></div>
       <div class="ts-numeros">
         <div class="ts-grupo">${mini('peso', -1)}<button class="ts-num" type="button" data-ts-peso data-son="0" aria-label="Escribir el peso"><b class="cifra num" data-v>${kg(prep.peso)}</b><small>${lastreSig ? 'lastre' : 'kg'}</small></button>${mini('peso', 1)}</div>
         <div class="ts-grupo">${mini('reps', -1)}<button class="ts-num" type="button" data-ts-reps data-son="0" aria-label="Escribir las reps"><b class="cifra num" data-v>${prep.reps}</b><small>reps</small></button>${mini('reps', 1)}</div>
       </div>
-      <div class="ts-pie"><button class="ahora-deja${prep.fallo ? ' fallo' : ''}" type="button" data-ts-deja data-son="pop">${prep.fallo ? 'Al fallo' : esc(deja(pSig.rir).replace(/^d/, 'D'))}</button><span class="ts-gofio" data-ts-gofio hidden></span></div>
+      <div class="ts-pie"><button class="ahora-deja${prep.fallo ? ' fallo' : ''}" type="button" data-ts-deja data-son="pop">${prep.fallo ? 'Al fallo' : esc(deja(pSig.rir).replace(/^d/, 'D'))}</button><button class="ts-gofio" type="button" data-ts-gofio data-son="-1" hidden></button></div>
     </div>` : '';
   const filaPiedrasOtro = arOtro.piedras.length
     ? `<div class="piedras chicas" role="img" aria-label="Arrimar con ${arOtro.piedras.length === 1 ? 'una piedra' : `${arOtro.piedras.length} piedras`} y luego ${kg(pesoOtro)} kg">${arOtro.piedras.map((c) => piedra(kg(c.peso), `× ${c.reps}`, 'luego', 0.62 + 0.3 * c.peso / pesoOtro)).join('')}<span class="piedras-flecha" aria-hidden="true">→</span>${piedra(kg(pesoOtro), `× ${objetivoSig}`, 'trabajo', 0.98)}</div>`
@@ -743,6 +768,11 @@ export function descansoPantalla(params, nav) {
     ${molido ? `<div class="molido-reloj">${muelaHTML('chica')}${relojHTML}</div>${resumen}` : `${muelaHTML()}${relojHTML}`}
     <p class="titular descanso-frase suelta" data-frase aria-live="polite"></p>
     ${mismo ? tarjetaMismo : loQueViene}
+    <div class="descanso-herramientas">
+      <button class="chip" type="button" data-d-cambiar>${icono('cambiar')}Cambiar</button>
+      ${ultima ? '<button class="chip" type="button" data-d-borrar>Borrar la última</button>' : ''}
+      <button class="chip" type="button" data-d-terminar>${icono('fin')}Terminar</button>
+    </div>
     <div class="puntos" data-puntos aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="relleno"></div>
     <div class="descanso-pie">
@@ -851,12 +881,14 @@ export function descansoPantalla(params, nav) {
     const bote = (x) => { if (!quieto) x.animate([{ transform: 'scale(1.1)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'cubic-bezier(.22,1,.36,1)' }); };
     const pintar = (que) => {
       vPeso.textContent = kg(prep.peso); vReps.textContent = prep.reps;
+      encajar(vPeso, { caja: vPeso.parentElement }); encajar(vReps, { caja: vReps.parentElement });
       if (que) bote(que === 'peso' ? vPeso : vReps);
       const cp = prep.peso !== prep.gofio.peso, cr = prep.reps !== prep.gofio.reps;
       vPeso.classList.toggle('cambiado', cp); vReps.classList.toggle('cambiado', cr);
       const txt = cp || cr ? `${kg(prep.gofio.peso)} × ${prep.gofio.reps}` : '';
       const antes = !gofioEl.hidden;
-      gofioEl.innerHTML = txt ? `Gofio: <s>${esc(txt)}</s>` : ''; gofioEl.hidden = !txt;
+      gofioEl.innerHTML = txt ? `Gofio: <s>${esc(txt)}</s> ${icono('cambiar')}` : ''; gofioEl.hidden = !txt;
+      gofioEl.setAttribute('aria-label', txt ? `Volver a lo de Gofio: ${txt}` : '');
       if (txt && !antes && !quieto) gofioEl.animate([{ opacity: 0, transform: 'translateX(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' });
       sucio = true; guardarPrep(); if (tramo >= 0) avisoServidor();
     };
@@ -881,13 +913,25 @@ export function descansoPantalla(params, nav) {
       pild.textContent = prep.fallo ? 'Al fallo' : deja(pSig.rir).replace(/^d/, 'D'); pild.classList.toggle('fallo', prep.fallo);
       pop(pild, 1.1); vibrar(); sucio = true; guardarPrep();
     };
-    tarjeta.querySelector('[data-senal]').onclick = () => abrirLibreta({ ejId: sig.ej, porque: porqueSenal(prep, ultima) });
+    // La señal es solo eso, una señal (G118). Lo de Gofio tachado, al tocarlo, vuelve. El porqué, en la libreta (arriba).
+    gofioEl.onclick = () => { prep.peso = prep.gofio.peso; prep.reps = prep.gofio.reps; pintar('peso'); pintar('reps'); vibrar(); };
   }
   nodo.querySelector('[data-libreta]').onclick = () => abrirLibreta({
     ejId: mismo ? sig.ej : desde.ej,
     porque: mismo ? porqueSenal(prep, ultima) : [`<b>${esc(ejDesde.nombre)}:</b> ${hechasDesde.length} ${hechasDesde.length === 1 ? 'serie' : 'series'} hoy.`],
     pestana: molido ? 'molino' : 'porque',
   });
+
+  // G118 · En mitad del ejercicio: cambiar lo que viene (máquina ocupada), borrar la última si te equivocaste, o terminar.
+  nodo.querySelector('[data-d-cambiar]').onclick = () => otraMana(s, d.siguiente, () => { parar(); nav.reemplazar('descanso', { sesionId: s.id }, { sinAnimacion: true }); });
+  nodo.querySelector('[data-d-borrar]')?.addEventListener('click', async () => {
+    const ok = await confirmarHoja({ titulo: '¿Borrar la última?', texto: `${kg(ultima.peso)} kg × ${ultima.reps}, te quedaban ${ultima.rir === 4 ? '4 o más' : ultima.rir}. Vuelves a esa serie.`, si: 'Borrar', no: 'Dejarla' });
+    if (!ok) return;
+    acabado = true; parar();
+    await borrarSerie(ultima); delete s.descanso; delete s.prep; await guardarSesion(s);
+    nav.reemplazar('serie', { sesionId: s.id, i: d.desde, anima: true }, { duracion: 240 });
+  });
+  nodo.querySelector('[data-d-terminar]').onclick = () => dejarlo(s, nav, () => { acabado = true; parar(); });
 
   // «La ñapa» (G115): una serie más de regalo, preparada con la última. El descanso sigue contando.
   nodo.querySelector('[data-nyapa]')?.addEventListener('click', async (e) => {
@@ -930,6 +974,7 @@ export function descansoPantalla(params, nav) {
     nodo, pestana: null,
     alEntrar(o = {}) {
       mantenerEncendida(true); cancelAnimationFrame(raf);
+      requestAnimationFrame(() => nodo.querySelectorAll('.ts-num b, .md-fila dd, .lqv-que').forEach((b) => encajar(b)));
       if (d.hasta > Date.now()) setTimeout(() => S.ambienteOn(), 500);
       raf = requestAnimationFrame(cuadro);
       if (quieto || o.refresco) return;

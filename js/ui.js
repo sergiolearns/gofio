@@ -81,6 +81,20 @@ export function ajustarTitulo(nodo, { max = 132, min = 48, lineas = 2, alto = 0.
   while (t > min && !cabe()) { t -= 4; nodo.style.fontSize = t + 'px'; }
 }
 
+/**
+ * G118 · Encoge una cifra hasta que quepa en una línea dentro de su caja (un «182,5» no puede saltar de línea ni
+ * salirse). Parte del tamaño que le da el CSS.
+ */
+export function encajar(nodo, { min = 18, caja = nodo?.parentElement } = {}) {
+  if (!nodo || !caja) return;
+  nodo.style.whiteSpace = 'nowrap'; nodo.style.fontSize = '';
+  let t = parseFloat(getComputedStyle(nodo).fontSize);
+  const cs = getComputedStyle(caja);
+  const ancho = caja.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  const mide = () => { const r = document.createRange(); r.selectNodeContents(nodo); return r.getBoundingClientRect().width; };
+  while (t > min && mide() > ancho + 1) { t -= 2; nodo.style.fontSize = t + 'px'; }
+}
+
 /** Respuesta háptica: vibrate donde exista; en iOS 18+ el truco del interruptor (un clic en un <input switch>). */
 let interruptor;
 export function vibrar() {

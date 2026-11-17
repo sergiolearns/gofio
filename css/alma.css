@@ -591,7 +591,7 @@
 .cg { fill: var(--millo); stroke: var(--basalto-3); stroke-width: 0; transition: fill .5s ease, stroke-width .5s ease; }
 .cg.cg-molido { fill: rgba(212,146,43,0); stroke-width: 16; }
 .descanso.reanima .cg:not(.cg-molido) { fill: #F0B04A; }
-.descanso .muela-descanso { width: min(272px, 66vw, calc(100dvh - 560px)); height: min(272px, 66vw, calc(100dvh - 560px)); min-width: 140px; min-height: 140px; margin-top: 18px; }
+.descanso .muela-descanso { width: min(272px, 66vw, calc(100dvh - 618px - var(--abajo))); height: min(272px, 66vw, calc(100dvh - 618px - var(--abajo))); min-width: 112px; min-height: 112px; margin-top: 14px; }
 .descanso .muela-descanso img { will-change: transform; }
 .descanso-reloj { margin-top: min(18px, 2dvh); font-size: min(96px, 11.5dvh); }
 .descanso-frase { margin-top: 10px; font-size: 26px; }
@@ -615,7 +615,8 @@
 .ts-num small { margin-top: 2px; font-size: 12px; color: var(--piedra); }
 .ts-pie { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
 .ts-pie .ahora-deja { margin-top: 0; padding: 7px 14px; font-size: 14px; }
-.ts-gofio { font-size: 13px; color: var(--piedra); }
+.ts-gofio { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-size: 13px; color: var(--piedra); }
+.ts-gofio svg { width: 14px; height: 14px; color: var(--millo); }
 .lo-que-viene { position: relative; z-index: 1; margin-top: 16px; padding: 12px 16px 14px; border-radius: 20px; background: var(--basalto-2); display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .lqv-nombre { font-size: 28px; line-height: .98; }
 .lqv-que { margin: 4px 0 0; font-size: 30px; color: var(--millo); }
@@ -671,7 +672,7 @@
 .tt-granos .tg-1 path { fill: #C2852A; }
 .tg { transform-box: fill-box; transform-origin: center; }
 .tt-palo { transform-box: fill-box; transform-origin: 100% 0; }
-.tt-palo path { stroke: #8C6B4A; stroke-width: 6; stroke-linecap: round; fill: none; }
+.tt-palo path { stroke: #8C6B4A; stroke-width: 6.5; stroke-linecap: round; fill: none; vector-effect: non-scaling-stroke; }
 .tt-humo path { fill: none; stroke: var(--piedra); stroke-width: 2; stroke-linecap: round; opacity: 0; transform-box: fill-box; }
 .tostar-titulo { margin-top: 14px; font-size: 52px; line-height: .95; }
 .tostar-sub { margin: 8px 0 0; font-size: 18px; line-height: 1.3; color: var(--piedra); }
@@ -696,7 +697,7 @@
 .tt-cuenta { font-size: 20px; color: var(--millo); }
 .tt-dosis { font-size: 14px; font-weight: 700; color: var(--piedra); white-space: nowrap; }
 .tostar-pista { margin: 10px 0 0; text-align: center; font-size: 14px; color: var(--piedra); }
-.tostar-saltar { align-self: center; min-height: 44px; color: var(--piedra); }
+
 .boton-tostado { justify-content: center; gap: 12px; margin-top: 6px; font-size: 30px; transition: box-shadow .4s ease, transform .14s var(--curva-salida); }
 .boton-tostado.listo { box-shadow: 0 0 0 4px rgba(212,146,43,.35), 0 10px 30px -8px rgba(184,66,46,.9); }
 .sello-tri .st-c { fill: var(--millo); }
@@ -726,11 +727,13 @@
 /* Pies que no se pierden (G117): en un iPhone bajo, si hay que desplazar, el botón sigue a la vista sobre un degradado. */
 .descanso { --fondo: #161412; }
 .descanso.reanima { --fondo: var(--basalto); }
-.descanso-pie { position: sticky; bottom: calc(var(--abajo) + 8px); margin: 0 -24px; padding: 22px 24px 0;
-  background: linear-gradient(to bottom, rgba(22,20,18,0), var(--fondo) 42%); }
-.tostar-pie { position: sticky; bottom: calc(var(--abajo) + 8px); z-index: 2; margin: 0 -24px; padding: 18px 24px 0; display: flex; flex-direction: column;
-  background: linear-gradient(to bottom, rgba(27,25,23,0), var(--basalto) 38%); }
-.tostar-pie .boton-tostado { margin-top: 2px; }
+.descanso-pie { position: sticky; bottom: calc(var(--abajo) + 8px); margin: 0 -24px; padding: 16px 24px 0;
+  background: linear-gradient(to bottom, rgba(22,20,18,0), var(--fondo) 16px); }
+.tostar-pie { position: sticky; bottom: calc(var(--abajo) + 8px); z-index: 2; margin: 0 -24px; padding: 14px 24px 0; display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(to bottom, rgba(27,25,23,0), var(--basalto) 14px); }
+.tostar-saltar { flex: none; min-height: 60px; padding: 0 2px; font-size: 14px; font-weight: 700; line-height: 1.15; color: var(--piedra); text-align: center; }
+.tostar-pie .boton-tostado { flex: 1; margin-top: 0; padding: 0 14px; }
+
 @media (max-height: 720px) {
   /* El tostador, a la derecha del título: la lista entera y el botón caben sin desplazar. */
   .tostar-cabeza { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: end; margin-top: 4px; }
@@ -744,7 +747,6 @@
   .segmentado button { height: 34px; }
   .tt-fila { min-height: 42px; }
   .tostar-pista { margin-top: 6px; }
-  .tostar-saltar { min-height: 36px; padding: 4px 0; }
   .boton-tostado { min-height: 58px; font-size: 26px; }
   .serie[data-momento="moliendo"] .serie-titulo { font-size: 32px; margin-top: 4px; }
   .moliendo { padding: 4px 0; }
@@ -764,4 +766,36 @@
   .lqv-nombre { font-size: 24px; }
   .descanso-pie { padding-top: 16px; }
   .boton-pintadera { width: 60px; height: 60px; }
+}
+
+/* G118 · Nada encoge: si no cabe, la pantalla se desplaza (antes la lista encogía y la pista se metía bajo «Saltar»). */
+.tostar > *, .descanso > *, .serie > * { flex-shrink: 0; }
+.tostar > .relleno, .descanso > .relleno, .serie > .relleno { flex-shrink: 1; }
+.tt-cuerpo { transform-box: fill-box; transform-origin: 50% 100%; }
+
+/* G118 · Terminar y Cambiar a mano en mitad del ejercicio; las cifras nunca saltan de línea. */
+.moliendo-pie { flex-wrap: wrap; gap: 8px; padding-top: 6px; }
+.moliendo-pie .chip, .descanso-herramientas .chip { height: 40px; padding: 0 14px; border-radius: 20px; font-size: 14px; }
+.moliendo-pie .chip svg, .descanso-herramientas .chip svg { width: 16px; height: 16px; color: var(--millo); }
+.descanso-herramientas { position: relative; z-index: 1; display: flex; gap: 8px; margin: 12px -24px 0; padding: 2px 24px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; }
+.descanso-herramientas::-webkit-scrollbar { display: none; }
+.descanso-herramientas .chip { flex: none; }
+.md-fila dt { flex: 1 1 auto; min-width: 0; }
+.md-fila dd { flex: none; white-space: nowrap; }
+.ts-num b, .lqv-que, .moliendo-que .cifra, .ahora .cifra { white-space: nowrap; }
+.ts-num { min-width: 0; overflow: hidden; }
+@media (max-height: 720px) {
+  .descanso-reloj { font-size: min(72px, 11dvh); margin-top: 6px; }
+  .descanso-frase { font-size: 20px; margin-top: 2px; }
+  .descanso-herramientas { margin-top: 8px; }
+  .ts-num b { font-size: 36px; }
+  .ts-grupo .mini { width: 36px; height: 36px; }
+  .ts-grupo { grid-template-columns: 36px 1fr 36px; }
+  .lo-molido .molido-reloj { margin-top: 4px; }
+  .lo-molido .muela-descanso.chica { width: 60px; height: 60px; }
+  .lo-molido .molido-reloj .descanso-reloj { font-size: 44px; }
+  .molido-titulo { font-size: 30px; }
+  .nyapa { min-height: 44px; margin-top: 8px; }
+  .lo-que-viene { margin-top: 8px; padding: 8px 14px 10px; }
+  .lqv-nombre { font-size: 22px; }
 }

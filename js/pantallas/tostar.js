@@ -35,6 +35,7 @@ function tostadorSVG() {
     </defs>
     <ellipse class="tt-sombra" cx="105" cy="93" rx="70" ry="5"/>
     <g class="tt-humo"><path d="M84 24c-4-6 4-10 0-16"/><path d="M108 20c-4-6 4-10 0-16"/><path d="M130 24c-4-6 4-10 0-16"/></g>
+    <g class="tt-cuerpo">
     <path class="tt-plato" d="M14 46A91 12 0 0 1 196 46Q186 86 105 88Q24 86 14 46Z"/>
     <ellipse class="tt-dentro" cx="105" cy="46" rx="91" ry="12" fill="url(#tt-hondo)"/>
     <path class="tt-pared" d="M14 46A91 12 0 0 1 196 46A91 7 0 0 0 14 46Z"/>
@@ -44,6 +45,7 @@ function tostadorSVG() {
     <path class="tt-labio" d="M14 46A91 12 0 0 0 196 46Q186 86 105 88Q24 86 14 46Z" fill="url(#tt-barro)"/>
     <path class="tt-brillo" d="M30 66Q60 80 100 81"/>
     <path class="tt-borde" d="M14 46A91 12 0 0 0 196 46"/>
+    </g>
   </svg>`;
 }
 
@@ -79,7 +81,7 @@ export function tostarPantalla(params, nav) {
     ${ajuste('pistaTostar') ? '' : '<p class="tostar-pista" data-pista>Toca cada uno al hacerlo.</p>'}
     <div class="relleno"></div>
     <div class="tostar-pie">
-      <button class="enlace tostar-saltar" type="button" data-saltar>Saltar por hoy</button>
+      <button class="tostar-saltar" type="button" data-saltar>Saltar<br>por hoy</button>
       <button class="boton boton-guardar boton-tostado" type="button" data-tostado data-son="none">${selloTri('st-boton')}Ya está tostado</button>
     </div>
   </section>`);
@@ -119,35 +121,70 @@ export function tostarPantalla(params, nav) {
     raf = requestAnimationFrame(cuadro);
   }
 
-  // ── El tostador se mueve: el palo remueve, los granos saltan, sube un poco de humo ──
+  // ── El tostador se mueve (G118): el palo remueve en círculo por dentro del plato y los granos se mueven porque el
+  // palo los empuja al pasar (los que tiene delante se apartan, ruedan y dan un saltito); el plato cede un poco con
+  // cada empujón. De vez en cuando un grano salta solo, del calor. Todo en una vuelta de 2 s que se repite.
+  const VUELTA = 2000, PASOS = 40;
+  const C = { x: 105, y: 49 }, PUNTA = { rx: 34, ry: 5.5 }, MANO = { x: 150, y: 2, rx: 26, ry: 3 };
+  const O = { x: 186, y: 4 }, V0 = { x: -40, y: 48 };                    // el palo dibujado: de la punta (146, 52) a la mano
+  const L0 = Math.hypot(V0.x, V0.y), A0 = Math.atan2(V0.y, V0.x);
+  const envolver = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const anims = [];
+  let pops = 0;
   function tostando() {
     if (quieto) return;
+    const fases = Array.from({ length: PASOS + 1 }, (_, k) => (k / PASOS) * 2 * Math.PI);
+    // El palo, rígido: la punta da la vuelta por dentro del plato y la mano, arriba, casi la misma vuelta; así el palo
+    // apenas cambia de largo (solo lo que da la perspectiva) y se ve que es la mano la que remueve.
     const palo = nodo.querySelector('.tt-palo');
-    anims.push(palo.animate([{ transform: 'rotate(-9deg) translateX(-10px)' }, { transform: 'rotate(7deg) translateX(8px)' }], { duration: 950, iterations: Infinity, direction: 'alternate', easing: 'cubic-bezier(.45,0,.55,1)' }));
-    // Los del fondo apenas se levantan (si no, parece que se salen por detrás); los de delante saltan más.
-    nodo.querySelectorAll('.tg').forEach((g, k) => {
-      const fila = g.classList.contains('tg-0') ? 0 : g.classList.contains('tg-1') ? 1 : 2;
-      const alto = [2.5, 4.5, 7][fila] + (k * 37 % 4), dur = 520 + (k * 53 % 260), giro = (k % 2 ? 1 : -1) * (40 + k * 23 % 70);
-      anims.push(g.animate([
-        { transform: 'translate(0,0) rotate(0deg)' },
-        { transform: `translate(${(k % 3) - 1}px,-${alto}px) rotate(${giro / 2}deg)`, offset: 0.45 },
-        { transform: `translate(${((k + 1) % 3) - 1}px,0) rotate(${giro}deg)`, offset: 0.8 },
-        { transform: 'translate(0,0) rotate(0deg)' },
-      ], { duration: dur, delay: k * 97 % 600, iterations: Infinity, easing: 'cubic-bezier(.3,0,.4,1)' }));
+    anims.push(palo.animate(fases.map((f) => {
+      const T = { x: C.x + PUNTA.rx * Math.cos(f), y: C.y + PUNTA.ry * Math.sin(f) };
+      const H = { x: MANO.x + MANO.rx * Math.cos(f), y: MANO.y + MANO.ry * Math.sin(f) };
+      const d = { x: T.x - H.x, y: T.y - H.y };
+      const giro = (Math.atan2(d.y, d.x) - A0) * 180 / Math.PI, esc = Math.hypot(d.x, d.y) / L0;
+      return { transform: `translate(${(H.x - O.x).toFixed(2)}px,${(H.y - O.y).toFixed(2)}px) rotate(${giro.toFixed(2)}deg) scale(${esc.toFixed(3)})` };
+    }), { duration: VUELTA, iterations: Infinity, easing: 'linear' }));
+    // El plato cede con el empujón: se desplaza y se inclina un pelo hacia donde va la punta.
+    anims.push(nodo.querySelector('.tt-cuerpo').animate(fases.map((f) => ({
+      transform: `translate(${(-1.1 * Math.sin(f)).toFixed(2)}px,${(0.35 * Math.cos(f)).toFixed(2)}px) rotate(${(0.9 * Math.cos(f)).toFixed(2)}deg)`,
+    })), { duration: VUELTA, iterations: Infinity, easing: 'linear' }));
+    // Cada grano: cuánto lo empuja la punta según lo cerca que pase (por delante de él y a su misma distancia del centro).
+    nodo.querySelectorAll('.tt-granos > g').forEach((g) => {
+      const [x, y] = (g.getAttribute('transform').match(/[-\d.]+/g) ?? [0, 0]).map(Number);
+      const tg = g.querySelector('.tg');
+      const fila = tg.classList.contains('tg-0') ? 0 : tg.classList.contains('tg-1') ? 1 : 2;
+      const u = (x - C.x) / 62, v = (y - C.y) / 7, th = Math.atan2(v, u), r = Math.hypot(u, v);
+      const cerca = Math.exp(-(((r - 0.58) / 0.5) ** 2));
+      const salto = [1.2, 2.6, 3.4][fila], lado = Math.sign(Math.cos(th)) || 1;
+      anims.push(tg.animate(fases.map((f) => {
+        const d = envolver(th - f);                                   // > 0: el grano está por delante del palo
+        const m = cerca * Math.exp(-(((d - 0.32) / 0.5) ** 2));       // 0..1: el empujón
+        const dx = 6 * m * -Math.sin(th), dy = 6 * m * Math.cos(th) * 0.3 - salto * m * m;
+        return { transform: `translate(${dx.toFixed(2)}px,${dy.toFixed(2)}px) rotate(${(lado * 80 * m).toFixed(1)}deg)` };
+      }), { duration: VUELTA, iterations: Infinity, easing: 'linear' }));
     });
     nodo.querySelectorAll('.tt-humo path').forEach((h, k) => anims.push(h.animate([
       { transform: 'translateY(6px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 0.5, offset: 0.4 }, { transform: 'translateY(-10px)', opacity: 0 },
     ], { duration: 2400, delay: k * 800, iterations: Infinity, easing: 'ease-out' })));
+    // Del calor, cada poco un grano de delante salta solo y cae en el plato.
+    const delante = [...nodo.querySelectorAll('.tg-1, .tg-2')];
+    pops = setInterval(() => {
+      if (document.hidden || !delante.length) return;
+      const g = delante[Math.floor(Math.random() * delante.length)], alto = 9 + Math.random() * 6, gira = (Math.random() < 0.5 ? -1 : 1) * (200 + Math.random() * 160);
+      g.animate([{ transform: 'translate(0,0) rotate(0deg)' }, { transform: `translate(${(Math.random() * 6 - 3).toFixed(1)}px,-${alto.toFixed(1)}px) rotate(${gira / 2}deg)`, offset: 0.45, easing: 'cubic-bezier(.4,0,1,1)' }, { transform: `translate(0,0) rotate(${gira}deg)` }],
+        { duration: 520, easing: 'cubic-bezier(0,0,.6,1)', composite: 'add' });
+    }, 1900);
   }
-  // Un golpe de calor: todos los granos saltan a la vez (al sellar un movimiento).
+  // Al sellar: un golpe de muñeca. El plato sube y se inclina, y los granos, un instante después (inercia), vuelan y caen.
   function estallido(fuerte = 1) {
     if (quieto) return;
-    // Sobre el salto de siempre («add»): el grano sube más alto y da media vuelta. Gira sobre sí mismo (transform-box en CSS).
+    nodo.querySelector('.tt-cuerpo').animate([{ transform: 'translate(0,0) rotate(0deg)' }, { transform: `translate(-2px,-${(4 * fuerte).toFixed(1)}px) rotate(-${(2.2 * fuerte).toFixed(1)}deg)`, offset: 0.3 }, { transform: 'translate(0,0) rotate(0deg)' }],
+      { duration: 420, easing: 'cubic-bezier(.3,.7,.4,1)', composite: 'add' });
     nodo.querySelectorAll('.tg').forEach((g, k) => {
-      const dx = (k - 5) * 1.6 * fuerte, alto = (14 + (k * 29 % 10)) * fuerte, giro = (k % 2 ? 1 : -1) * 160;
-      g.animate([{ transform: 'translate(0,0) rotate(0deg)' }, { transform: `translate(${dx}px,-${alto}px) rotate(${giro}deg)`, offset: 0.45 }, { transform: 'translate(0,0) rotate(0deg)' }],
-        { duration: 560, delay: k * 18, easing: 'cubic-bezier(.3,.6,.4,1)', composite: 'add' });
+      const fila = g.classList.contains('tg-0') ? 0 : g.classList.contains('tg-1') ? 1 : 2;
+      const dx = (k % 5 - 2) * 1.4 * fuerte, alto = ([7, 11, 15][fila] + (k * 29 % 5)) * fuerte, giro = (k % 2 ? 1 : -1) * (150 + k * 13 % 90);
+      g.animate([{ transform: 'translate(0,0) rotate(0deg)' }, { transform: `translate(${dx}px,-${alto}px) rotate(${giro / 2}deg)`, offset: 0.45, easing: 'cubic-bezier(.4,0,1,1)' }, { transform: `translate(0,0) rotate(${giro}deg)` }],
+        { duration: 560, delay: 70 + k * 12, easing: 'cubic-bezier(0,0,.6,1)', composite: 'add' });
     });
   }
   // El crepitar del grano: solo un rato (al entrar y al sellar), para que no canse en 6 minutos.
@@ -199,6 +236,7 @@ export function tostarPantalla(params, nav) {
     '<b>Tostar (R30):</b> antes de moler, el grano se tostaba en el tostador. Aquí, 5-8 minutos de movimientos para las articulaciones de lo que toca hoy.',
     'Movimientos que se mueven, no estiramientos quietos: quieto, menos de 60 s por músculo, que más resta fuerza (Behm y cols. 2016).',
     'Es opcional: lo que más prepara para levantar son las piedras de arrimar, antes de cada ejercicio.',
+    ...lista.map((m) => `<b>${esc(m.nombre)}</b> · ${esc(m.dosis)}. ${esc(m.como ?? '')}`),
   ], pestana: 'porque' });
   // «Ya está tostado»: el grano salta por última vez y a moler.
   nodo.querySelector('[data-tostado]').onclick = async (e) => {
@@ -248,7 +286,7 @@ export function tostarPantalla(params, nav) {
         escalonar(nodo.querySelectorAll('.tostar-titulo, .tostar-sub, .segmentado, .tostar-lista li, .tostar-pista, .tostar-saltar, .boton-tostado'), { desde: 160, retraso: 35 });
       }
     },
-    alSalir() { cancelAnimationFrame(raf); anims.forEach((a) => a.cancel()); clearTimeout(tCrep); S.tostarOff(); },
+    alSalir() { cancelAnimationFrame(raf); anims.forEach((a) => a.cancel()); clearInterval(pops); clearTimeout(tCrep); S.tostarOff(); },
   };
 }
 

@@ -73,7 +73,11 @@ test('R30 · Tostar: seis movimientos de las zonas del día, 5-8 minutos', () =>
   const pierna = G.tostar([{ ej: 'prensa', series: 3 }, { ej: 'peso-muerto-rumano', series: 3 }, { ej: 'gemelos-prensa', series: 3 }]);
   assert.ok(pierna.some((m) => m.zona === 'tobillos') && pierna.some((m) => m.zona === 'caderas'));
   for (const l of [empujes, pierna]) { const min = G.minutosTostar(l); assert.ok(min >= 5 && min <= 8, `${min} min`); }
-  assert.ok(G.tostar([{ ej: 'prensa', series: 3 }], 'polea').some((m) => /polea|barra/i.test(m.nombre)));
+  assert.ok(G.tostar([{ ej: 'prensa', series: 3 }, { ej: 'peso-muerto-rumano', series: 3 }], 'polea').some((m) => /banda/i.test(m.nombre)));
+  // Calentar no es entrenar (G118): ningún movimiento es un press, un jalón, un remo ni lleva carga de barra.
+  for (const modo of ['cuerpo', 'polea']) for (const m of G.tostar([{ ej: 'press-inclinado-mancuernas', series: 4 }, { ej: 'prensa', series: 3 }, { ej: 'jalon-pecho', series: 3 }], modo)) {
+    assert.doesNotMatch(m.nombre, /press|jal[oó]n|remo|barra vac|peso muerto/i, m.nombre); assert.ok(m.como?.length > 10, m.id);
+  }
   assert.equal(G.zonasDichas([{ zona: 'hombros' }, { zona: 'brazos' }]), 'Hombros, codos y muñecas');
 });
 

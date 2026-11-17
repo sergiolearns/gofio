@@ -5,22 +5,28 @@
 // revisión del tren superior, BJSM). Certeza 🟡: efectos pequeños y poco estudiados en musculación.
 import { CATALOGO } from './ejercicios.js';
 
-// zona: de qué parte del cuerpo; cuerpo: sin nada; polea: con polea o banda (si no hay versión, la del cuerpo).
+// zona: de qué parte del cuerpo; polea: la versión con banda o polea (si no hay, la del cuerpo, que también vale).
+// Nombres de gimnasio que se reconocen al vuelo (G118: «giros de espalda a cuatro patas» no lo conocía nadie y un press
+// en polea «más que calentar es un ejercicio»): movilidad y activación, ligeras, nunca una serie de entrenamiento.
+// «como»: cómo se hace, en una línea, para la libreta.
 export const MOVIMIENTOS = [
-  { id: 'circulos-brazos', zona: 'hombros', nombre: 'Círculos de brazos', dosis: '10 y 10', seg: 40 },
-  { id: 'rotacion-externa', zona: 'hombros', nombre: 'Rotación de hombro hacia fuera', dosis: '12 y 12', seg: 50, soloPolea: true },
-  { id: 'brazos-pared', zona: 'escapulas', nombre: 'Brazos que suben por la pared', dosis: '10', seg: 45, polea: { nombre: 'Aperturas con banda', dosis: '15' } },
-  { id: 'flexiones-escapulas', zona: 'empuje', nombre: 'Flexiones solo de escápulas', dosis: '10', seg: 40, polea: { nombre: 'Press en polea muy ligero', dosis: '15' } },
-  { id: 'colgarse', zona: 'tiron', nombre: 'Colgarte de la barra', dosis: '20 s', seg: 40, polea: { nombre: 'Jalón muy ligero, lento', dosis: '15' } },
-  { id: 'giros-espalda', zona: 'columna', nombre: 'Giros de espalda a cuatro patas', dosis: '8 y 8', seg: 50 },
-  { id: 'gato-camello', zona: 'columna', nombre: 'Lomo arriba, lomo abajo', dosis: '8', seg: 35 },
-  { id: 'munecas-codos', zona: 'brazos', nombre: 'Círculos de muñecas y codos', dosis: '30 s', seg: 35 },
-  { id: 'circulos-cadera', zona: 'caderas', nombre: 'Círculos de cuadriles, de pie', dosis: '8 y 8', seg: 45 },
-  { id: 'balanceo-pierna', zona: 'caderas', nombre: 'Balanceos de pierna', dosis: '10 y 10', seg: 50 },
-  { id: 'sentadilla-lenta', zona: 'rodillas', nombre: 'Sentadilla sin peso, lenta', dosis: '10', seg: 45, polea: { nombre: 'Sentadilla con la polea delante, ligera', dosis: '10' } },
-  { id: 'rodilla-pared', zona: 'tobillos', nombre: 'Rodilla a la pared', dosis: '10 y 10', seg: 50 },
-  { id: 'bisagra-palo', zona: 'isquios', nombre: 'Bisagra con un palo en la espalda', dosis: '10', seg: 40, polea: { nombre: 'Peso muerto rumano con la barra vacía', dosis: '10' } },
-  { id: 'puente-gluteo', zona: 'gluteo', nombre: 'Puente de glúteo', dosis: '12', seg: 40 },
+  { id: 'circulos-brazos', zona: 'hombros', nombre: 'Círculos de brazos', dosis: '10 y 10', seg: 40, como: 'Brazos estirados, círculos grandes hacia delante y luego hacia atrás.',
+    polea: { nombre: 'Dislocaciones con banda', dosis: '10', como: 'Banda agarrada ancha, brazos estirados: de delante a detrás por encima de la cabeza y vuelta.' } },
+  { id: 'rotacion-externa', zona: 'hombros', nombre: 'Rotación externa con banda', dosis: '12 y 12', seg: 50, soloPolea: true, como: 'Codo pegado al costado a 90°, abre el antebrazo hacia fuera, despacio. Con banda o la polea al mínimo.' },
+  { id: 'angeles-pared', zona: 'escapulas', nombre: 'Ángeles en la pared', dosis: '10', seg: 45, como: 'Espalda y brazos pegados a la pared, sube y baja los brazos sin despegarlos.',
+    polea: { nombre: 'Aperturas con banda', dosis: '15', como: 'Banda delante a la altura del pecho, brazos estirados: ábrela juntando las escápulas.' } },
+  { id: 'flexiones-escapulares', zona: 'empuje', nombre: 'Flexiones escapulares', dosis: '10', seg: 40, como: 'En posición de flexión, brazos estirados: junta y separa las escápulas sin doblar los codos.' },
+  { id: 'colgarse', zona: 'tiron', nombre: 'Colgarte de la barra', dosis: '20 s', seg: 40, como: 'Agarra la barra de dominadas y cuélgate relajado, respirando.' },
+  { id: 'giros-tronco', zona: 'columna', nombre: 'Giros de tronco', dosis: '10 y 10', seg: 40, como: 'De pie, brazos cruzados al pecho: gira el tronco a un lado y al otro sin mover la cadera.' },
+  { id: 'gato-camello', zona: 'columna', nombre: 'Gato-camello', dosis: '8', seg: 35, como: 'A cuatro patas: redondea la espalda hacia arriba y luego húndela, despacio.' },
+  { id: 'munecas-codos', zona: 'brazos', nombre: 'Círculos de muñecas y codos', dosis: '30 s', seg: 35, como: 'Manos juntas, círculos de muñecas; luego círculos de antebrazo con los codos.' },
+  { id: 'circulos-cadera', zona: 'caderas', nombre: 'Círculos de cadera', dosis: '8 y 8', seg: 45, como: 'De pie, manos en la cintura: círculos amplios de cadera hacia un lado y al otro.' },
+  { id: 'balanceo-pierna', zona: 'caderas', nombre: 'Balanceos de pierna', dosis: '10 y 10', seg: 50, como: 'Agarrado a algo, balancea una pierna adelante y atrás, sin forzar.' },
+  { id: 'sentadilla-sin-peso', zona: 'rodillas', nombre: 'Sentadilla sin peso', dosis: '10', seg: 45, como: 'Lenta y hasta donde llegues cómodo, con los talones en el suelo.' },
+  { id: 'movilidad-tobillo', zona: 'tobillos', nombre: 'Movilidad de tobillo', dosis: '10 y 10', seg: 50, como: 'Pie a un palmo de la pared: lleva la rodilla a tocarla sin levantar el talón.' },
+  { id: 'buenos-dias', zona: 'isquios', nombre: 'Buenos días sin peso', dosis: '10', seg: 40, como: 'Manos en la nuca, rodillas un poco dobladas: echa la cadera atrás con la espalda recta.' },
+  { id: 'puente-gluteo', zona: 'gluteo', nombre: 'Puente de glúteo', dosis: '12', seg: 40, como: 'Boca arriba, pies apoyados: sube la cadera apretando el glúteo y baja despacio.',
+    polea: { nombre: 'Pasos laterales con mini banda', dosis: '10 y 10', como: 'Mini banda sobre las rodillas, medio agachado: pasos de lado sin juntar los pies.' } },
 ];
 
 // Qué zonas pide cada músculo del día (la articulación que más trabaja).
@@ -62,8 +68,8 @@ export function tostar(ejercicios, modo = 'cuerpo', catalogo = CATALOGO) {
       const m = MOVIMIENTOS.filter((x) => x.zona === z && !usado.has(x.id) && (modo === 'polea' || !x.soloPolea))[0];
       if (!m || (vuelta === 0 && lista.some((x) => x.zona === z))) continue;
       usado.add(m.id);
-      const v = modo === 'polea' && m.polea ? { ...m, nombre: m.polea.nombre, dosis: m.polea.dosis } : m;
-      lista.push({ id: m.id, zona: m.zona, nombre: v.nombre, dosis: v.dosis, seg: m.seg });
+      const v = modo === 'polea' && m.polea ? { ...m, ...m.polea } : m;
+      lista.push({ id: m.id, zona: m.zona, nombre: v.nombre, dosis: v.dosis, seg: m.seg, como: v.como });
     }
   }
   // Las zonas, en un orden que fluye: de arriba abajo y de suelto a específico.
@@ -76,7 +82,7 @@ export const minutosTostar = (lista) => Math.max(1, Math.round(lista.reduce((s, 
 
 /** Las zonas del día dichas en corto, para la cabecera («Hombros, codos y muñecas»). */
 const NOMBRE_ZONA = { hombros: 'hombros', escapulas: 'escápulas', empuje: 'pecho', tiron: 'espalda', columna: 'espalda', brazos: 'codos y muñecas',
-  caderas: 'cuadriles', gluteo: 'glúteo', isquios: 'isquios', rodillas: 'rodillas', tobillos: 'tobillos' };
+  caderas: 'caderas', gluteo: 'glúteo', isquios: 'isquios', rodillas: 'rodillas', tobillos: 'tobillos' };
 export function zonasDichas(lista) {
   const v = [...new Set(lista.map((m) => NOMBRE_ZONA[m.zona]))].slice(0, 3);
   if (!v.length) return '';
