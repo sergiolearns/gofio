@@ -8,8 +8,8 @@
 // Sin servidor (o sin conexión) no pasa nada: el descanso sigue contando igual dentro de la app.
 import { ajuste, ponerAjuste } from './logica.js';
 
-/** Dirección del Worker. Vacía hasta que Sergio lo despliegue en su cuenta de Cloudflare (guía en servidor-avisos/LEEME.md). */
-export const SERVIDOR = '';
+/** Dirección del Worker en la cuenta de Cloudflare de Sergio (desplegado el 17 nov 2026; guía en servidor-avisos/LEEME.md). */
+export const SERVIDOR = 'https://gofio-avisos.sergio-medina-ospina.workers.dev';
 
 const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const deB64url = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
