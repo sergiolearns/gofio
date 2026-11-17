@@ -3,9 +3,10 @@
 import * as G from '../cerebro/index.js';
 import { estado, ajuste, hoy, planDeHoy, porQue, prescripcion, vueltaHoy, sesionEnCurso, sesionesHechas, empezarSesion, resumen,
   siguienteHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste } from '../logica.js';
-import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada, avisar } from '../ui.js';
+import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada, avisar, contar } from '../ui.js';
 import { aMoler } from '../amoler.js';
 import { toque } from '../sonidos.js';
+import * as S from '../sonidos.js';
 
 let diaMaloActivo = false;
 let eleccion = null; // {fecha, diaId|'combinada'} si el usuario eligió «Otro día»
@@ -76,13 +77,16 @@ export function hoyPantalla(params = {}, nav) {
 
   let cabezaTexto, cuerpo;
   if (mostrarHecho) {
+    // G110 · «La cuenta de la molienda»: un papel harina con el diente de sierra, ejercicio a ejercicio con sus granos y
+    // su mejor serie, el total y el sello estampado (lienzo, tablero 4c, opción B).
     const r = resumen(hechaHoy);
-    let proxima = '';
-    try { const m = G.sumarDias(fecha, 1); proxima = `Mañana, si vienes: ${planDeHoy(m, Date.parse(m + 'T18:00:00')).nombre.toLowerCase()}.`; } catch { /* sin plan */ }
-    cabezaTexto = `<p class="hoy-hecho-1">Hecho gofio: ${r.series} ${r.series === 1 ? 'grano' : 'granos'}.</p>${proxima ? `<p class="hoy-hecho-2">${esc(proxima)}</p>` : ''}`;
-    cuerpo = `<div class="tarjeta-granos"><div class="rejilla" role="img" aria-label="${r.series} granos: un grano, una serie">${Array.from({ length: r.series }, () => grano(true)).join('')}</div><p>Un grano, una serie.</p></div>
+    let manana = '';
+    try { const m = G.sumarDias(fecha, 1); manana = planDeHoy(m, Date.parse(m + 'T18:00:00')).nombre.toLowerCase(); } catch { /* sin plan */ }
+    cabezaTexto = '<p class="hoy-hecho-1">Hecho gofio. Ahora, a descansar.</p>';
+    cuerpo = `${cuentaMolienda(hechaHoy, r, dNum, fecha)}
+      ${manana ? `<p class="hoy-manana">Mañana, si vienes: <b>${esc(manana)}</b>.</p>` : ''}
       <div class="relleno"></div>
-      <div class="hoy-pie"><button class="boton piedra" type="button" data-resumen>Ver la molienda</button><button class="hoy-otra" type="button" data-otro>Otra molienda</button></div>`;
+      <div class="hoy-pie-hecho"><button class="enlace" type="button" data-resumen>Ver la molienda</button><button class="enlace tenue" type="button" data-otro>Otra molienda</button></div>`;
   } else {
     cabezaTexto = `<p class="hoy-por-que">${porque}</p><p class="hoy-meta">${ejercicios.length} ejercicios · ${totalSeries} series · ~${minutos} min</p>`;
     cuerpo = `<div class="fila-titulo"><h2>${esc(etiqueta)}</h2><button class="enlace" data-otro type="button">Otro día</button></div>
@@ -93,7 +97,6 @@ export function hoyPantalla(params = {}, nav) {
 
   const nodo = el(`<section class="hoy" aria-labelledby="titulo-hoy">
     <div class="hoy-muela" aria-hidden="true">${mostrarHecho ? '' : '<i class="hoy-hoyuelo"></i>'}</div>
-    ${mostrarHecho ? '<img class="hoy-sello" src="iconos/disco-sello-almagre.svg" alt="" width="190" height="190">' : ''}
     <header class="hoy-cabeza">
       <div class="hoy-arriba">
         <div class="fecha-hoy cifra" aria-label="Hoy, ${G.NOMBRE_DIA[G.diaSemana(fecha)]} ${dNum}">${dNum}</div>
@@ -144,7 +147,7 @@ export function hoyPantalla(params = {}, nav) {
     if (enCurso) { nav.ir('serie', { sesionId: s.id, i }); return; }
     // «A moler» (G84, G89): la muela de Hoy rueda y crece, cae la pequeña, se abre el ojo y entra la primera serie.
     await aMoler({
-      muela: nodo.querySelector('.hoy-muela'), apartar: [...nodo.querySelectorAll('.hoy-cabeza, .hoy-cuerpo, .hoy-sello'), document.getElementById('pestanas')],
+      muela: nodo.querySelector('.hoy-muela'), apartar: [...nodo.querySelectorAll('.hoy-cabeza, .hoy-cuerpo'), document.getElementById('pestanas')],
       total, hechas, alCambiar: () => nav.ir('serie', { sesionId: s.id, i }, { sinAnimacion: true }),
     });
   });
@@ -157,6 +160,7 @@ export function hoyPantalla(params = {}, nav) {
         colocarMuela(nodo, mostrarHecho);
       });
       if (refresco) { escalonar(nodo.querySelectorAll('.lista-hoy li'), { desde: 0, retraso: 35 }); return; }
+      if (mostrarHecho) { entraLaCuenta(nodo, hechaHoy); return; }
       const resto = nodo.querySelectorAll('.lista-hoy li, .tarjeta-granos, .hoy-pie > *');
       if (reduceMovimiento()) return;
       // G87 · La muela da un trozo de vuelta y el hoyuelo se desliza por el borde (como piedra).
@@ -166,13 +170,95 @@ export function hoyPantalla(params = {}, nav) {
       cuandoRevelada(() => requestAnimationFrame(() => {
         const GIRO = 1100;
         nodo.querySelector('.hoy-muela').animate([{ transform: 'rotate(-16deg)' }, { transform: 'rotate(0deg)' }], { duration: GIRO, easing: 'cubic-bezier(.77,0,.175,1)' });
-        const sello = nodo.querySelector('.hoy-sello');
-        sello?.animate([{ transform: 'rotate(-60deg) scale(1.3)', opacity: 0 }, { transform: 'rotate(-18deg) scale(1)', opacity: 1 }], { duration: 520, delay: 200, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' });
         ocultos.forEach((a) => a.cancel());
         escalonar(resto, { desde: GIRO - 120, retraso: 45 });
       }));
     },
   };
+}
+
+// ── G110 · La cuenta de la molienda y su sello ─────────────────────────────────────
+const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+const sierra = (abajo) => `<svg class="cuenta-sierra" viewBox="0 0 384 10" preserveAspectRatio="none" aria-hidden="true"><path d="M0 ${abajo ? 0 : 10}${Array.from({ length: 32 }, (_, k) => `L${6 + 12 * k} ${abajo ? 10 : 0}L${12 + 12 * k} ${abajo ? 0 : 10}`).join('')}Z"/></svg>`;
+/** El sello de tinta: almagre, borde irregular y algún hueco, la fecha dentro y «HECHO GOFIO · FUERZA DE MOLINO» alrededor. */
+function selloTinta(dia, mes) {
+  return `<svg class="sello-tinta" viewBox="-100 -100 200 200" role="img" aria-label="Sello: hecho gofio, ${dia} ${mes.toLowerCase()}">
+    <defs>
+      <filter id="sello-tinta" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7" result="r"/><feDisplacementMap in="SourceGraphic" in2="r" scale="3.2"/></filter>
+      <mask id="sello-huecos"><rect x="-100" y="-100" width="200" height="200" fill="#fff"/><g fill="#000" opacity=".55"><circle cx="-52" cy="38" r="2.2"/><circle cx="46" cy="-58" r="1.6"/><circle cx="62" cy="40" r="2.6"/><circle cx="-20" cy="-70" r="1.4"/><circle cx="12" cy="66" r="1.8"/><circle cx="-70" cy="-14" r="1.2"/></g></mask>
+      <path id="sello-aro" d="M0 -70a70 70 0 1 1 0 140a70 70 0 1 1 0 -140"/>
+    </defs>
+    <g filter="url(#sello-tinta)" mask="url(#sello-huecos)">
+      <circle r="94" fill="#B8422E"/><circle r="86" fill="none" stroke="#F1E6D2" stroke-width="3"/><circle r="52" fill="none" stroke="#F1E6D2" stroke-width="3"/>
+      <text class="sello-aro-txt" fill="#F1E6D2"><textPath href="#sello-aro">HECHO GOFIO · FUERZA DE MOLINO ·</textPath></text>
+      <text class="sello-dia" y="12" text-anchor="middle" fill="#F1E6D2">${dia}</text>
+      <text class="sello-mes" y="34" text-anchor="middle" fill="#F1E6D2">${mes}</text>
+    </g>
+  </svg>`;
+}
+/** Kilos «molidos»: la suma de peso × reps de la sesión. Un dato, no una regla (con lastre cuenta solo el lastre). */
+const kilosMolidos = (ss) => Math.round(ss.reduce((a, x) => a + (x.peso ?? 0) * x.reps, 0));
+function cuentaMolienda(sesion, r, dia, fecha) {
+  const ss = seriesDe(sesion.id);
+  const porEj = [];
+  for (const x of [...ss].sort((a, b) => a.ts - b.ts)) {
+    let e = porEj.find((y) => y.ej === x.ejercicioId);
+    if (!e) { e = { ej: x.ejercicioId, series: [] }; porEj.push(e); }
+    e.series.push(x);
+  }
+  const lineas = porEj.map((e) => {
+    const top = e.series.reduce((a, b) => (G.e1rm(b.peso, b.reps, b.rir) > G.e1rm(a.peso, a.reps, a.rir) ? b : a));
+    const marca = r.mejor?.ej === e.ej && r.mejor.marca;
+    return `<li><span class="cuenta-nombre">${esc(G.ejercicio(e.ej).nombre)}${marca ? ` <i class="cuenta-marca" title="Marca nueva">${icono('marca')}</i>` : ''}</span>
+      <span class="cuenta-granos" aria-label="${e.series.length} ${e.series.length === 1 ? 'serie' : 'series'}">${e.series.map(() => grano(true)).join('')}</span>
+      <b class="cifra num">${top.peso ? `${kg(top.peso)} × ` : ''}${top.reps}</b></li>`;
+  }).join('');
+  const kgs = kilosMolidos(ss);
+  const mejor = r.mejor && (r.mejor.marca || r.mejor.delta > 0) ? ` · ${r.mejor.marca ? 'marca en' : 'lo que más subió,'} ${G.ejercicio(r.mejor.ej).nombre.split(',')[0].toLowerCase()}` : '';
+  const mes = MESES[Number(fecha.slice(5, 7)) - 1];
+  return `<div class="cuenta">
+    ${sierra(false)}
+    <div class="cuenta-papel">
+      <div class="cuenta-cabeza"><span>La molienda de hoy</span><span>${r.minutos} min</span></div>
+      <ul class="cuenta-lineas">${lineas}</ul>
+      <div class="cuenta-total"><span class="cuenta-etiqueta">Total</span>
+        <b class="titular"><span data-contar="${r.series}">${r.series}</span> ${r.series === 1 ? 'grano' : 'granos'}</b>
+        <p>${kgs ? `<span data-contar-kg="${kgs}">${kgs.toLocaleString('es-ES')}</span> kg molidos` : ''}${esc(mejor)}</p></div>
+      <div class="sello-sitio">${selloTinta(dia, mes)}<i class="aro-tinta" aria-hidden="true"></i></div>
+    </div>
+    ${sierra(true)}
+  </div>`;
+}
+/** G110 · Cómo entra: la primera vez tras la molienda, el sello se estampa con su golpe; luego las líneas y los números. */
+function entraLaCuenta(nodo, sesion) {
+  const sitio = nodo.querySelector('.sello-sitio'), sello = sitio?.querySelector('.sello-tinta');
+  const lineas = nodo.querySelectorAll('.cuenta-lineas li, .cuenta-total, .hoy-manana, .hoy-pie-hecho > *');
+  let visto = null;
+  try { visto = sessionStorage.getItem('gofio-sello'); } catch { /* sin almacenamiento */ }
+  if (reduceMovimiento() || visto === sesion.id || !sello) return;
+  try { sessionStorage.setItem('gofio-sello', sesion.id); } catch { /* */ }
+  const ocultos = [sello, ...lineas].map((n) => n.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1e6 }));
+  cuandoRevelada(() => setTimeout(() => {
+    ocultos.forEach((a) => a.cancel());
+    escalonar(lineas, { desde: 0, retraso: 45 });
+    nodo.querySelectorAll('.cuenta-granos .grano').forEach((g, k) => g.animate([{ transform: 'translateY(-10px) rotate(-30deg)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 120 + k * 22, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' }));
+    const n = nodo.querySelector('[data-contar]'); if (n) contar(n, Number(n.dataset.contar), 700);
+    const k = nodo.querySelector('[data-contar-kg]');
+    if (k) { const hasta = Number(k.dataset.contarKg), t0 = performance.now(); const paso = (t) => { const p = Math.min(1, (t - t0) / 900); k.textContent = Math.round(hasta * (1 - Math.pow(1 - p, 3))).toLocaleString('es-ES'); if (p < 1) requestAnimationFrame(paso); }; requestAnimationFrame(paso); }
+    // El golpe del sello: llega grande y ladeado, baja de golpe (tambor y vibración), rebota y deja un aro de tinta.
+    setTimeout(() => {
+      sello.animate([
+        { transform: 'rotate(-40deg) scale(1.6)', opacity: 0 },
+        { transform: 'rotate(-14deg) scale(.93)', opacity: 1, offset: 0.55 },
+        { transform: 'rotate(-14deg) scale(1.03)', offset: 0.78 },
+        { transform: 'rotate(-14deg) scale(1)', opacity: 1 },
+      ], { duration: 560, easing: 'cubic-bezier(.55,0,.2,1)', fill: 'backwards' });
+      setTimeout(() => {
+        S.suena('tambor'); vibrar();
+        sitio.querySelector('.aro-tinta')?.animate([{ transform: 'scale(.8)', opacity: 0.45 }, { transform: 'scale(1.5)', opacity: 0 }], { duration: 520, easing: 'ease-out' });
+      }, 300);
+    }, 420);
+  }, 120));
 }
 
 /**
@@ -206,11 +292,10 @@ function colocarMuela(nodo, hecho) {
     const ang = Math.acos((x - cx) / rh);
     hoyuelo.style.left = `${r + rh * Math.cos(ang)}px`; hoyuelo.style.top = `${r + rh * Math.sin(ang)}px`;
   }
-  const sello = nodo.querySelector('.hoy-sello');
-  if (sello) sello.style.top = `${236 - b}px`;
   const cuerpo = nodo.querySelector('.hoy-cuerpo');
   // En un iPhone bajo (SE, mini) la lista sube lo justo para que se vea al abrir: nunca más abajo de la mitad.
-  const objetivo = Math.min((hecho ? MUELA.granos : MUELA.lista) - b, Math.round(nodo.clientHeight * (hecho ? 0.6 : 0.54)));
+  // Con la molienda hecha, la cuenta va justo debajo del texto, encima del millo (G110).
+  const objetivo = hecho ? 0 : Math.min(MUELA.lista - b, Math.round(nodo.clientHeight * 0.54));
   cuerpo.style.marginTop = '0px';
   const ahora = cuerpo.getBoundingClientRect().top - caja.top + nodo.scrollTop;
   cuerpo.style.marginTop = `${Math.max(0, Math.round(Math.max(objetivo, abajo + 24) - ahora))}px`;
