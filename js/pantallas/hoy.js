@@ -3,7 +3,7 @@
 import * as G from '../cerebro/index.js';
 import { estado, ajuste, hoy, planDeHoy, porQue, prescripcion, vueltaHoy, sesionEnCurso, sesionesHechas, empezarSesion, resumen,
   siguienteHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva } from '../logica.js';
-import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento } from '../ui.js';
+import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada } from '../ui.js';
 import { aMoler } from '../amoler.js';
 
 let diaMaloActivo = false;
@@ -129,15 +129,22 @@ export function hoyPantalla(params = {}, nav) {
       requestAnimationFrame(() => {
         ajustarTitulo(nodo.querySelector('.hoy-titulo'), { max: 92, min: 56, lineas: 2, alto: 0.86 });
         colocarMuela(nodo, mostrarHecho);
-        // G87 · Al entrar, la muela da un trozo de vuelta y el hoyuelo se desliza por el borde (como piedra).
-        if (!refresco && !reduceMovimiento()) {
-          nodo.querySelector('.hoy-muela').animate([{ transform: 'rotate(-16deg)' }, { transform: 'rotate(0deg)' }], { duration: 1100, easing: 'cubic-bezier(.77,0,.175,1)' });
-          const sello = nodo.querySelector('.hoy-sello');
-          sello?.animate([{ transform: 'rotate(-60deg) scale(1.3)', opacity: 0 }, { transform: 'rotate(-18deg) scale(1)', opacity: 1 }], { duration: 520, delay: 200, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' });
-        }
       });
-      if (!refresco) escalonar(nodo.querySelectorAll('.lista-hoy li, .tarjeta-granos, .hoy-pie > *'), { desde: 260, retraso: 40 });
-      else escalonar(nodo.querySelectorAll('.lista-hoy li'), { desde: 0, retraso: 35 });
+      if (refresco) { escalonar(nodo.querySelectorAll('.lista-hoy li'), { desde: 0, retraso: 35 }); return; }
+      const resto = nodo.querySelectorAll('.lista-hoy li, .tarjeta-granos, .hoy-pie > *');
+      if (reduceMovimiento()) return;
+      // G87 · La muela da un trozo de vuelta y el hoyuelo se desliza por el borde (como piedra).
+      // G99 · Primero el hoyuelo (el punto negro) da su trozo de vuelta y, cuando se asienta, entra la lista.
+      // Lo de abajo se esconde ya para que no asome mientras gira; todo espera a que se vaya la cortinilla.
+      const ocultos = [...resto].map((n) => n.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1e6 }));
+      cuandoRevelada(() => requestAnimationFrame(() => {
+        const GIRO = 1100;
+        nodo.querySelector('.hoy-muela').animate([{ transform: 'rotate(-16deg)' }, { transform: 'rotate(0deg)' }], { duration: GIRO, easing: 'cubic-bezier(.77,0,.175,1)' });
+        const sello = nodo.querySelector('.hoy-sello');
+        sello?.animate([{ transform: 'rotate(-60deg) scale(1.3)', opacity: 0 }, { transform: 'rotate(-18deg) scale(1)', opacity: 1 }], { duration: 520, delay: 200, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' });
+        ocultos.forEach((a) => a.cancel());
+        escalonar(resto, { desde: GIRO - 120, retraso: 45 });
+      }));
     },
   };
 }

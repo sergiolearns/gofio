@@ -1,6 +1,6 @@
 // Service worker de Gofio: guarda la app para que funcione sin conexión (en el sótano del gimnasio).
 // Al publicar una versión nueva se cambia VERSION; la app avisa y el usuario decide cuándo actualizar.
-const VERSION = 'gofio-0.2.0';
+const VERSION = 'gofio-0.2.1';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/variables.css', 'css/app.css',
@@ -27,18 +27,17 @@ self.addEventListener('message', (e) => { if (e.data === 'saltar') self.skipWait
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  // La página (index.html): primero de la red, para que lo que se instala desde Safari sea siempre lo último (G63; iOS
-  // guarda la barra de estado y la imagen de arranque al instalar). Pero sin esperar más de 0,6 s (G97): al volver a la
-  // app tras un rato, iOS a veces la recarga y, con mala cobertura, se quedaba un rato en negro antes de la cortinilla.
-  // Si la red tarda, sale la guardada (que ya trae la cortinilla) y la nueva se guarda para la próxima vez.
+  // La página (index.html), G99: al volver a la app tras un rato, iOS a veces la recarga y todo lo que tarde la página en
+  // llegar se ve en negro (con la barra millo arriba). Así que sale al momento la guardada, que ya trae la cortinilla, y
+  // la de la red se guarda para la próxima vez. Si no hay guardada (la primera vez), de la red. Las versiones nuevas
+  // siguen poniéndose solas al abrir (G93): la página nueva llega con su service worker nuevo.
   if (e.request.mode === 'navigate') {
     const red = fetch(e.request, { cache: 'no-cache' }).then((r) => {
       if (r.ok) { const copia = r.clone(); caches.open(VERSION).then((c) => c.put('index.html', copia)); }
       return r;
     });
     e.waitUntil(red.catch(() => {}));
-    const espera = new Promise((ok) => setTimeout(ok, 600)).then(() => caches.match('index.html'));
-    e.respondWith(Promise.race([red, espera.then((r) => r || red)]).catch(() => caches.match('index.html')));
+    e.respondWith(caches.match('index.html').then((r) => r || red).catch(() => red));
     return;
   }
   // El resto, primero lo guardado (rápido y sin conexión en el sótano del gimnasio).

@@ -72,8 +72,8 @@
 })();
 </script>
 <script>
-// G93 · Actualizar sin depender del aviso. La página (index.html) siempre llega nueva de la red (G63), pero el resto
-// de la app sale de lo guardado: si hay una versión nueva esperando y aún no has tocado nada, se aplica al abrir
+// G93 · Actualizar sin depender del aviso. La página (index.html) sale al momento de lo guardado y se renueva para la
+// próxima vez (G99); el resto de la app también sale de lo guardado: si hay una versión nueva esperando y aún no has tocado nada, se aplica al abrir
 // (la cortinilla tapa la recarga). Si llega más tarde, sale el aviso «Hay versión nueva» y decides tú.
 (function () {
   if (!('serviceWorker' in navigator)) return;
