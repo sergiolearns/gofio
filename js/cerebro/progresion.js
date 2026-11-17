@@ -38,6 +38,20 @@ export function redondearAEscalon(peso, cfg, hacia = 'abajo') {
 }
 
 /**
+ * R12 (libro 1.4, G107) · Cuánto subir cuando toca: el salto que se adapta al peso. Al subir, la próxima vez se vuelve
+ * a la parte baja del rango; el salto es el que deja la misma fuerza estimada (R11, Epley con la reserva) haciendo
+ * repMin en vez de repMax, redondeado hacia abajo a lo que exista, y como poco un escalón. Con poco peso sale un
+ * escalón; con mucho, varios (prensa 180 kg 10-12 con escalón 2,5 → 187,5).
+ */
+export function pesoDeSubida(peso, { repMin, repMax, tipo, escalon }) {
+  const r = rirObjetivo(tipo);
+  const rir = (r.min + r.max) / 2;
+  const objetivo = peso * (1 + (repMax + rir) / 30) / (1 + (repMin + rir) / 30);
+  const nuevo = redondearAEscalon(objetivo, escalon, 'abajo');
+  return nuevo > peso + 1e-9 ? nuevo : siguienteEscalon(peso, escalon, +1);
+}
+
+/**
  * R12 · Doble progresión. Entrada: lo que se hizo la última vez con ese ejercicio.
  * @param {{peso:number, series:{reps:number, rir:number}[], repMin:number, repMax:number,
  *          tipo:'multi'|'aislamiento', escalon:number|number[]}} p
@@ -50,7 +64,7 @@ export function proximaVez({ peso, series, repMin, repMax, tipo, escalon }) {
   // 1) Todas las series en el tope del rango, con el RIR objetivo o con más margen → siguiente escalón y parte baja del rango.
   const todasArriba = series.every((s) => s.reps >= repMax && s.rir >= rir.min);
   if (todasArriba) {
-    const nuevo = siguienteEscalon(peso, escalon, +1);
+    const nuevo = pesoDeSubida(peso, { repMin, repMax, tipo, escalon });
     if (nuevo > peso) return { accion: 'subir', peso: nuevo, reps: series.map(() => repMin), rir };
   }
   // 3) RIR 0 sin llegar a la parte baja del rango → un escalón menos.

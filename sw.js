@@ -1,6 +1,6 @@
 // Service worker de Gofio: guarda la app para que funcione sin conexión (en el sótano del gimnasio).
 // Al publicar una versión nueva se cambia VERSION; la app avisa y el usuario decide cuándo actualizar.
-const VERSION = 'gofio-0.2.7';
+const VERSION = 'gofio-0.2.8';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/variables.css', 'css/app.css',
@@ -13,7 +13,7 @@ const ARCHIVOS = [
   'js/pantallas/ajustes.js', 'js/pantallas/bienvenida.js', 'js/pantallas/progreso.js',
   'js/cerebro/index.js', 'js/cerebro/musculos.js', 'js/cerebro/fechas.js', 'js/cerebro/ejercicios.js', 'js/cerebro/plantilla.js',
   'js/cerebro/volumen.js', 'js/cerebro/esfuerzo.js', 'js/cerebro/progresion.js', 'js/cerebro/vuelta.js', 'js/cerebro/planificador.js',
-  'js/cerebro/dia-malo.js', 'js/cerebro/sustituciones.js', 'js/cerebro/constancia.js', 'js/cerebro/generador.js', 'js/cerebro/fuerza.js',
+  'js/cerebro/dia-malo.js', 'js/cerebro/sustituciones.js', 'js/cerebro/constancia.js', 'js/cerebro/generador.js', 'js/cerebro/fuerza.js', 'js/cerebro/marcha.js',
 ];
 self.addEventListener('install', (e) => {
   // Cada archivo, pedido de nuevo a la red y no a la caché del navegador: GitHub Pages deja los archivos 10 minutos en

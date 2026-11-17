@@ -172,6 +172,36 @@
 .como-pie p.marca { display: inline-flex; align-items: center; gap: 10px; padding: 14px 18px; border-radius: 16px; background: var(--millo); color: var(--basalto); font-size: 16px; font-weight: 800; }
 .como-pie p.marca svg { width: 22px; height: 22px; color: var(--almagre); }
 .como-pie .enlace { min-height: 44px; }
+/* G106 · Sobre la marcha: − y + en «Ahora», la píldora de la reserva, calentar y la tolva. */
+.ahora-fila { display: grid; grid-template-columns: 52px 1fr 52px; align-items: center; width: 100%; }
+.ahora-fila .mini { width: 52px; height: 52px; border-radius: 50%; background: var(--basalto-2); display: grid; place-items: center; transition: transform .12s var(--curva-salida); }
+.ahora-fila .mini:active { transform: scale(.9); }
+.ahora-fila .mini svg { width: 20px; height: 20px; }
+.ahora-num { display: block; width: 100%; text-align: center; }
+.ahora-fila .por { display: none; } /* con − y + a los lados, el «×» sobra y se montaba con el − */
+.ahora .cifra.cambiado { color: var(--millo); transition: color .2s ease; }
+.ahora-cambio { margin: 12px 0 0; font-size: 14px; color: var(--piedra); }
+.ahora-deja { transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.ahora-deja.fallo { background: var(--almagre); border-color: var(--almagre); color: var(--almagre-texto); }
+.ahora.calentando .cifra { color: #CFC4B4; }
+.ahora.calentando .ahora-etiqueta { color: var(--piedra); }
+.ahora.calentando .ahora-pista { margin-top: 18px; }
+.cabeza-granos { display: inline-flex; align-items: center; gap: 10px; }
+.puntos-cal { display: inline-flex; gap: 5px; align-items: center; }
+.punto { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--piedra); box-sizing: border-box; display: block; transition: background-color .2s ease; }
+.punto.lleno { background: var(--piedra); }
+.rir-botones button.sugerida { box-shadow: inset 0 0 0 2px var(--almagre); }
+.hoja .opciones.elegir button { border: 2px solid var(--basalto-3); border-radius: 14px; margin-bottom: 8px; padding: 6px 14px; }
+.hoja .opciones.elegir button[aria-pressed="true"] { border-color: var(--millo); background: #2E2614; }
+.hoja .nota-hoja { margin-top: 10px; font-size: 13px; line-height: 1.4; }
+.grupos-tolva { flex-wrap: nowrap; overflow-x: auto; margin: 4px -24px 6px; padding: 0 24px 4px; scrollbar-width: none; touch-action: pan-x; }
+.grupos-tolva::-webkit-scrollbar { display: none; }
+.grupos-tolva .chip { flex: none; }
+.grupos-tolva .chip[aria-pressed="true"] { background: var(--millo); color: var(--basalto); }
+.tolva-abrir { margin-top: 14px; gap: 10px; }
+.tolva-abrir svg { width: 20px; height: 20px; }
+.vacio-tolva { padding: 14px 4px; font-size: 14px; color: var(--piedra); }
+@media (max-height: 720px) { .ahora-fila .mini { width: 46px; height: 46px; } .ahora-fila { grid-template-columns: 46px 1fr 46px; } }
 /* El «×» va fuera del número, para que el número quede centrado de verdad. */
 .ahora-reps { position: relative; }
 .ahora-reps .por { position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: .12em; font-size: .5em; color: var(--piedra); font-style: normal; }

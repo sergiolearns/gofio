@@ -16,6 +16,8 @@ export function el(html) {
 // Iconos propios de El alma (G86): formas llenas con vaciados, como un sello en barro, en rejilla de 24.
 // Los `path` son los del tablero de iconos del lienzo (identidad/alma/lienzo/Iconos.dc.html), copiados tal cual.
 const I = {
+  calentar: '<path d="M12 2c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1-3.6 2.2-4.8c.2 1.8 1 2.8 2.3 3.3C11 8 11.4 4.6 12 2z"/>', // R26: la llama del fogal
+  grano: '<path transform="rotate(-14 12 12)" d="M12 3c4.2 0 5.5 4.6 4.9 8c-.6 3.3-2.7 10-4.9 10s-4.3-6.7-4.9-10C6.5 7.6 7.8 3 12 3z"/>', // una serie más
   hoy: '<path fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20zM12 9a3 3 0 1 1 0 6a3 3 0 1 1 0-6zM17.4 13.4a1.5 1.5 0 1 1 0 3a1.5 1.5 0 1 1 0-3z"/>',
   semana: '<path fill-rule="evenodd" d="M1 19.5L4.6 7l3.6 12.5zM3.6 17.5h2L4.6 14zM8.4 19.5L12 5l3.6 14.5zM15.8 19.5L19.4 7L23 19.5zM18.4 17.5h2l-1-3.5z"/>',
   progreso: '<path d="M3 9.5L12 3l9 6.5v2.6L12 5.6l-9 6.5zM3 14.7l9-6.5l9 6.5v2.6l-9-6.5l-9 6.5zM3 19.9l9-6.5l9 6.5V22.5l-9-6.5l-9 6.5z"/>',
