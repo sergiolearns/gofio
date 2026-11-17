@@ -2,7 +2,7 @@
 // vuelta tras días sin ir (R14) y modo «día malo» (R21). Arriba, la muela gigante: un círculo de verdad que gira.
 import * as G from '../cerebro/index.js';
 import { estado, ajuste, hoy, planDeHoy, porQue, prescripcion, vueltaHoy, sesionEnCurso, sesionesHechas, empezarSesion, resumen,
-  siguienteHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste } from '../logica.js';
+  siguienteHueco, seriesDelHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste } from '../logica.js';
 import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada, avisar, contar } from '../ui.js';
 import { aMoler } from '../amoler.js';
 import { toque } from '../sonidos.js';
@@ -34,16 +34,23 @@ export function hoyPantalla(params = {}, nav) {
     if (eleccion.diaId === 'combinada' && plan.tipo === 'combinada') sesion = { diaId: null, nombre: 'Combinada', ejercicios: plan.ejercicios, tipo: 'combinada' };
     else if (eleccion.diaId !== 'combinada') { const d = G.diaDe(plantilla, eleccion.diaId); sesion = { diaId: d.id, nombre: d.nombre, ejercicios: d.ejercicios, tipo: 'dia' }; }
   }
+  // G113 · Con una molienda empezada, Hoy enseña esa molienda tal como va: con lo que hayas cambiado («Otra maña»),
+  // añadido o alargado dentro de ella, y con sus granos llenos. Antes enseñaba lo que diría el plan (y, si la app se
+  // recargaba, el día del plan aunque hubieras elegido otro).
+  if (enCurso) sesion = { diaId: enCurso.diaId, nombre: enCurso.nombre, ejercicios: enCurso.plan, tipo: 'curso' };
   // G100 · Lo que quitas o cambias deslizando un ejercicio vale solo para hoy (y para esta sesión).
   const clave = sesion.diaId ?? 'combinada';
   const rt = retoques(fecha, clave);
-  const base = aplicarRetoques(sesion.ejercicios, rt);
-  const ejercicios = diaMaloActivo ? G.diaMalo(base) : base;
+  const base = enCurso ? enCurso.plan : aplicarRetoques(sesion.ejercicios, rt);
+  const ejercicios = diaMaloActivo && !enCurso ? G.diaMalo(base) : base;
+  const hechasHueco = ejercicios.map((_, i) => (enCurso ? seriesDelHueco(enCurso, i).length : 0));
   const editable = !enCurso && !mostrarHecho;
   const vuelta = vueltaHoy();
   const presc = ejercicios.map((e) => prescripcion(e, vuelta));
+  if (enCurso) presc.forEach((p, i) => { p.series = ejercicios[i].series; }); // el plan de la molienda ya trae sus series
   const totalSeries = presc.reduce((s, p) => s + p.series, 0);
-  const minutos = Math.round(totalSeries * 3 / 5) * 5; // R15.7: ≈ 3 minutos por serie con su descanso
+  const hechasTotal = hechasHueco.reduce((a, b) => a + b, 0);
+  const minutos = Math.round((totalSeries - hechasTotal) * 3 / 5) * 5; // R15.7: ≈ 3 minutos por serie con su descanso
 
   // La semana en triángulos: lleno = entrenado; almagre = hoy; contorno = sin entreno.
   const lunes = G.lunesDe(fecha);
@@ -59,7 +66,8 @@ export function hoyPantalla(params = {}, nav) {
   // El porqué, con voz de casa (concepto, sección 2). Una interjección como mucho.
   let porque = '';
   let etiqueta = 'La molienda de hoy';
-  if (diaMaloActivo) { porque = 'Día malo: un fisco de lo importante. Cuenta igual.'; etiqueta += ' · día malo'; }
+  if (enCurso) { porque = `<b>Molienda a medias.</b>Llevas ${hechasTotal} de ${totalSeries} granos. Sigue donde lo dejaste.`; etiqueta = 'La molienda de ahora'; }
+  else if (diaMaloActivo) { porque = 'Día malo: un fisco de lo importante. Cuenta igual.'; etiqueta += ' · día malo'; }
   else if (descargaActiva() && vuelta.tipo !== 'larga') { porque = '<b>Semana de descarga.</b>La mitad de series, un 10 % menos y más margen.'; etiqueta += ' · descarga'; }
   else if (vuelta.tipo === 'larga') { porque = `<b>${vuelta.desde ? 'Semana de vuelta.' : '¡Ños, cuánto tiempo!'}</b>Hoy, suave: un 10 % menos y con margen.`; etiqueta += ' · vuelta'; }
   else if (vuelta.tipo === 'media') { porque = '<b>¡Ños, cuánto tiempo!</b>Hoy, tu peso de siempre y algo más de margen.'; etiqueta += ' · vuelta'; }
@@ -73,7 +81,7 @@ export function hoyPantalla(params = {}, nav) {
     const p = presc[i]; const ej = G.ejercicio(e.ej);
     const rep = e.repMin === e.repMax ? e.repMin : `${e.repMin}-${e.repMax}`;
     return `<li data-i="${i}" role="button" tabindex="0" aria-label="${esc(ej.nombre)}: ${p.series} series de ${rep}. Ver ficha">${editable ? FONDOS : ''}<div class="fila-mueve"><span class="nombre">${esc(ej.nombre)}</span>
-      <span class="der">${granos(0, p.series, -1, { clase: 'millo' })}<span class="rango">${rep}</span><b class="carga cifra num${p.peso == null ? ' vacia' : ''}">${p.accion === 'subir' && !p.descarga && p.vuelta !== 'larga' ? `<i class="sube-peso" title="Hoy sube">${icono('sube')}</i>` : ''}${p.peso == null ? '—' : kg(p.peso)}</b></span></div></li>`;
+      <span class="der">${granos(Math.min(hechasHueco[i], p.series), p.series, -1, { clase: 'millo' })}<span class="rango">${rep}</span><b class="carga cifra num${p.peso == null ? ' vacia' : ''}">${p.accion === 'subir' && !p.descarga && p.vuelta !== 'larga' ? `<i class="sube-peso" title="Hoy sube">${icono('sube')}</i>` : ''}${p.peso == null ? '—' : kg(p.peso)}</b></span></div></li>`;
   }).join('');
 
   let cabezaTexto, cuerpo;
@@ -90,8 +98,8 @@ export function hoyPantalla(params = {}, nav) {
       <div class="relleno"></div>
       <div class="hoy-pie-hecho"><button class="enlace" type="button" data-resumen>Ver la molienda</button><button class="enlace tenue" type="button" data-otro>Otra molienda</button></div>`;
   } else {
-    cabezaTexto = `<p class="hoy-por-que">${porque}</p><p class="hoy-meta">${ejercicios.length} ejercicios · ${totalSeries} series · ~${minutos} min</p>`;
-    cuerpo = `<div class="fila-titulo"><h2>${esc(etiqueta)}</h2><button class="enlace" data-otro type="button">Otro día</button></div>
+    cabezaTexto = `<p class="hoy-por-que">${porque}</p><p class="hoy-meta">${enCurso ? `${ejercicios.length} ejercicios · quedan ${totalSeries - hechasTotal} series · ~${minutos} min` : `${ejercicios.length} ejercicios · ${totalSeries} series · ~${minutos} min`}</p>`;
+    cuerpo = `<div class="fila-titulo"><h2>${esc(etiqueta)}</h2>${enCurso ? '' : '<button class="enlace" data-otro type="button">Otro día</button>'}</div>
       <ul class="lista-hoy">${filas}</ul>
       <div class="relleno"></div>
       <div class="hoy-pie"><button class="boton" type="button" data-empezar data-son="none">${enCurso ? 'Seguir la molienda' : 'A moler'}</button></div>`;
