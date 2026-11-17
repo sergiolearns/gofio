@@ -24,7 +24,13 @@ export const avisosActivos = () => avisosPosibles() && ajuste('avisos') === true
 export async function encenderAvisos() {
   if (!SERVIDOR) return 'Falta montar el servidor de los avisos.';
   if (!avisosPosibles()) return navigator.standalone === false ? 'Abre Gofio desde el icono de la pantalla de inicio.' : 'Este móvil no admite avisos de apps web.';
-  const permiso = await Notification.requestPermission();
+  // G104 · Al cerrarse la pregunta de iOS, el iPhone vuelve a pintar la barra de arriba con el color de fondo de la página
+  // (en Ajustes, harina) y se queda así hasta cerrar la app. Mientras pregunta, el fondo es millo, como al abrir (G65).
+  const raiz = document.documentElement;
+  raiz.style.backgroundColor = '#E3A62B';
+  const devolver = () => setTimeout(() => { raiz.style.backgroundColor = window.gofioFondo || ''; }, 1500);
+  let permiso;
+  try { permiso = await Notification.requestPermission(); } finally { devolver(); }
   if (permiso !== 'granted') return 'Sin permiso para avisar. Se cambia en Ajustes del iPhone → Notificaciones → Gofio.';
   try {
     const reg = await navigator.serviceWorker.ready;
