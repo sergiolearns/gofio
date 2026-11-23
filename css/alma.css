@@ -927,3 +927,55 @@
 .fila-pregunta { justify-content: center; }
 .fila-pregunta h3 { text-align: center; }
 .pie-chips .chip { white-space: nowrap; }
+
+/* ── 0.2.21 · Lo que pasa en el gimnasio (G123-G124, tablero 19) ───────────────────────────────── */
+/* El material del gimnasio y «Se carga con» (hojas claras) */
+.mat-titulo { margin: 18px 0 2px; font-family: var(--letra-texto); font-size: 14px; font-weight: 800; letter-spacing: 0; }
+.mat-nota { margin: 6px 0 0; font-size: 13px; line-height: 1.35; color: var(--tierra); }
+.mat-disco { gap: 8px; }
+.par-chips { display: flex; gap: 6px; flex: none; }
+.par-chips button { min-width: 48px; height: 40px; padding: 0 12px; border-radius: 20px; font-size: 15px; font-weight: 800; background: var(--harina-2); color: var(--basalto);
+  transition: background-color .2s ease, color .2s ease, transform .12s var(--curva-salida); }
+.par-chips button:active { transform: scale(.94); }
+.par-chips button[aria-checked="true"] { background: var(--basalto); color: var(--harina-texto); }
+.carga-par { display: flex; padding: 4px; border-radius: 14px; background: var(--harina-2); }
+.carga-par button { flex: 1; height: 44px; border-radius: 11px; font-size: 15px; font-weight: 700; color: var(--tierra); transition: background-color .22s ease, color .22s ease; }
+.carga-par button[aria-checked="true"] { background: var(--basalto); color: var(--harina-texto); font-weight: 800; }
+.lb-pagina .lb-titulillo { font-weight: 800; }
+/* «25 por lado» bajo el peso de «Ahora» */
+.unidad .por-lado { color: var(--millo); font-weight: 700; }
+/* Los granos de arriba se tocan (corregir una serie) */
+button.cabeza-granos { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; margin-right: -12px; border-radius: 22px; transition: background-color .2s ease, transform .12s var(--curva-salida); }
+button.cabeza-granos:not(:disabled) { background: var(--basalto-2); }
+button.cabeza-granos:not(:disabled):active { transform: scale(.95); background: var(--basalto-3); }
+button.cabeza-granos:disabled { opacity: 1; cursor: default; }
+/* La molienda de hoy */
+.mol-lista { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mol-fila { position: relative; border-radius: 14px; overflow: hidden; clip-path: inset(0 round 14px); touch-action: pan-y; transition: transform .22s var(--curva-salida); }
+.mol-fila .fila-mueve { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; min-height: 64px; padding: 0 12px 0 2px; background: var(--basalto); border-radius: 14px; will-change: transform; }
+.mol-fila.es-ahora .fila-mueve { background: var(--basalto); box-shadow: inset 0 0 0 2px var(--millo); }
+.mol-fila.arrastrada { z-index: 3; transition: none; box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+.mol-agarre { flex: none; width: 36px; align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; touch-action: none; cursor: grab; }
+.mol-agarre .grano { width: 9px; height: 11px; }
+.mol-agarre .grano .lleno { fill: var(--piedra); }
+.mol-agarre.vacio { cursor: default; }
+.mol-ir { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 0; text-align: left; }
+.mol-ir b { font-size: 17px; line-height: 1.2; }
+.mol-fila.es-hecho .mol-ir b { color: var(--piedra); }
+.mol-ahora { flex: none; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--millo); }
+.mol-luego { flex: none; height: 36px; padding: 0 14px; border-radius: 18px; font-size: 14px; }
+.mol-hecho { flex: none; font-size: 13px; color: var(--piedra); }
+.mol-fila .fondo-accion { border-radius: 14px; }
+.mol-fila.enganchado .fondo-accion svg { transform: scale(1.35); }
+.hoja-molienda .tolva-abrir { margin-top: 14px; }
+/* Corregir una serie */
+.hs-pregunta { margin: 4px 0 8px; text-align: center; font-weight: 700; }
+.hs-rir { display: flex; gap: 6px; }
+.hs-rir button { flex: 1; height: 48px; border-radius: 12px; font-family: var(--letra-titulo); font-stretch: var(--estrecha); font-weight: 800; font-size: 20px; background: var(--basalto-3);
+  transition: background-color .2s ease, color .2s ease; }
+.hs-rir button[aria-checked="true"] { background: var(--millo); color: var(--basalto); }
+.hecho-seguir { display: block; min-height: 44px; margin: 0 auto 4px; font-weight: 700; font-size: 15px; color: var(--almagre); }
+/* G124 · Chips apretados: si por poco no caben, sin iconos y con menos aire (antes que desplazarse) */
+.pie-chips.apretada { gap: 6px; }
+.pie-chips.apretada .chip { padding: 0 11px; gap: 6px; }
+.pie-chips.apretada .chip svg { display: none; }

@@ -1,16 +1,56 @@
 // R12 · Progresión de cargas (doble progresión) y estancamiento.
 import { rirObjetivo, e1rm } from './esfuerzo.js';
 
+const r2 = (x) => Math.round(x * 100) / 100;
+
 /**
- * R12 · Escalones de carga por material. Se configuran una vez en Ajustes.
- * Un número = paso fijo (kg). Una lista = los pesos que existen de verdad (p. ej. las mancuernas del gimnasio).
- * Valores por defecto: diseño de Gofio (⚪), pensados para un gimnasio corriente.
+ * R12 · Escalones de carga por material. Se configuran una vez en Ajustes («El material del gimnasio»).
+ * Tres formas de escalón:
+ *   - un número = paso fijo (kg): placas de máquina, poleas, lastre;
+ *   - una lista = los pesos que existen de verdad (p. ej. las mancuernas del gimnasio);
+ *   - { base, paso } = carga con discos a los dos lados (G123, libro 1.6): solo valen base + k·paso, con
+ *     paso = 2 × el disco más pequeño que usas y base = la barra si se apunta con su peso (20 en la olímpica) o 0 si
+ *     solo se apuntan los discos (Smith, máquinas de discos). Así nunca sale un peso que no se puede montar
+ *     (57,5 en barra con discos de 2,5: 18,75 por lado).
+ * Valores por defecto: diseño de Gofio (⚪), pensados para un gimnasio corriente; Sergio: discos de 2,5 (G123).
  */
+export const MATERIAL_POR_DEFECTO = {
+  disco: 2.5,       // el disco más pequeño que usas de verdad (hay de 1,25, pero pocos: G123)
+  barra: 20,        // la barra olímpica, que se apunta con su peso
+  barraZ: 10,       // la barra Z (press francés), también con su peso
+  mancuernas: 2, placas: 5, polea: 2.5, lastre: 2.5,
+};
+/** Compatibilidad: los escalones de antes (0.1-0.2.20), por material. */
 export const ESCALONES_POR_DEFECTO = {
   barra: 2.5, smith: 2.5, mancuernas: 2, maquina: 5, polea: 2.5, lastre: 2.5,
 };
 
-const r2 = (x) => Math.round(x * 100) / 100;
+/** ¿Es un escalón de discos ({ base, paso })? */
+export const esDiscos = (cfg) => !!cfg && typeof cfg === 'object' && !Array.isArray(cfg) && cfg.paso > 0;
+
+/**
+ * R12 (G123) · El escalón de un ejercicio con el material del gimnasio. `carga` = 'discos' o 'placas' (las máquinas:
+ * se elige en la libreta; si no, la del catálogo).
+ */
+export function escalonDeEjercicio(ej, material = MATERIAL_POR_DEFECTO, carga = null) {
+  const m = { ...MATERIAL_POR_DEFECTO, ...material };
+  const paso = r2(2 * (m.disco > 0 ? m.disco : 2.5));
+  switch (ej.equipo) {
+    case 'barra': return { base: ej.barra === 'z' ? m.barraZ : m.barra, paso };
+    case 'smith': return { base: 0, paso };
+    case 'maquina': return (carga ?? ej.carga ?? 'placas') === 'discos' ? { base: 0, paso } : m.placas;
+    case 'mancuernas': return m.mancuernas;
+    case 'polea': return m.polea;
+    case 'lastre': return m.lastre;
+    default: return 2.5;
+  }
+}
+
+/** R12 (G123) · Lo que va en cada lado con discos: (peso − base) / 2. Null si no es de discos o no cuadra. */
+export function porLado(peso, cfg) {
+  if (!esDiscos(cfg) || !(peso > cfg.base)) return null;
+  return r2((peso - cfg.base) / 2);
+}
 
 /** R12 · Siguiente peso disponible hacia arriba (dir = +1) o hacia abajo (dir = −1). */
 export function siguienteEscalon(peso, cfg, dir = 1) {
@@ -19,6 +59,12 @@ export function siguienteEscalon(peso, cfg, dir = 1) {
     if (dir > 0) return v.find((x) => x > peso + 1e-9) ?? peso;
     const abajo = v.filter((x) => x < peso - 1e-9);
     return abajo.length ? abajo[abajo.length - 1] : Math.min(peso, v[0] ?? 0);
+  }
+  if (esDiscos(cfg)) {
+    const { base, paso } = cfg;
+    if (dir > 0) return r2(peso < base ? base : base + (Math.floor((peso - base) / paso + 1e-9) + 1) * paso);
+    if (peso <= base + 1e-9) return r2(Math.max(0, Math.min(peso, base)));
+    return r2(Math.max(base, base + (Math.ceil((peso - base) / paso - 1e-9) - 1) * paso));
   }
   const paso = cfg > 0 ? cfg : 2.5;
   if (dir > 0) return r2(Math.floor(peso / paso + 1e-9) * paso + paso);
@@ -31,6 +77,12 @@ export function redondearAEscalon(peso, cfg, hacia = 'abajo') {
     const v = [...cfg].sort((a, b) => a - b);
     if (hacia === 'abajo') return [...v].reverse().find((x) => x <= peso + 1e-9) ?? v[0] ?? 0;
     return v.find((x) => x >= peso - 1e-9) ?? v[v.length - 1] ?? peso;
+  }
+  if (esDiscos(cfg)) {
+    const { base, paso } = cfg;
+    if (peso <= base + 1e-9) return r2(base);   // por debajo de la barra, la barra sola
+    const f = hacia === 'abajo' ? Math.floor : Math.ceil;
+    return r2(base + f((peso - base) / paso + (hacia === 'abajo' ? 1e-9 : -1e-9)) * paso);
   }
   const paso = cfg > 0 ? cfg : 2.5;
   const f = hacia === 'abajo' ? Math.floor : Math.ceil;

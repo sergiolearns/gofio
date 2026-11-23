@@ -6,8 +6,7 @@ import { el, esc, kg, mmss, icono, hoja, confirmar, avisar, vibrar, escalonar, p
 import * as S from '../sonidos.js';
 import { SERVIDOR, avisosPosibles, avisosActivos, encenderAvisos, apagarAvisos } from '../avisos.js';
 
-const NOMBRE_EQUIPO = { barra: 'Barra', smith: 'Smith', mancuernas: 'Mancuernas', maquina: 'Máquinas', polea: 'Poleas', lastre: 'Lastre' };
-export const VERSION = '0.2.20';
+export const VERSION = '0.2.21';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {
@@ -60,7 +59,7 @@ const verEscalon = (v) => (Array.isArray(v) ? v.map(kg).join('; ') : kg(v));
 export const instalacionVieja = () => !!navigator.standalone && (window.gofioPantalla?.arriba ?? 0) > 0;
 
 export function ajustesPantalla(_, nav) {
-  const esc_ = ajuste('escalones');
+  const mat = ajuste('material');
   const desc = ajuste('descanso');
   const dps = ajuste('diasPorSemana');
   const ultima = ajuste('ultimaCopia');
@@ -73,7 +72,7 @@ export function ajustesPantalla(_, nav) {
   const avisosOn = avisosActivos();
   const avisosSub = !SERVIDOR ? 'Pronto: falta montar el servidor' : !avisosPosibles() ? 'Solo con la app instalada en el iPhone' : 'Al acabar el descanso y, si sales a mitad de una serie, «¿Hecha?»';
   const interruptor = (dato, on, extra = '') => `<span class="interruptor"><input type="checkbox" role="switch" ${dato} ${on ? 'checked' : ''} ${extra}><i></i></span>`;
-  const resumenEsc = `Mancuernas ${verEscalon(esc_.mancuernas)} · discos ${verEscalon(esc_.barra)}`;
+  const resumenEsc = `Discos de ${kg(mat.disco)} · barra ${kg(mat.barra)} · mancuernas ${verEscalon(mat.mancuernas)}`;
 
   const nodo = el(`<section class="ajustes" aria-labelledby="titulo-ajustes">
     <h1 class="titular grande" id="titulo-ajustes">Ajustes</h1>
@@ -104,7 +103,7 @@ ${instalacionVieja() ? `
       <button class="fila tocable" type="button" data-min style="width:100%;text-align:left"><span class="que">Minutos por sesión</span><span class="valor-caja">${ajuste('minutos')}</span></button>
       <button class="fila tocable" type="button" data-desc="multi" style="width:100%;text-align:left"><span class="que">Descanso largo<small>Ejercicios grandes</small></span><span class="valor-caja">${mmss(desc.multi)}</span></button>
       <button class="fila tocable" type="button" data-desc="aislamiento" style="width:100%;text-align:left"><span class="que">Descanso corto<small>Ejercicios pequeños</small></span><span class="valor-caja">${mmss(desc.aislamiento)}</span></button>
-      <button class="fila tocable" type="button" data-escalones style="width:100%;text-align:left"><span class="que">Escalones del gimnasio<small>${esc(resumenEsc)}</small></span><span class="valor-caja">Ver</span></button>
+      <button class="fila tocable" type="button" data-escalones style="width:100%;text-align:left"><span class="que">El material del gimnasio<small>${esc(resumenEsc)}</small></span><span class="valor-caja">Ver</span></button>
       <button class="fila tocable" type="button" data-cargas style="width:100%;text-align:left"><span class="que">Pesos de partida<small>${Object.keys(ajuste('cargasIniciales')).length} con peso · el resto, en la primera serie</small></span><span class="valor-caja">Ver</span></button>
       <label class="fila"><span class="que">Tostar antes de moler<small>Movilidad del día, 5-8 min. Se salta con un toque.</small></span>${interruptor('data-tostar', ajuste('tostar') !== false)}</label>
     </div></div>
@@ -154,7 +153,7 @@ ${instalacionVieja() ? `
     if (v >= 15 && v <= 180) { await ponerAjuste('minutos', Math.round(v)); nav.refrescar(); }
   };
   nodo.querySelectorAll('[data-desc]').forEach((b) => b.addEventListener('click', () => elegirDescanso(b.dataset.desc, () => nav.refrescar())));
-  $('[data-escalones]').onclick = () => editarEscalones(() => nav.refrescar());
+  $('[data-escalones]').onclick = () => editarMaterial(() => nav.refrescar());
   $('[data-cargas]').onclick = () => editarCargas(() => nav.refrescar());
   $('[data-perfil]').onclick = () => editarPerfil();
   $('[data-version]').onclick = async (e) => {
@@ -188,16 +187,35 @@ function elegirDescanso(clave, alTerminar) {
     await ponerAjuste('descanso', { ...ajuste('descanso'), [clave]: Number(b.dataset.v) }); vibrar(); cerrar(); alTerminar?.();
   }));
 }
-/** Escalones de carga del gimnasio (R12): un salto fijo o la lista de pesos que existen. */
-function editarEscalones(alTerminar) {
-  const e = ajuste('escalones');
-  const { nodo, cerrar } = hoja(`<h2>Escalones del gimnasio</h2><p class="sub">Salto fijo (2,5) o la lista de pesos que hay (10; 12; 14). Cuando toca subir, Gofio salta al siguiente que exista.</p>
-    <div>${Object.keys(G.ESCALONES_POR_DEFECTO).map((k) => `<label class="fila"><span class="que">${NOMBRE_EQUIPO[k]}</span><input class="campo" data-esc="${k}" inputmode="text" value="${esc(verEscalon(e[k]))}"></label>`).join('')}</div>
-    <div class="botones"><button class="boton" type="button">Guardar</button></div>`, { clara: true });
-  nodo.querySelector('.boton').onclick = async () => {
-    const nuevo = { ...(estado.ajustes.escalones ?? {}) };
-    nodo.querySelectorAll('[data-esc]').forEach((i) => { const v = leerEscalon(i.value); if (v != null) nuevo[i.dataset.esc] = v; });
-    await ponerAjuste('escalones', nuevo); cerrar(); alTerminar?.();
+/** G123 · El material del gimnasio (R12): el disco más pequeño, las barras y lo demás. Gofio solo propone pesos que se montan. */
+function editarMaterial(alTerminar) {
+  const m = ajuste('material');
+  const fila = (k, t, sub) => `<label class="fila"><span class="que">${t}${sub ? `<small>${sub}</small>` : ''}</span><input class="campo" data-mat="${k}" inputmode="${k === 'mancuernas' ? 'text' : 'decimal'}" value="${esc(verEscalon(m[k]))}"></label>`;
+  const { nodo, cerrar } = hoja(`<h2>El material del gimnasio</h2><p class="sub">Gofio solo propone pesos que puedes montar.</p>
+    <h3 class="mat-titulo">Discos</h3>
+    <div class="fila mat-disco"><span class="que">El más pequeño<small>el que usas de verdad</small></span>
+      <span class="par-chips" role="radiogroup" aria-label="El disco más pequeño">${[1.25, 2.5, 5].map((v) => `<button type="button" role="radio" data-disco="${v}" data-son="pop" aria-checked="${v === m.disco}">${kg(v)}</button>`).join('')}</span></div>
+    ${fila('barra', 'Barra', 'se apunta con su peso')}
+    ${fila('barraZ', 'Barra Z', 'press francés')}
+    <p class="mat-nota">En la Smith y en las máquinas de discos apuntas solo los discos.</p>
+    <h3 class="mat-titulo">Lo demás</h3>
+    ${fila('mancuernas', 'Mancuernas', 'cada una · el salto o la lista: 10; 12,5; 15')}
+    ${fila('placas', 'Máquinas de placas')}
+    ${fila('polea', 'Poleas')}
+    ${fila('lastre', 'Lastre')}
+    <div class="botones"><button class="boton" type="button" data-guardar-mat>Guardar</button></div>`, { clara: true });
+  let disco = m.disco;
+  nodo.querySelectorAll('[data-disco]').forEach((b) => b.addEventListener('click', () => {
+    disco = Number(b.dataset.disco); vibrar();
+    nodo.querySelectorAll('[data-disco]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+  }));
+  nodo.querySelector('[data-guardar-mat]').onclick = async () => {
+    const nuevo = { ...(estado.ajustes.material ?? {}), disco };
+    nodo.querySelectorAll('[data-mat]').forEach((i) => {
+      const v = leerEscalon(i.value); if (v == null) return;
+      nuevo[i.dataset.mat] = i.dataset.mat === 'mancuernas' ? v : (Array.isArray(v) ? v[0] : v);
+    });
+    await ponerAjuste('material', nuevo); cerrar(); avisar('Material guardado.'); alTerminar?.();
   };
 }
 /** Peso, altura y edad (para la comida, v0.3). Opcional. */

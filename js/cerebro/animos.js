@@ -20,7 +20,7 @@ export function grupoDe(ejId, catalogo = CATALOGO) {
   return 'empuje';
 }
 
-// m: 'moliendo' (durante la serie) o 'soltar' (primer tramo del descanso). g: grupos; p: solo esos patrones.
+// m: 'moliendo' (durante la serie), 'arrimando' (durante una piedra) o 'soltar' (primer tramo del descanso). g: grupos; p: solo esos patrones.
 export const ANIMOS = [
   { f: 'Planta los pies. Que suba la piedra.', m: 'moliendo', g: ['pierna'], p: ['sentadilla'] },
   { f: 'Canillas firmes.', m: 'moliendo', g: ['pierna'] },
@@ -42,6 +42,9 @@ export const ANIMOS = [
   { f: 'Abre y cierra las manos.', m: 'soltar', g: ['tiron'] },
   { f: 'Suelta el agarre.', m: 'soltar', g: ['tiron'] },
   { f: 'Sacude los brazos.', m: 'soltar', g: ['brazo'] },
+  // Arrimando (G124): las piedras son ligeras; nada de empujar a tope.
+  { f: 'Suave: es para arrimar.', m: 'arrimando', g: ['pierna', 'empuje', 'tiron', 'brazo', 'core'] },
+  { f: 'Despacio se muele fino.', m: 'arrimando', g: ['pierna', 'empuje', 'tiron', 'brazo', 'core'] },
   { f: 'Respira.', m: 'soltar', g: ['pierna', 'empuje', 'tiron', 'brazo', 'core'] },
   { f: 'Agua y aire.', m: 'soltar', g: ['pierna', 'empuje', 'tiron', 'brazo', 'core'] },
 ];

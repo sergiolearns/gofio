@@ -12,6 +12,13 @@ export const ajuste = (clave) => {
   switch (clave) {
     case 'plantilla': return a.plantilla ?? G.PLANTILLA_SERGIO;
     case 'escalones': return { ...G.ESCALONES_POR_DEFECTO, ...(a.escalones ?? {}) };
+    // G123 · El material del gimnasio. Si venías de los escalones de antes, se respetan mancuernas, placas, poleas y lastre.
+    case 'material': {
+      const v = a.escalones ?? {};
+      const viejo = Object.fromEntries([['mancuernas', v.mancuernas], ['placas', v.maquina], ['polea', v.polea], ['lastre', v.lastre]].filter(([, x]) => x != null));
+      return { ...G.MATERIAL_POR_DEFECTO, ...viejo, ...(a.material ?? {}) };
+    }
+    case 'cargas': return a.cargas ?? {};   // G123 · «Se carga con» de cada máquina: { ejId: 'discos' | 'placas' }
     case 'descanso': return { ...DESCANSO_POR_DEFECTO, ...(a.descanso ?? {}) };
     case 'minutos': return a.minutos ?? 75;
     case 'objetivo': return a.objetivo ?? 'recomposicion';
@@ -34,7 +41,9 @@ export const sesionEnCurso = () => estado.sesiones.find((s) => s.estado === 'en-
 export const seriesDe = (sesionId) => estado.series.filter((s) => s.sesionId === sesionId);
 const idsHechas = () => new Set(sesionesHechas().map((s) => s.id));
 export const seriesHechas = () => { const ids = idsHechas(); return estado.series.filter((s) => ids.has(s.sesionId)); };
-export const escalonDe = (ejId) => ajuste('escalones')[G.ejercicio(ejId).equipo] ?? 2.5;
+export const escalonDe = (ejId) => G.escalonDeEjercicio(G.ejercicio(ejId), ajuste('material'), ajuste('cargas')[ejId]);
+/** G123 · Cómo se carga un ejercicio ('discos', 'placas' o null si no es una máquina). */
+export const cargaDe = (ejId) => { const e = G.ejercicio(ejId); return e.equipo === 'maquina' ? (ajuste('cargas')[ejId] ?? e.carga ?? 'placas') : null; };
 export const descansoDe = (ejId) => ajuste('descanso')[G.ejercicio(ejId).tipo === 'multi' ? 'multi' : 'aislamiento'];
 
 /** La última vez que se hizo un ejercicio (en una sesión terminada): sus series en orden. */
@@ -128,21 +137,61 @@ export async function guardarSesion(s) { await D.guardar('sesiones', s); }
 
 /** Series ya hechas en un hueco (slot) de la sesión. */
 export const seriesDelHueco = (sesion, i) => seriesDe(sesion.id).filter((x) => x.slot === i).sort((a, b) => a.ts - b.ts);
-/** El siguiente hueco con series pendientes, empezando por `desde`. */
-export function siguienteHueco(sesion, desde = 0) {
+/**
+ * G124 · El orden de la molienda: s.orden (lo que arrastras en «La molienda de hoy») sin perder ningún hueco. Los huecos
+ * no se mueven en s.plan (las series guardadas apuntan a su número); solo cambia el orden en que se hacen.
+ */
+export function ordenDe(sesion) {
   const n = sesion.plan.length;
-  for (let k = 0; k < n; k++) {
-    const i = (desde + k) % n;
-    if (seriesDelHueco(sesion, i).length < sesion.plan[i].series) return i;
+  const o = [...new Set((sesion.orden ?? []).filter((k) => Number.isInteger(k) && k >= 0 && k < n))];
+  for (let k = 0; k < n; k++) if (!o.includes(k)) o.push(k);
+  return o;
+}
+/** Un hueco que sigue en la molienda (los quitados por hoy, sin series, ya no se ven). */
+export const huecoVivo = (sesion, k) => sesion.plan[k].series > 0 || seriesDelHueco(sesion, k).length > 0;
+const pendiente = (sesion, i) => seriesDelHueco(sesion, i).length < sesion.plan[i].series;
+/** El siguiente hueco con series pendientes, en el orden de la molienda, empezando por `desde` (incluido). */
+export function siguienteHueco(sesion, desde = 0) {
+  const o = ordenDe(sesion);
+  const p = Math.max(0, o.indexOf(desde));
+  for (let k = 0; k < o.length; k++) {
+    const i = o[(p + k) % o.length];
+    if (pendiente(sesion, i)) return i;
   }
   return -1;
 }
+/** El siguiente pendiente después de `i` (sin contarlo, salvo que sea el único que queda). */
+export function siguienteTras(sesion, i) {
+  const o = ordenDe(sesion);
+  const p = o.indexOf(i);
+  for (let k = 1; k <= o.length; k++) {
+    const j = o[(p + k) % o.length];
+    if (pendiente(sesion, j)) return j;
+  }
+  return -1;
+}
+/** G124 · «Hasta aquí»: el ejercicio se queda con las series hechas (lo que falte, la semana lo reparte). */
+export function hastaAqui(sesion, k) {
+  const h = seriesDelHueco(sesion, k).length;
+  const slot = sesion.plan[k];
+  if (slot.series > h) { slot.quitadas = (slot.quitadas ?? 0) + slot.series - h; slot.series = h; }
+  if (sesion.prep?.i === k) delete sesion.prep;
+}
+/** G124 · «Quitar por hoy» dentro de la molienda: lo mismo que «Hasta aquí» (si no hay series, desaparece de la lista). */
+export const quitarPorHoy = hastaAqui;
+/** G124 · «Luego»: el ejercicio va al final del orden. */
+export function mandarAlFinal(sesion, k) { sesion.orden = [...ordenDe(sesion).filter((x) => x !== k), k]; }
 
 export async function guardarSerie(sesion, i, { peso, reps, rir }) {
   const s = { id: D.id(), sesionId: sesion.id, slot: i, ejercicioId: sesion.plan[i].ej, fecha: sesion.fecha, ts: Date.now(), peso, reps, rir };
   estado.series.push(s);
   await D.guardar('series', s);
   return s;
+}
+/** G124 · Corregir una serie ya guardada (tocando sus granos): peso, reps o reserva. */
+export async function cambiarSerie(serie, { peso, reps, rir }) {
+  Object.assign(serie, { peso, reps, rir });
+  await D.guardar('series', serie);
 }
 export async function borrarSerie(serie) {
   estado.series = estado.series.filter((s) => s.id !== serie.id);
@@ -165,6 +214,16 @@ export async function terminarSesion(sesion) {
   await D.guardar('sesiones', sesion);
   return sesion;
 }
+
+/** G124 · «Me faltó algo: seguir moliendo»: la molienda terminada hoy vuelve a estar en curso, tal como la dejaste. */
+export async function seguirMoliendo(sesion) {
+  if (sesion.fecha !== hoy() || sesionEnCurso()) return false;
+  sesion.estado = 'en-curso'; sesion.fin = null;
+  await D.guardar('sesiones', sesion);
+  return true;
+}
+/** ¿Le queda algo pendiente a una molienda (series sin hacer)? */
+export const quedaAlgo = (sesion) => sesion.plan.some((x, k) => seriesDelHueco(sesion, k).length < x.series);
 
 export async function ponerNota(ejId, texto) {
   if (!texto?.trim()) { delete estado.notas[ejId]; await D.borrar('notas', ejId); return; }

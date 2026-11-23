@@ -102,8 +102,10 @@ export function encajar(nodo, { min = 18, caja = nodo?.parentElement } = {}) {
  */
 export function medirChips(fila) {
   if (!fila || !fila.clientWidth) return;
-  fila.classList.add('mide'); fila.classList.remove('desborda');
-  const desborda = fila.scrollWidth > fila.clientWidth + 1;
+  fila.classList.add('mide'); fila.classList.remove('desborda', 'apretada');
+  let desborda = fila.scrollWidth > fila.clientWidth + 1;
+  // G124 · Si por poco no caben (cuatro chips en el descanso), van apretados y sin iconos antes que desplazarse.
+  if (desborda) { fila.classList.add('apretada'); desborda = fila.scrollWidth > fila.clientWidth + 1; if (desborda) fila.classList.remove('apretada'); }
   fila.classList.remove('mide'); fila.classList.toggle('desborda', desborda);
 }
 const vigiaChips = typeof ResizeObserver === 'function' ? new ResizeObserver((es) => es.forEach((e) => medirChips(e.target))) : null;

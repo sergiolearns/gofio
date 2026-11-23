@@ -2,7 +2,7 @@
 // «Hecho gofio.» y tres datos. Movimiento: el sello cae y se estampa, el título sube, los números cuentan, los granos
 // caen escalonados, la sierra se dibuja de izquierda a derecha y «Lo más fino» entra al final. Sonido: G83.
 import * as G from '../cerebro/index.js';
-import { estado, resumen, planDeHoy, seriesDe, ponerSensacion } from '../logica.js';
+import { estado, resumen, planDeHoy, seriesDe, ponerSensacion, quedaAlgo, seguirMoliendo, siguienteHueco, hoy } from '../logica.js';
 import { el, esc, kg, num, grano, contar, vibrar, reduceMovimiento, escalonar, avisar } from '../ui.js';
 import { suena } from '../sonidos.js';
 
@@ -62,7 +62,7 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
     <div class="bloque"><h3>Lo más fino</h3><p>${fino}</p></div>
     ${proxima && !soloVer ? `<div class="bloque"><h3>La próxima</h3><p>${esc(proxima)}</p></div>` : ''}
     <div class="relleno" style="min-height:28px"></div>
-    <div class="hecho-pie"><button class="boton oscuro" type="button" data-cerrar data-son="barrido">${soloVer ? 'Volver' : 'A casa'}</button></div>
+    <div class="hecho-pie">${!soloVer && s.fecha === hoy() && quedaAlgo(s) ? '<button class="enlace hecho-seguir" type="button" data-seguir data-son="-1">‹ Me faltó algo: seguir moliendo</button>' : ''}<button class="boton oscuro" type="button" data-cerrar data-son="barrido">${soloVer ? 'Volver' : 'A casa'}</button></div>
   </section>`);
 
   // R13.2 · La señal de cansancio o molestias, opcional. Si molesta una articulación, R8: parar y consultar.
@@ -74,6 +74,12 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
       ? 'Si es dolor en una articulación, o un dolor que no se va, para y consulta. Gofio no es una app médica.'
       : 'Opcional. Si «molido» o «me molesta algo» se repite, Gofio te propondrá aflojar una semana.';
   }));
+  // G124 · ¿Le diste a Terminar sin querer? La molienda vuelve tal como la dejaste (solo el mismo día).
+  nodo.querySelector('[data-seguir]')?.addEventListener('click', async () => {
+    if (!(await seguirMoliendo(s))) { avisar('Ya hay otra molienda en marcha.'); return; }
+    vibrar();
+    nav.reemplazar('serie', { sesionId: s.id, i: Math.max(0, siguienteHueco(s, s.actual ?? 0)), anima: true }, { duracion: 320 });
+  });
   nodo.querySelector('[data-cerrar]').onclick = () => { vibrar(); if (soloVer) nav.volver(); else nav.ir('hoy', {}, { modo: 'pestana' }); };
 
   return {
@@ -101,7 +107,7 @@ export function hechoPantalla({ sesionId, soloVer = false }, nav) {
         { duration: 300, delay: 700 + k * 40, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' }));
       const fin = 700 + r.series * 40;
       nodo.querySelector('.sierra-hecho i').animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: 520, delay: fin, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' });
-      escalonar(nodo.querySelectorAll('.como-te-dejo, .bloque, [data-cerrar]'), { desde: fin + 300, retraso: 120 });
+      escalonar(nodo.querySelectorAll('.como-te-dejo, .bloque, [data-seguir], [data-cerrar]'), { desde: fin + 300, retraso: 120 });
     },
   };
 }

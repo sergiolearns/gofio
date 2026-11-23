@@ -2,7 +2,7 @@
 // vuelta tras días sin ir (R14) y modo «día malo» (R21). Arriba, la muela gigante: un círculo de verdad que gira.
 import * as G from '../cerebro/index.js';
 import { estado, ajuste, hoy, planDeHoy, porQue, prescripcion, vueltaHoy, sesionEnCurso, sesionesHechas, empezarSesion, resumen,
-  siguienteHueco, seriesDelHueco, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste } from '../logica.js';
+  siguienteHueco, seriesDelHueco, ordenDe, huecoVivo, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste } from '../logica.js';
 import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada, avisar, contar } from '../ui.js';
 import { aMoler } from '../amoler.js';
 import { tocaTostar } from './tostar.js';
@@ -80,7 +80,10 @@ export function hoyPantalla(params = {}, nav) {
   const titulo = mostrarHecho ? hechaHoy.nombre : sesion.nombre;
   const bajo = mostrarHecho && window.innerHeight < 720;
 
-  const filas = ejercicios.map((e, i) => {
+  // G124 · Con una molienda empezada, en su orden (lo que arrastraste en «La molienda de hoy») y sin lo quitado por hoy.
+  const orden = enCurso ? ordenDe(enCurso).filter((k) => huecoVivo(enCurso, k)) : ejercicios.map((_, i) => i);
+  const filas = orden.map((i) => {
+    const e = ejercicios[i];
     const p = presc[i]; const ej = G.ejercicio(e.ej);
     const rep = e.repMin === e.repMax ? e.repMin : `${e.repMin}-${e.repMax}`;
     return `<li data-i="${i}" role="button" tabindex="0" aria-label="${esc(ej.nombre)}: ${p.series} series de ${rep}. Ver ficha">${editable ? FONDOS : ''}<div class="fila-mueve"><span class="nombre">${esc(ej.nombre)}</span>
@@ -360,7 +363,7 @@ function aplicarRetoques(lista, rt) {
 }
 
 /** El gesto: sigue al dedo 1:1; pasado un tercio del ancho, «engancha» (toque y vibración) y al soltar se hace. */
-function deslizable(li, { quitar, cambiar }) {
+export function deslizable(li, { quitar, cambiar }) {
   const mueve = li.querySelector('.fila-mueve');
   const fq = li.querySelector('.fondo-accion.quitar'), fc = li.querySelector('.fondo-accion.cambiar');
   let g = null;

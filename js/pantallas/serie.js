@@ -3,13 +3,14 @@
 // Basalto, números grandes y pocas palabras. Guardar una serie: los números se hacen grano, el grano vuela a su hueco
 // y la muela del descanso llega rodando (storyboard y prototipo v5). Sonidos: G83.
 import * as G from '../cerebro/index.js';
-import { estado, prescripcion, seriesDelHueco, siguienteHueco, guardarSerie, borrarSerie, guardarSesion, terminarSesion,
+import { estado, prescripcion, seriesDelHueco, siguienteHueco, siguienteTras, hastaAqui, guardarSerie, borrarSerie, guardarSesion, terminarSesion,
   escalonDe, descansoDe, ponerNota, musculoCorto, ajuste, ponerAjuste, historialArrimar, mejorReciente } from '../logica.js';
 import { el, esc, kg, mmss, icono, grano, granos, ajustarTitulo, hoja, pedirNumero, vibrar, reduceMovimiento, escalonar, pop, avisar,
   pintadera, coronaGranos, piedra, vibrarTambor, encajar, vigilarChips } from '../ui.js';
 import * as S from '../sonidos.js';
 import { descansoEnCurso, molienda } from '../avisos.js';
 import { aLaBrega } from '../amoler.js';
+import { hojaMolienda, hojaSerie, granoTocado } from './molienda.js';
 import { abrirLibreta } from './libreta.js';
 
 const sesionPorId = (id) => estado.sesiones.find((s) => s.id === id);
@@ -104,11 +105,13 @@ export function seriePantalla(params, nav) {
   // Moliendo a medias (iOS recargó la app a mitad de la serie) o pedido desde un aviso («¿Hecha?» abre «¿Cómo fue?»).
   const enMolienda = s.moliendo && s.moliendo.i === i && s.moliendo.n === n ? s.moliendo : null;
   if (enMolienda) { peso = enMolienda.peso; reps = enMolienda.reps; fallo = !!enMolienda.fallo; }
+  // G124 · Arrimando a medias (iOS recargó la app a mitad de una piedra): vuelve a Arrimando con esa piedra.
+  const piedraEnCurso = enMolienda?.piedra ? enMolienda : null;
   const momento0 = params.momento ?? (enMolienda ? (window.gofioIr === 'como' ? 'como' : 'moliendo') : 'ahora');
   window.gofioIr = null;
   // R28 · Arrimar (G115): las piedras antes de la primera serie de trabajo, recalculadas con lo que ya levantaste.
-  const trabajo = peso;
-  const repsTrabajo = reps;
+  const trabajo = piedraEnCurso ? piedraEnCurso.trabajo : peso;
+  const repsTrabajo = piedraEnCurso ? piedraEnCurso.repsTrabajo : reps;
   const piedrasHechas = (s.calentamientos ?? []).filter((c) => c.i === i);
   const estilo = n === 0 ? G.estiloArrimar(historialArrimar(slot.ej, s.id)) : null;
   // Si tu jeito es no arrimar aquí, Gofio no lo propone; pero si lo pides tú («Arrimar»), salen las piedras de siempre.
@@ -116,10 +119,10 @@ export function seriePantalla(params, nav) {
   const ar = n === 0 && trabajo != null ? G.arrimar({ trabajo, escalon, tipo: ej.tipo, repsObjetivo: repsTrabajo, lastre, hechas: piedrasHechas, estilo: estiloUsado }) : { piedras: [], plan: [], vasFuerte: false };
   const sePuedeArrimar = n === 0 && !piedrasHechas.length && (trabajo == null || G.arrimar({ trabajo, escalon, tipo: ej.tipo, repsObjetivo: repsTrabajo, lastre }).plan.length > 0);
   const saltado = (s.arrimarSaltado ?? []).includes(i);
-  const arrimando = momento0 === 'ahora' && n === 0 && !saltado && arr !== false && ar.piedras.length > 0
+  const arrimando = (momento0 === 'ahora' || !!piedraEnCurso) && n === 0 && !saltado && arr !== false && ar.piedras.length > 0
     && (arr === true || piedrasHechas.length > 0 || estilo?.n !== 0);
   const totalPiedras = piedrasHechas.length + ar.piedras.length;
-  if (arrimando) { peso = ar.piedras[0].peso; reps = ar.piedras[0].reps; }
+  if (arrimando && !piedraEnCurso) { peso = ar.piedras[0].peso; reps = ar.piedras[0].reps; }
   const vasFuerte = !arrimando && n === 0 && ar.vasFuerte && piedrasHechas.length > 0;
   const repsMeta = reps, pesoMeta = peso;
   const aviso = avisoDe(p, slot, n);
@@ -127,15 +130,17 @@ export function seriePantalla(params, nav) {
   const restoTotal = s.plan.reduce((acc, _, k) => acc + Math.max(0, s.plan[k].series - seriesDelHueco(s, k).length), 0);
   const esUltima = restoTotal === 1;
   const ultimaDelEj = n === slot.series - 1;
-  const animoTxt = G.animo(slot.ej, 'moliendo', { ultima: ultimaDelEj && n > 0 });
+  const animoTxt = arrimando ? G.animo(slot.ej, 'arrimando') : G.animo(slot.ej, 'moliendo', { ultima: ultimaDelEj && n > 0 });
 
   const rep = rango(slot.repMin, slot.repMax);
   const unidad = lastre ? 'kg de lastre' : 'kg';
+  // G123 · Con discos, lo que va en cada lado («25 por lado»): sin echar cuentas.
+  const unidadAhora = (w) => { const l = G.porLado(w, escalon); return l != null ? `kg <span class="por-lado">· ${kg(l)} por lado</span>` : unidad; };
   // G106 · En «Ahora» todo se toca: − y + con tu escalón (o una rep), y el número abre el teclado. Solo esta serie.
   const mini = (que, dir) => `<button class="mini" type="button" data-a="${que}" data-dir="${dir}" data-son="${dir}" aria-label="${que === 'peso' ? (dir > 0 ? 'Sumar el escalón' : 'Restar el escalón') : (dir > 0 ? 'Una rep más' : 'Una rep menos')}">${icono(dir > 0 ? 'mas' : 'menos')}</button>`;
   const ahoraNumeros = peso == null
     ? `<b class="titular ahora-texto">Un peso que te deje ${rep}</b><p class="ahora-pista">Lo apuntas al acabar.</p>`
-    : `<div class="ahora-fila">${mini('peso', -1)}<button class="ahora-num" type="button" data-escribir-peso-a data-son="0" aria-label="Escribir el peso"><b class="cifra ahora-peso num" data-ahora-peso>${kg(peso)}</b></button>${mini('peso', 1)}</div><span class="unidad">${unidad}</span>
+    : `<div class="ahora-fila">${mini('peso', -1)}<button class="ahora-num" type="button" data-escribir-peso-a data-son="0" aria-label="Escribir el peso"><b class="cifra ahora-peso num" data-ahora-peso>${kg(peso)}</b></button>${mini('peso', 1)}</div><span class="unidad" data-ahora-unidad>${unidadAhora(peso)}</span>
        <div class="ahora-fila">${mini('reps', -1)}<button class="ahora-num" type="button" data-escribir-reps-a data-son="0" aria-label="Escribir las reps"><b class="cifra ahora-reps num" data-ahora-reps><i class="por" aria-hidden="true">×</i><span data-ahora-reps-v>${reps}</span></b></button>${mini('reps', 1)}</div><span class="unidad">reps</span>`;
   const dejaTxt = deja(p.rir).replace(/^d/, 'D');
   // Las piedras de Arrimar, de la chica a la grande (levantamiento de la piedra, Turismo de Gran Canaria).
@@ -152,7 +157,7 @@ export function seriePantalla(params, nav) {
   const nodo = el(`<section class="serie${arrimando ? ' arrimando' : ''}" data-momento="${momento0}" aria-labelledby="titulo-serie">
     <div class="serie-cabeza">
       <button class="volver" type="button" data-volver>${icono('atras')}Hoy</button>
-      <span class="cabeza-granos">${granos(n, total, -1, { ahora: !arrimando, clase: 'millo-tenue' })}</span>
+      <button class="cabeza-granos" type="button" data-granos ${n ? '' : 'disabled'} aria-label="${n} de ${total} series. Tocar para corregir una">${granos(n, total, -1, { ahora: !arrimando, clase: 'millo-tenue' })}</button>
     </div>
     <h1 class="titular serie-titulo ahora-solo moliendo-tambien" id="titulo-serie">${esc(ej.nombre)}</h1>
     ${cabezaAviso}
@@ -163,11 +168,11 @@ export function seriePantalla(params, nav) {
       ${arrimando ? '' : `<p class="ahora-cambio" data-ahora-cambio hidden></p><button class="ahora-deja${fallo ? ' fallo' : ''}" type="button" data-deja data-son="pop" aria-label="Reserva: ${esc(fallo ? 'al fallo' : dejaTxt)}. Cambiar">${esc(fallo ? 'Al fallo' : dejaTxt)}</button>`}
     </div>
     <div class="moliendo moliendo-solo" aria-live="polite">
-      <p class="moliendo-que"><b class="cifra num" data-mol-que>${peso == null ? rep : `${kg(peso)} × ${reps}`}</b><span data-mol-deja>${fallo ? 'al fallo' : esc(deja(p.rir))}</span></p>
-      <span class="moliendo-etiqueta">Moliendo</span>
+      <p class="moliendo-que"><b class="cifra num" data-mol-que>${peso == null ? rep : `${kg(peso)} × ${reps}`}</b><span data-mol-deja>${arrimando ? 'ligera' : fallo ? 'al fallo' : esc(deja(p.rir))}</span></p>
+      <span class="moliendo-etiqueta">${arrimando ? `Arrimando · piedra ${piedrasHechas.length + 1} de ${totalPiedras}` : 'Moliendo'}</span>
       <div class="moliendo-muela" aria-hidden="true"><img src="iconos/disco-millo.svg" alt="" width="240" height="240" draggable="false"></div>
       <p class="titular moliendo-animo" data-animo>${esc(animoTxt)}</p>
-      ${ajuste('pistaMoliendo') ? '' : '<p class="moliendo-pista">Apaga el móvil si quieres: al volver, «Hecha».</p>'}
+      ${ajuste('pistaMoliendo') || arrimando ? '' : '<p class="moliendo-pista">Apaga el móvil si quieres: al volver, «Hecha».</p>'}
     </div>
     <div class="como-cabeza como-solo">
       <h2 class="titular">¿Cómo fue?</h2>
@@ -194,7 +199,7 @@ export function seriePantalla(params, nav) {
     <div class="pie-fuerza moliendo-solo">
       <div class="pie-chips">
         <button class="chip" type="button" data-aun-no-mol>Aún no</button>
-        <button class="chip" type="button" data-cambiar>${icono('cambiar')}Otra maña</button>
+        ${arrimando ? '<button class="chip" type="button" data-saltar-piedras>Saltar las piedras</button>' : `<button class="chip" type="button" data-cambiar>${icono('cambiar')}Otra maña</button>`}
         <button class="chip" type="button" data-terminar>${icono('fin')}Terminar</button>
       </div>
       <div class="fila-accion"><button class="boton boton-hecha" type="button" data-hecha data-son="none">${icono('check')}Hecha</button></div>
@@ -213,7 +218,7 @@ export function seriePantalla(params, nav) {
         ${n > 0 ? '<button class="chip" type="button" data-deshacer>Borrar la última</button>' : ''}`}
       </div>
       <div class="fila-accion">${arrimando
-        ? `<button class="boton boton-hecha" type="button" data-hecha-piedra data-son="none">${icono('check')}Hecha</button>`
+        ? '<button class="boton boton-brega" type="button" data-a-piedra data-son="none">A la piedra</button>'
         : `<button class="boton boton-brega" type="button" data-brega data-son="none">¡A la brega!</button>`}</div>
     </div>
   </section>`);
@@ -254,6 +259,7 @@ export function seriePantalla(params, nav) {
   const pintarPeso = () => {
     vPeso.textContent = peso == null ? '—' : kg(peso); bote(vPeso);
     if (ahoraPesoEl && peso != null) { ahoraPesoEl.textContent = kg(peso); bote(ahoraPesoEl); }
+    const ua = nodo.querySelector('[data-ahora-unidad]'); if (ua && peso != null) ua.innerHTML = unidadAhora(peso);
     pintarCambio(); mirarMarca();
   };
   const pintarReps = () => {
@@ -322,13 +328,17 @@ export function seriePantalla(params, nav) {
     if (si && !reduceMovimiento()) giro = muelaMol.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], { duration: 14000, iterations: Infinity });
   }
   async function entrarMolienda() {
+    if (arrimando) {   // G124 · Arrimando: se recuerda la piedra (por si iOS recarga), sin aviso «¿Hecha?»
+      s.moliendo = { i, n, peso, reps, piedra: true, trabajo, repsTrabajo, desde: s.moliendo?.desde ?? Date.now() };
+      await guardarSesion(s); return;
+    }
     s.moliendo = { i, n, peso, reps, fallo, desde: s.moliendo?.desde ?? Date.now() };
     delete s.prep;
     await guardarSesion(s);
     molienda({ hasta: Date.now() + 180000, titulo: '¿Hecha? Apunta cómo fue.', cuerpo: `${ej.nombre}, serie ${n + 1} · ${peso == null ? rep : `${kg(peso)} × ${reps}`}` });
   }
   async function salirMolienda() {
-    molienda(null);
+    if (!arrimando) molienda(null);
     if (s.moliendo) { delete s.moliendo; await guardarSesion(s); }
   }
   function aMomento(m) {
@@ -371,6 +381,7 @@ export function seriePantalla(params, nav) {
   });
   // «Hecha» → «¿Cómo fue?». La primera vez se aprende y la pista de Moliendo ya no vuelve.
   nodo.querySelector('[data-hecha]').onclick = () => {
+    if (arrimando) { piedraHecha(); return; }
     S.suena('hecha'); vibrarTambor();
     if (!ajuste('pistaMoliendo')) { ponerAjuste('pistaMoliendo', true); nodo.querySelector('.moliendo-pista')?.remove(); }
     aMomento('como');
@@ -386,10 +397,15 @@ export function seriePantalla(params, nav) {
   };
   window.addEventListener('gofio:ir', alAviso);
 
+  // G124 · «A la piedra»: Arrimando, como Moliendo pero sin cortinilla (esas son para «A moler» y «¡A la brega!»).
+  nodo.querySelector('[data-a-piedra]')?.addEventListener('click', () => {
+    S.toque('piedra'); vibrar(); aMomento('moliendo'); S.suena('moliendo', 0.08);
+  });
   // R28 · Una piedra hecha: se guarda en la sesión (no cuenta) y el molinero recalcula las que quedan.
-  nodo.querySelector('[data-hecha-piedra]')?.addEventListener('click', async () => {
+  async function piedraHecha() {
     if (guardando) return; guardando = true;
     s.calentamientos = [...(s.calentamientos ?? []), { i, peso, reps, ts: Date.now() }];
+    delete s.moliendo;
     await guardarSesion(s);
     S.suena('piedra', 0, Math.min(1, (peso ?? 0) / (trabajo || 1))); vibrar();
     const ahoraP = nodo.querySelector('.piedra.pd-ahora');
@@ -398,12 +414,13 @@ export function seriePantalla(params, nav) {
       await ahoraP.animate([{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(-14px) scale(1.12)', offset: 0.45 }, { transform: 'translateY(0) scale(1)' }], { duration: 300, easing: 'cubic-bezier(.34,1.56,.64,1)' }).finished;
     } else await espera(120);
     nav.reemplazar('serie', { sesionId: s.id, i, arr: true, anima: true, pesoTrabajo: trabajo }, { sinAnimacion: true });
-  });
-  nodo.querySelector('[data-saltar-piedras]')?.addEventListener('click', async () => {
+  }
+  nodo.querySelectorAll('[data-saltar-piedras]').forEach((b) => b.addEventListener('click', async () => {
     s.arrimarSaltado = [...new Set([...(s.arrimarSaltado ?? []), i])];
+    delete s.moliendo;
     await guardarSesion(s); S.toque('aire');
     nav.reemplazar('serie', { sesionId: s.id, i, arr: false, anima: true, pesoTrabajo: trabajo }, { sinAnimacion: true });
-  });
+  }));
   nodo.querySelector('[data-arrimar]')?.addEventListener('click', async () => {
     let w = trabajo;
     // Sin peso conocido (primera vez), las piedras salen del que vayas a mover en las de trabajo (G108).
@@ -456,7 +473,7 @@ export function seriePantalla(params, nav) {
       s.prep = { i, n: n + 1, peso: r.peso, reps: r.reps, fallo: false, senal: r.senal, gofio: { peso: r.peso, reps: r.reps } };
     } else delete s.prep;
     await vuelo;
-    const sig = seriesDelHueco(s, i).length < slot.series ? i : siguienteHueco(s, (i + 1) % s.plan.length);
+    const sig = seriesDelHueco(s, i).length < slot.series ? i : siguienteTras(s, i);
     if (sig === -1) {
       await terminarSesion(s); mantenerEncendida(false);
       nav.reemplazar('hecho', { sesionId: s.id }, { duracion: 380 });
@@ -483,16 +500,25 @@ export function seriePantalla(params, nav) {
     nav.reemplazar('serie', { sesionId: s.id, i, anima: true }, { sinAnimacion: true });
   };
   nodo.querySelectorAll('[data-cambiar]').forEach((b) => { b.onclick = () => otraMana(s, i, alCambiar); });
-  const _lista = nodo.querySelector('[data-lista]'); if (_lista) _lista.onclick = () => {
-    const { nodo: h, cerrar } = hoja(`<h2>${esc(s.nombre)}</h2><ul class="opciones">${s.plan.map((x, k) => {
-      const hh = seriesDelHueco(s, k).length;
-      return `<li><button type="button" data-k="${k}"><span class="que"><b>${esc(G.ejercicio(x.ej).nombre)}</b><span>${hh} de ${x.series}</span></span>${granos(hh, x.series, -1, { clase: 'millo-tenue' })}</button></li>`;
-    }).join('')}</ul>
-      <button class="boton plano grande tolva-abrir" type="button" data-tolva>${icono('mas')}Añadir ejercicio</button>`);
-    escalonar(h.querySelectorAll('.opciones li, .tolva-abrir'), { desde: 120, retraso: 30 });
-    h.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => { cerrar(); nav.reemplazar('serie', { sesionId: s.id, i: Number(b.dataset.k) }); }));
-    h.querySelector('[data-tolva]').onclick = () => { cerrar(); setTimeout(() => aLaTolva(s, nav), 220); };
-  };
+  // G124 · «La molienda de hoy»: el orden, «Luego», «Quitar por hoy», ir a otro ejercicio y añadir (la tolva).
+  const _lista = nodo.querySelector('[data-lista]'); if (_lista) _lista.onclick = () => hojaMolienda(s, {
+    actual: i,
+    alElegir: (k) => { if (k !== i) nav.reemplazar('serie', { sesionId: s.id, i: k, anima: true }, { sinAnimacion: true }); },
+    alQuitado: async (k, cerrar) => {
+      if (k !== i) return;
+      const sig = siguienteHueco(s, i);
+      cerrar();
+      if (sig === -1) { await dejarloSinPreguntar(s, nav); return; }
+      setTimeout(() => nav.reemplazar('serie', { sesionId: s.id, i: sig, anima: true }, { sinAnimacion: true }), 220);
+    },
+    alCambiar: (k) => otraMana(s, k, () => nav.reemplazar('serie', { sesionId: s.id, i: k, anima: true }, { sinAnimacion: true })),
+    alTolva: () => aLaTolva(s, nav),
+  });
+  // G124 · Los granos de arriba se tocan: abren la serie más cercana al dedo para corregirla o borrarla.
+  nodo.querySelector('[data-granos]')?.addEventListener('click', (e) => {
+    const g = granoTocado(e.currentTarget, e.clientX); if (g < 0) return;
+    S.toque('pop'); hojaSerie(s, i, g, { alCambiar: () => nav.refrescar() });
+  });
   nodo.querySelectorAll('[data-terminar]').forEach((b) => { b.onclick = () => dejarlo(s, nav); });
 
   return {
@@ -564,6 +590,13 @@ export async function dejarlo(s, nav, antes = () => {}) {
   });
   if (!ok) return;
   antes();
+  molienda(null); descansoEnCurso(null); delete s.moliendo; delete s.prep; delete s.descanso;
+  const r = await terminarSesion(s); mantenerEncendida(false);
+  if (r) nav.reemplazar('hecho', { sesionId: s.id }); else nav.ir('hoy', {}, { modo: 'pestana' });
+}
+
+/** Sin nada pendiente (quitaste lo último que quedaba): a casa, sin preguntar si hay series; si no, se deshace. */
+async function dejarloSinPreguntar(s, nav) {
   molienda(null); descansoEnCurso(null); delete s.moliendo; delete s.prep; delete s.descanso;
   const r = await terminarSesion(s); mantenerEncendida(false);
   if (r) nav.reemplazar('hecho', { sesionId: s.id }); else nav.ir('hoy', {}, { modo: 'pestana' });
@@ -746,21 +779,24 @@ export function descansoPantalla(params, nav) {
       <p class="mol-proxima"><span>La próxima</span><b>${proxima}</b></p>
     </div>`;
   }
+  // G124 · «Hasta aquí» (haces 3 de 4 y pasas al siguiente) y «Ejercicios» también en el descanso. Para borrar o
+  // corregir una serie, sus granos de arriba (y «Borrar la última» sigue en la hoja de la siguiente).
   const chips = molido
     ? `<button class="chip" type="button" data-nyapa data-son="none">${icono('grano')}La ñapa</button>
+        <button class="chip" type="button" data-d-lista>${icono('lista')}Ejercicios</button>
         <button class="chip" type="button" data-d-cambiar>${icono('cambiar')}Otra maña</button>
-        <button class="chip" type="button" data-d-terminar>${icono('fin')}Terminar</button>
-        ${ultima ? '<button class="chip" type="button" data-d-borrar>Borrar la última</button>' : ''}`
-    : `<button class="chip" type="button" data-d-cambiar>${icono('cambiar')}Otra maña</button>
-        <button class="chip" type="button" data-d-terminar>${icono('fin')}Terminar</button>
-        ${!mismo && ultima ? '<button class="chip" type="button" data-d-borrar>Borrar la última</button>' : ''}`;
+        <button class="chip" type="button" data-d-terminar>${icono('fin')}Terminar</button>`
+    : `${mismoHueco ? '<button class="chip" type="button" data-hasta-aqui>Hasta aquí</button>' : ''}
+        <button class="chip" type="button" data-d-lista>${icono('lista')}Ejercicios</button>
+        <button class="chip" type="button" data-d-cambiar>${icono('cambiar')}Otra maña</button>
+        <button class="chip" type="button" data-d-terminar>${icono('fin')}Terminar</button>`;
 
   const nodo = el(`<section class="descanso${molido ? ' lo-molido' : ''}${mismo ? '' : ' otro-ej'}" aria-labelledby="titulo-descanso">
     <div class="luz" aria-hidden="true"></div>
     <h1 class="oculto" id="titulo-descanso">${molido ? 'Lo molido' : 'Descanso'}</h1>
     <div class="serie-cabeza">
       <button class="volver" type="button" data-volver>${icono('atras')}Hoy</button>
-      <span class="cabeza-granos">${granos(hechasDesde.length, desde.series, -1, { clase: 'millo-tenue' })}</span>
+      <button class="cabeza-granos" type="button" data-granos ${hechasDesde.length ? '' : 'disabled'} aria-label="${hechasDesde.length} de ${desde.series} series. Tocar para corregir una">${granos(hechasDesde.length, desde.series, -1, { clase: 'millo-tenue' })}</button>
       <button class="libreta-boton" type="button" data-libreta aria-label="La libreta">${icono('libreta')}</button>
     </div>
     ${muelaHTML()}${relojHTML}
@@ -963,6 +999,38 @@ export function descansoPantalla(params, nav) {
     if (ok) borrarUltima();
   });
   nodo.querySelector('[data-d-terminar]').onclick = () => dejarlo(s, nav, () => { acabado = true; parar(); });
+  // El descanso sigue contando: se repinta con lo que viene nuevo (Lo molido si acabaste el ejercicio).
+  const repintar = () => { parar(); nav.reemplazar('descanso', { sesionId: s.id }, { sinAnimacion: true }); };
+  const aCasaSiNoQueda = async () => {
+    if (siguienteHueco(s, d.siguiente) !== -1) return false;
+    acabado = true; parar(); await dejarloSinPreguntar(s, nav); return true;
+  };
+  // G124 · «Hasta aquí»: este ejercicio se queda con las series hechas y pasas al siguiente.
+  nodo.querySelector('[data-hasta-aqui]')?.addEventListener('click', async () => {
+    hastaAqui(s, d.desde);
+    const sigH = siguienteTras(s, d.desde);
+    S.toque('barrido'); vibrar();
+    if (sigH === -1) { acabado = true; parar(); await guardarSesion(s); await dejarloSinPreguntar(s, nav); return; }
+    d.siguiente = sigH; await guardarSesion(s);
+    repintar();
+  });
+  nodo.querySelector('[data-d-lista]').onclick = () => hojaMolienda(s, {
+    actual: d.siguiente,
+    alElegir: async (k) => { d.siguiente = k; if (s.prep && s.prep.i !== k) delete s.prep; await guardarSesion(s); repintar(); },
+    alQuitado: async (k, cerrar) => {
+      if (seriesDelHueco(s, d.siguiente).length < s.plan[d.siguiente].series) return;
+      cerrar();
+      const sigH = siguienteHueco(s, d.siguiente);
+      if (sigH === -1) { await guardarSesion(s); await aCasaSiNoQueda(); return; }
+      d.siguiente = sigH; await guardarSesion(s); setTimeout(repintar, 220);
+    },
+    alCambiar: (k) => otraMana(s, k, repintar),
+    alTolva: () => aLaTolva(s, nav),
+  });
+  nodo.querySelector('[data-granos]')?.addEventListener('click', (e) => {
+    const g = granoTocado(e.currentTarget, e.clientX); if (g < 0) return;
+    S.toque('pop'); hojaSerie(s, d.desde, g, { alCambiar: async () => { if (s.prep?.i === d.desde) { delete s.prep; await guardarSesion(s); } repintar(); } });
+  });
 
   // «La ñapa» (G115): una serie más de regalo, preparada con la última. El descanso sigue contando.
   nodo.querySelector('[data-nyapa]')?.addEventListener('click', async (e) => {

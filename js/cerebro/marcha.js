@@ -2,7 +2,7 @@
 // ejercicios o series a la sesión (con R10 y R25). Lo que cambias se apunta tal cual: la fuerza estimada (R11) sale de
 // cualquier peso, reps y reserva, así que la progresión (R12) sigue funcionando.
 import { EJERCICIOS, CATALOGO, ejercicio } from './ejercicios.js';
-import { redondearAEscalon } from './progresion.js';
+import { redondearAEscalon, esDiscos } from './progresion.js';
 import { volumen, TOPE_SESION } from './volumen.js';
 
 /**
@@ -13,7 +13,7 @@ import { volumen, TOPE_SESION } from './volumen.js';
 export const CALENTAMIENTO = [{ f: 0.5, reps: 8 }, { f: 0.75, reps: 4 }];
 export function calentamiento(peso, escalon, { lastre = false } = {}) {
   // Con lastre, si el lastre es poco (o ninguno), la ligera es sin lastre: con tu peso, pocas y fáciles (G109).
-  if (lastre && !(peso >= 2 * (Array.isArray(escalon) ? Math.min(...escalon) : escalon || 2.5))) {
+  if (lastre && !(peso >= 2 * (Array.isArray(escalon) ? Math.min(...escalon) : esDiscos(escalon) ? escalon.paso : escalon || 2.5))) {
     return peso >= 0 ? [{ peso: 0, reps: peso > 0 ? 5 : 3 }] : [];
   }
   if (!(peso > 0)) return [];

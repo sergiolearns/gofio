@@ -1,6 +1,8 @@
 // Catálogo de ejercicios: la tabla de músculos de cada uno (R9), su patrón de movimiento (R22),
 // si es multiarticular o de aislamiento (R11, R21) y el material, que decide el escalón de carga (R12).
 // R9: 1 = músculo principal (serie directa); 0,5 = músculo que ayuda (serie indirecta).
+// carga (máquinas, G123): 'discos' si se carga con discos a los dos lados; si no, placas. Se cambia en la libreta
+// («Se carga con»), así una misma máquina vale para los dos tipos y no se duplican ejercicios.
 
 const E = (id, nombre, patron, tipo, equipo, musculos, extra = {}) =>
   ({ id, nombre, patron, tipo, equipo, musculos, ...extra });
@@ -11,7 +13,8 @@ export const EJERCICIOS = [
   E('jalon-pecho', 'Jalón al pecho', 'tiron-vertical', 'multi', 'polea', { dorsal: 1, biceps: 0.5 }),
   E('jalon-estrecho-neutro', 'Jalón estrecho neutro', 'tiron-vertical', 'multi', 'polea', { dorsal: 1, biceps: 0.5 }),
   // Tirón horizontal
-  E('remo-maquina-pecho', 'Remo en máquina con apoyo', 'tiron-horizontal', 'multi', 'maquina', { dorsal: 1, biceps: 0.5, 'hombro-posterior': 0.5 }),
+  E('remo-maquina-pecho', 'Remo en máquina con apoyo', 'tiron-horizontal', 'multi', 'maquina', { dorsal: 1, biceps: 0.5, 'hombro-posterior': 0.5 }, { carga: 'discos' }),
+  E('remo-t-apoyo', 'Remo en T con apoyo en el pecho', 'tiron-horizontal', 'multi', 'maquina', { dorsal: 1, biceps: 0.5, 'hombro-posterior': 0.5 }, { carga: 'discos' }),
   E('remo-barra', 'Remo con barra', 'tiron-horizontal', 'multi', 'barra', { dorsal: 1, biceps: 0.5, 'hombro-posterior': 0.5 }),
   E('remo-polea-sentado', 'Remo en polea sentado', 'tiron-horizontal', 'multi', 'polea', { dorsal: 1, biceps: 0.5, 'hombro-posterior': 0.5 }),
   E('remo-mancuerna', 'Remo con mancuerna', 'tiron-horizontal', 'multi', 'mancuernas', { dorsal: 1, biceps: 0.5, 'hombro-posterior': 0.5 }),
@@ -25,9 +28,9 @@ export const EJERCICIOS = [
   E('press-militar-maquina', 'Press militar en máquina', 'empuje-vertical', 'multi', 'maquina', { 'hombro-anterior': 1, 'hombro-lateral': 0.5, triceps: 0.5 }),
   E('press-militar-mancuernas', 'Press militar con mancuernas', 'empuje-vertical', 'multi', 'mancuernas', { 'hombro-anterior': 1, 'hombro-lateral': 0.5, triceps: 0.5 }),
   // Pierna
-  E('sentadilla-hack', 'Sentadilla hack', 'sentadilla', 'multi', 'maquina', { cuadriceps: 1, gluteo: 0.5 }),
+  E('sentadilla-hack', 'Sentadilla hack', 'sentadilla', 'multi', 'maquina', { cuadriceps: 1, gluteo: 0.5 }, { carga: 'discos' }),
   E('sentadilla-smith', 'Sentadilla en Smith', 'sentadilla', 'multi', 'smith', { cuadriceps: 1, gluteo: 0.5 }),
-  E('prensa', 'Prensa, pies bajos', 'sentadilla', 'multi', 'maquina', { cuadriceps: 1, gluteo: 0.5 }),
+  E('prensa', 'Prensa, pies bajos', 'sentadilla', 'multi', 'maquina', { cuadriceps: 1, gluteo: 0.5 }, { carga: 'discos' }),
   E('sentadilla-bulgara', 'Sentadilla búlgara', 'sentadilla', 'multi', 'mancuernas', { cuadriceps: 1, gluteo: 0.5 }),
   E('peso-muerto-rumano', 'Peso muerto rumano', 'bisagra', 'multi', 'barra', { isquios: 1, gluteo: 0.5 }),
   E('peso-muerto-rumano-mancuernas', 'Peso muerto rumano con mancuernas', 'bisagra', 'multi', 'mancuernas', { isquios: 1, gluteo: 0.5 }),
@@ -35,7 +38,7 @@ export const EJERCICIOS = [
   E('curl-femoral-sentado', 'Curl femoral sentado', 'flexion-rodilla', 'aislamiento', 'maquina', { isquios: 1 }),
   E('extension-cuadriceps', 'Extensión de cuádriceps', 'extension-rodilla', 'aislamiento', 'maquina', { cuadriceps: 1 }),
   E('extension-cuadriceps-unilateral', 'Extensión de cuádriceps a una pierna', 'extension-rodilla', 'aislamiento', 'maquina', { cuadriceps: 1 }, { unilateral: true }),
-  E('gemelos-prensa', 'Gemelos en prensa', 'gemelo', 'aislamiento', 'maquina', { gemelos: 1 }),
+  E('gemelos-prensa', 'Gemelos en prensa', 'gemelo', 'aislamiento', 'maquina', { gemelos: 1 }, { carga: 'discos' }),
   E('gemelos-de-pie', 'Gemelos de pie', 'gemelo', 'aislamiento', 'maquina', { gemelos: 1 }),
   // Hombro aislado
   E('laterales-polea', 'Elevación lateral en polea', 'elevacion-lateral', 'aislamiento', 'polea', { 'hombro-lateral': 1 }, { unilateral: true }),
@@ -54,7 +57,7 @@ export const EJERCICIOS = [
   E('curl-declinado', 'Curl declinado', 'curl', 'aislamiento', 'mancuernas', { biceps: 1 }),
   E('curl-polea', 'Curl en polea', 'curl', 'aislamiento', 'polea', { biceps: 1 }),
   E('extension-triceps-cuerda', 'Extensión de tríceps con cuerda', 'extension-triceps', 'aislamiento', 'polea', { triceps: 1 }),
-  E('press-frances', 'Press francés', 'extension-triceps', 'aislamiento', 'barra', { triceps: 1 }),
+  E('press-frances', 'Press francés', 'extension-triceps', 'aislamiento', 'barra', { triceps: 1 }, { barra: 'z' }),
   E('press-frances-polea', 'Press francés en polea', 'extension-triceps', 'aislamiento', 'polea', { triceps: 1 }),
   // Abdomen
   E('crunch-polea', 'Crunch en polea', 'flexion-tronco', 'aislamiento', 'polea', { abdomen: 1 }),

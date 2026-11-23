@@ -5,12 +5,12 @@
 //  · R28 · Arrimar: las series de aproximación antes de la primera de trabajo de cada ejercicio.
 //  · R29 · Lo que queda: la siguiente serie de trabajo, con la que acabas de hacer.
 //  · Las leyes de la piedra (1-7): concepto de La brega, sección 3.
-import { redondearAEscalon, siguienteEscalon } from './progresion.js';
+import { redondearAEscalon, siguienteEscalon, esDiscos } from './progresion.js';
 import { rirObjetivo, e1rm } from './esfuerzo.js';
 
 const r2 = (x) => Math.round(x * 100) / 100;
 /** El escalón más pequeño del material (para «ligero» y para el lastre). */
-export const escalonMinimo = (esc) => (Array.isArray(esc) ? Math.min(...esc.filter((x) => x > 0), 2.5) : esc > 0 ? esc : 2.5);
+export const escalonMinimo = (esc) => (Array.isArray(esc) ? Math.min(...esc.filter((x) => x > 0), 2.5) : esDiscos(esc) ? esc.paso : esc > 0 ? esc : 2.5);
 
 // ── R28 · Arrimar ────────────────────────────────────────────────────────────
 export const ARRIMAR_TOPE = 3;      // nunca más de 3 piedras (un estudio pequeño vio que 3 o más bajaban el rendimiento)
