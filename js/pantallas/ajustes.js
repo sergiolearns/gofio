@@ -5,8 +5,9 @@ import { estado, ajuste, ponerAjuste, arrancar, DESCANSO_POR_DEFECTO } from '../
 import { el, esc, kg, mmss, icono, hoja, confirmar, avisar, vibrar, escalonar, pedirNumero } from '../ui.js';
 import * as S from '../sonidos.js';
 import { SERVIDOR, avisosPosibles, avisosActivos, encenderAvisos, apagarAvisos } from '../avisos.js';
+import { fuentes } from './comida.js';
 
-export const VERSION = '0.2.22';
+export const VERSION = '0.3.0';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {
@@ -37,7 +38,7 @@ export function importarCopia(alTerminar) {
       const { copia, resumen } = D.leerCopia(await f.text());
       const ok = await confirmar({
         titulo: '¿Importar esta copia?',
-        texto: `${resumen.sesiones} sesiones y ${resumen.series} series${resumen.desde ? ` (${resumen.desde} – ${resumen.hasta})` : ''}. Sustituye lo que hay ahora.`,
+        texto: `${resumen.sesiones} sesiones y ${resumen.series} series${resumen.desde ? ` (${resumen.desde} – ${resumen.hasta})` : ''}${resumen.pesos || resumen.comidas ? `, ${resumen.pesos} pesajes y ${resumen.comidas} comidas` : ''}. Sustituye lo que hay ahora${resumen.esquema < 2 ? ' (es de antes de la comida: lo de comida se queda vacío)' : ''}.`,
         si: 'Importar', peligro: true,
       });
       if (!ok) return;
@@ -108,8 +109,15 @@ ${instalacionVieja() ? `
       <label class="fila"><span class="que">Tostar antes de moler<small>Movilidad del día, 5-8 min. Se salta con un toque.</small></span>${interruptor('data-tostar', ajuste('tostar') !== false)}</label>
     </div></div>
 
+    <div class="grupo"><h2>Comida</h2><div class="tarjeta">
+      <button class="fila tocable" type="button" data-objetivo style="width:100%;text-align:left"><span class="que">Objetivo<small>${esc(objetivoTxt())}</small></span><span class="valor-caja">Cambiar</span></button>
+      <label class="fila"><span class="que">Sin números<small>Oculta calorías y peso. Quedan la proteína y si apuntaste.</small></span>${interruptor('data-sin-numeros', !!ajuste('sinNumeros'))}</label>
+      <button class="fila tocable" type="button" data-miscosas style="width:100%;text-align:left"><span class="que">Mis alimentos y ollas<small>${estado.ollas.length} ${estado.ollas.length === 1 ? 'olla' : 'ollas'} · ${estado.alimentos.length} ${estado.alimentos.length === 1 ? 'alimento tuyo' : 'alimentos tuyos'}</small></span><span class="valor-caja">Ver</span></button>
+      <button class="fila tocable" type="button" data-fuentes style="width:100%;text-align:left"><span class="que">De dónde salen los números<small>BEDCA (AESAN), TCAC (ICBF), USDA y Open Food Facts</small></span><span class="valor-caja">Ver</span></button>
+    </div></div>
+
     <div class="grupo"><h2>Sobre ti</h2><div class="tarjeta">
-      <button class="fila tocable" type="button" data-perfil style="width:100%;text-align:left"><span class="que">Peso, altura y edad<small>Para la comida, que llega pronto</small></span><span class="enlace">Editar</span></button>
+      <button class="fila tocable" type="button" data-perfil style="width:100%;text-align:left"><span class="que">Peso, altura y edad<small>${perfilTxt()}</small></span><span class="enlace">Editar</span></button>
     </div></div>
 
     <div class="grupo"><h2>Pantalla</h2><div class="tarjeta">
@@ -155,7 +163,11 @@ ${instalacionVieja() ? `
   nodo.querySelectorAll('[data-desc]').forEach((b) => b.addEventListener('click', () => elegirDescanso(b.dataset.desc, () => nav.refrescar())));
   $('[data-escalones]').onclick = () => editarMaterial(() => nav.refrescar());
   $('[data-cargas]').onclick = () => editarCargas(() => nav.refrescar());
-  $('[data-perfil]').onclick = () => editarPerfil();
+  $('[data-perfil]').onclick = () => editarPerfil(() => nav.refrescar());
+  $('[data-objetivo]').onclick = () => editarObjetivo(() => nav.refrescar());
+  $('[data-miscosas]').onclick = () => nav.ir('miscosas', {});
+  $('[data-fuentes]').onclick = () => fuentes();
+  $('[data-sin-numeros]').onchange = async (e) => { await ponerAjuste('sinNumeros', e.target.checked); vibrar(); avisar(e.target.checked ? 'Sin números: quedan la proteína y si apuntaste.' : 'Con números.'); };
   $('[data-version]').onclick = async (e) => {
     e.currentTarget.textContent = 'Buscando…';
     const hay = await window.gofioBuscarVersion?.();
@@ -218,18 +230,52 @@ function editarMaterial(alTerminar) {
     await ponerAjuste('material', nuevo); cerrar(); avisar('Material guardado.'); alTerminar?.();
   };
 }
-/** Peso, altura y edad (para la comida, v0.3). Opcional. */
-function editarPerfil() {
+/** Peso, altura, edad y sexo (para la comida, v0.3: R1 y R7). Opcional. */
+const perfilTxt = () => { const p = ajuste('perfil'); return p.altura && p.edad ? `${p.altura} cm · ${p.edad} años · ${p.sexo === 'mujer' ? 'mujer' : 'hombre'}` : 'Para tu proteína y tu gasto en reposo'; };
+const objetivoTxt = () => {
+  const o = ajuste('objetivo'), r = ajuste('ritmo');
+  const base = G.OBJETIVOS[o]?.nombre ?? 'Recomposición';
+  if (o === 'perder-grasa') return `${base} · ${String(r ?? 0.5).replace('.', ',')} % del peso por semana`;
+  if (o === 'ganar-musculo') return `${base} · ${String(r ?? 0.25).replace('.', ',')} % del peso por semana`;
+  return `${base} · casi plano y la fuerza subiendo`;
+};
+function editarPerfil(alTerminar) {
   const perfil = ajuste('perfil');
-  const { nodo, cerrar } = hoja(`<h2>Sobre ti</h2><p class="sub">Opcional. Para la comida, que llega pronto.</p>
+  let sexo = perfil.sexo ?? 'hombre';
+  const { nodo, cerrar } = hoja(`<h2>Sobre ti</h2><p class="sub">Opcional. Tu proteína sale de tu peso; tu gasto en reposo, de los cuatro (Mifflin-St Jeor). Tu peso de cada mañana manda sobre este.</p>
     <div><label class="fila"><span class="que">Peso<small>kg</small></span><input class="campo" data-perfil="peso" inputmode="decimal" value="${perfil.peso ?? ''}"></label>
     <label class="fila"><span class="que">Altura<small>cm</small></span><input class="campo" data-perfil="altura" inputmode="numeric" value="${perfil.altura ?? ''}"></label>
-    <label class="fila"><span class="que">Edad</span><input class="campo" data-perfil="edad" inputmode="numeric" value="${perfil.edad ?? ''}"></label></div>
+    <label class="fila"><span class="que">Edad</span><input class="campo" data-perfil="edad" inputmode="numeric" value="${perfil.edad ?? ''}"></label>
+    <div class="fila"><span class="que">Sexo<small>Solo para la fórmula</small></span><span class="par-chips" role="radiogroup" aria-label="Sexo">${[['hombre', 'Hombre'], ['mujer', 'Mujer']].map(([v, t]) => `<button type="button" role="radio" data-sexo="${v}" data-son="pop" aria-checked="${v === sexo}">${t}</button>`).join('')}</span></div></div>
     <div class="botones"><button class="boton" type="button">Guardar</button></div>`, { clara: true });
+  nodo.querySelectorAll('[data-sexo]').forEach((b) => b.addEventListener('click', () => { sexo = b.dataset.sexo; nodo.querySelectorAll('[data-sexo]').forEach((x) => x.setAttribute('aria-checked', String(x === b))); vibrar(); }));
   nodo.querySelector('.boton').onclick = async () => {
-    const p = {}; nodo.querySelectorAll('[data-perfil]').forEach((i) => { const v = parseFloat(i.value.replace(',', '.')); if (Number.isFinite(v)) p[i.dataset.perfil] = v; });
-    await ponerAjuste('perfil', p); cerrar(); avisar('Guardado.');
+    const p = { sexo }; nodo.querySelectorAll('[data-perfil]').forEach((i) => { const v = parseFloat(i.value.replace(',', '.')); if (Number.isFinite(v)) p[i.dataset.perfil] = v; });
+    await ponerAjuste('perfil', p); cerrar(); avisar('Guardado.'); alTerminar?.();
   };
+}
+/** El objetivo (R3-R6) y, si es perder o ganar, el ritmo (R4, R5). Lo mismo que eligió en la bienvenida. */
+function editarObjetivo(alTerminar) {
+  let o = ajuste('objetivo'), r = ajuste('ritmo');
+  const RIT = { 'perder-grasa': [0.25, 0.5, 0.75, 1], 'ganar-musculo': [0.1, 0.25, 0.5] };
+  const pintarRitmo = () => {
+    const xs = RIT[o];
+    const por = G.RITMOS[o]?.porDefecto;
+    if (r == null || !xs?.includes(r)) r = por ?? null;
+    return xs ? `<div class="fila"><span class="que">Ritmo<small>% de tu peso por semana${o === 'perder-grasa' ? '. Más de 1 % no se ofrece.' : ''}</small></span></div><div class="c-medidas" role="radiogroup" aria-label="Ritmo">${xs.map((v) => `<button type="button" role="radio" data-ritmo="${v}" aria-pressed="${v === r}">${String(v).replace('.', ',')} %</button>`).join('')}</div>` : '';
+  };
+  const { nodo, cerrar } = hoja(`<h2>Tu objetivo</h2><p class="sub">Cambia las calorías del día y tu proteína. La rutina no cambia.</p>
+    <div class="elecciones" role="radiogroup">${Object.entries(G.OBJETIVOS).map(([id, x]) => `<button class="tarjeta-eleccion" type="button" role="radio" aria-checked="${id === o}" data-obj="${id}"><span><b>${esc(x.nombre)}</b><span class="d">${esc(x.texto)}</span></span></button>`).join('')}</div>
+    <div data-ritmos>${pintarRitmo()}</div>
+    <div class="botones"><button class="boton" type="button" data-ok>Guardar</button></div>`);
+  const conectarRitmo = () => nodo.querySelectorAll('[data-ritmo]').forEach((b) => b.addEventListener('click', () => { r = Number(b.dataset.ritmo); nodo.querySelectorAll('[data-ritmo]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); vibrar(); }));
+  conectarRitmo();
+  nodo.querySelectorAll('[data-obj]').forEach((b) => b.addEventListener('click', () => {
+    o = b.dataset.obj; r = null;
+    nodo.querySelectorAll('[data-obj]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+    nodo.querySelector('[data-ritmos]').innerHTML = pintarRitmo(); conectarRitmo(); vibrar();
+  }));
+  nodo.querySelector('[data-ok]').onclick = async () => { await ponerAjuste('objetivo', o); await ponerAjuste('ritmo', r); cerrar(); avisar('Guardado.'); alTerminar?.(); };
 }
 
 /** Editor de cargas de partida (también lo usa la bienvenida). */

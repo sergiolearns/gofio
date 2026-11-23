@@ -2,7 +2,7 @@
 import * as G from './cerebro/index.js';
 import * as D from './datos.js';
 
-export const estado = { ajustes: {}, sesiones: [], series: [], notas: {} };
+export const estado = { ajustes: {}, sesiones: [], series: [], notas: {}, pesos: [], comidas: [], alimentos: [], ollas: [], dias: {} };
 
 // R24 · Descanso entre series (libro v1.1): 2:30 en multiarticulares y 1:30 en aislamiento por defecto.
 export const DESCANSO_POR_DEFECTO = { multi: 150, aislamiento: 90 };

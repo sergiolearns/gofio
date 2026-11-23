@@ -7,6 +7,7 @@ import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibr
 import { aMoler } from '../amoler.js';
 import { tocaTostar } from './tostar.js';
 import { reordenable } from '../reordenar.js';
+import * as C from '../comida/cocina.js';
 import { toque } from '../sonidos.js';
 import * as S from '../sonidos.js';
 
@@ -112,6 +113,8 @@ export function hoyPantalla(params = {}, nav) {
       <div class="hoy-pie"><button class="boton" type="button" data-empezar data-son="none">${enCurso ? 'Seguir la molienda' : 'A moler'}</button></div>`;
   }
 
+  // v0.3 · ¿Te pesaste? (cada mañana, en casa): solo si hoy aún no y con números.
+  const chipPeso = !C.sinNumeros() && !C.pesoDe(fecha) ? `<button class="c-hoy-chip" type="button" data-pesarme data-son="0">${icono('comida')}¿Te pesaste? Apúntalo ›</button>` : '';
   const nodo = el(`<section class="hoy" aria-labelledby="titulo-hoy">
     <div class="hoy-muela" aria-hidden="true">${mostrarHecho ? '' : '<i class="hoy-hoyuelo"></i>'}</div>
     <header class="hoy-cabeza">
@@ -121,9 +124,12 @@ export function hoyPantalla(params = {}, nav) {
       </div>
       <h1 class="titulo-gigante hoy-titulo" id="titulo-hoy">${bajo ? esc(titulo) : esc(titulo).replace(' + ', '<br>+ ')}</h1>
       ${cabezaTexto}
+      ${chipPeso}
     </header>
     <div class="hoy-cuerpo">${cuerpo}</div>
   </section>`);
+
+  nodo.querySelector('[data-pesarme]')?.addEventListener('click', () => { vibrar(); nav.ir('comida', { pesar: true }, { modo: 'pestana' }); });
 
   // Quitar (a la izquierda) y cambiar (a la derecha), solo para hoy.
   const idBase = (e) => e.original ?? e.ej;

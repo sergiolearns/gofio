@@ -72,7 +72,7 @@ export function bienvenidaPantalla({ paso = 0, desdeAjustes = false } = {}, nav)
   } else if (paso === 4) {
     cuerpo = `<div class="paso-bienvenida col">${progreso(4)}
       <h1 class="titular grande" style="margin-top:18px">Sobre ti.</h1>
-      <p class="texto-2" style="margin-top:10px">Opcional. Para la comida, que llega pronto.</p>
+      <p class="texto-2" style="margin-top:10px">Opcional. Para la comida: tu proteína y tu gasto en reposo.</p>
       <div class="tarjeta" style="margin-top:16px">
         <label class="fila"><span class="que">Peso<small>kg</small></span><input class="campo" data-perfil="peso" inputmode="decimal" value="${perfil.peso ?? ''}"></label>
         <label class="fila"><span class="que">Altura<small>cm</small></span><input class="campo" data-perfil="altura" inputmode="numeric" value="${perfil.altura ?? ''}"></label>
@@ -208,4 +208,3 @@ const hueco = (pestana, titulo, frase, texto, version) => () => {
   };
 };
 const progresoHueco = hueco('progreso', 'Progreso', 'Aún moliendo.', 'Aquí verás cómo le coges el jeito a cada ejercicio: tu fuerza, con su gráfica. Las series de hoy ya cuentan.', 'Llega con la v0.2 · Progresión.');
-export const comidaPantalla = hueco('comida', 'Comida', 'Al fuego, pronto.', 'Tu peso, lo que comes y lo que gastas de verdad. Sin números inventados mientras tanto.', 'Llega con la v0.3 · Comida y peso.');

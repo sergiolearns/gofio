@@ -6,6 +6,7 @@ import { estado, ajuste, hoy, sesionesHechas, seriesHechas, seriesDe, resumen } 
 import { el, esc, kg, num, icono, hoja, granos, contar, reduceMovimiento, escalonar } from '../ui.js';
 import { exportarCopia } from './ajustes.js';
 import { marcasDe } from './hecho.js';
+import * as C from '../comida/cocina.js';
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const NUMERO = ['Ninguna molienda', 'Una molienda', 'Dos moliendas', 'Tres moliendas', 'Cuatro moliendas', 'Cinco moliendas', 'Seis moliendas', 'Siete moliendas'];
@@ -107,6 +108,7 @@ export function semanaPantalla(_, nav) {
     <div class="era">${era}</div>
     <p class="era-pie">La era de la semana: cada día, lo que moliste.</p>
     ${frases.length ? `<div class="frases-semana">${frases.join('')}</div>` : ''}
+    ${comidaSemana(lunes)}
     <div class="molido-cab"><h2>Lo molido por músculo</h2><span>un grano, una serie · <mark>lo bueno ${G.FRANJA.min}-${G.FRANJA.max}</mark></span></div>
     <ul class="molido" role="img" aria-label="Series por músculo esta semana: ${tablaAccesible}">${filas}</ul>
     <p class="molido-pie">Si el músculo solo ayuda, cuenta medio grano.</p>
@@ -176,3 +178,18 @@ function detalleDia(f, nav) {
   nodo.querySelector('[data-ver]').onclick = () => { document.querySelector('.hoja-fondo')?.click(); nav.ir('hecho', { sesionId: s.id, soloVer: true }); };
 }
 export { estado };
+
+/** v0.3 · La comida de la semana (tablero 20, L): el peso de verdad de lunes a domingo, los días apuntados y la proteína. */
+function comidaSemana(lunes) {
+  const w = C.semanaComida(lunes);
+  if (!w.apuntados && w.pesoHasta == null) return '';
+  const sn = C.sinNumeros();
+  const meta = w.protObjetivo;
+  const max = Math.max(meta ?? 0, ...w.dias.map((d) => d.prot), 1);
+  const llego = meta ? w.dias.filter((d) => d.apuntado && d.prot >= meta).length : 0;
+  const peso = !sn && w.pesoHasta != null ? `<span><b>${w.pesoDesde != null && w.pesoDesde !== w.pesoHasta ? `${num(w.pesoDesde, 1)} → ` : ''}${num(w.pesoHasta, 1)}</b>tu peso</span>` : '';
+  return `<div class="c-sem"><h2 style="font-size:20px;font-weight:800;margin:0">La comida de la semana</h2>
+    <div class="c-olla"><div class="c-cien">${peso}<span><b>${w.apuntados} de 7</b>días apuntados</span>${w.protMedia != null ? `<span><b>${w.protMedia} g</b>proteína media</span>` : ''}</div>
+    ${w.apuntados ? `<div class="c-barras">${w.dias.map((d, k) => `<div><i class="${d.apuntado ? '' : 'no'}" style="height:${d.apuntado ? Math.max(6, Math.round(44 * d.prot / max)) : 6}px"></i>${G.LETRA_DIA[k]}</div>`).join('')}</div>
+    <p class="c-nota" style="margin:8px 0 2px">Proteína de cada día.${meta && llego ? ` Llegaste en ${llego}.` : ''}</p>` : ''}</div></div>`;
+}

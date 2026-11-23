@@ -246,6 +246,12 @@ const SON = {
   piedra(t, peso = 0.5) { golpecito(t, 220 - 110 * peso, 0.6 + 0.5 * peso); rodar(t + 0.04, 0.25, 0.25); },
   moliendo(t) { rodar(t, 0.9, 0.45); },
   hecha(t) { tambor(t, 0.6); },
+  // La comida (tablero 21): la masa cede, el grano rebota, el fogal cruje, la piedra del pesaje cae.
+  masa(t) { impacto(t, 0.35, 0.25); for (let k = 0; k < 4; k++) granito(t + 0.12 + k * 0.04 + Math.random() * 0.02, 0.5, 2400 + Math.random() * 1800); },
+  granoProt(t) { granito(t, 0.8, 3000 + Math.random() * 800); golpecito(t + 0.02, 260, 0.3); },
+  fogal(t) { madera(t, 0.7); rodar(t + 0.25, 1.1, 0.22); },
+  leido(t) { golpecito(t, 320, 0.5); },
+  pesaje(t) { golpecito(t, 95, 1.1); rodar(t + 0.04, 0.3, 0.3); },
 };
 
 /** Un momento: 'amoler', 'guardar', 'rodar', 'sube', 'chacara', 'tambor', 'marca' o 'hecho'. */

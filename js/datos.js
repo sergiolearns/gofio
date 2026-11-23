@@ -1,8 +1,8 @@
 // Datos de Gofio: todo en el móvil (IndexedDB), nunca en un servidor. Exportar e importar una copia JSON.
 const NOMBRE = 'gofio';
-const VERSION_BD = 1;
-export const ESQUEMA = 1; // versión del formato de la copia
-const ALMACENES = ['ajustes', 'sesiones', 'series', 'notas'];
+const VERSION_BD = 2;
+export const ESQUEMA = 2; // versión del formato de la copia (2: la comida y el peso, v0.3)
+const ALMACENES = ['ajustes', 'sesiones', 'series', 'notas', 'pesos', 'comidas', 'alimentos', 'ollas', 'dias'];
 
 let bd = null;
 function abrir() {
@@ -18,6 +18,12 @@ function abrir() {
         s.createIndex('sesionId', 'sesionId'); s.createIndex('ejercicioId', 'ejercicioId'); s.createIndex('fecha', 'fecha');
       }
       if (!b.objectStoreNames.contains('notas')) b.createObjectStore('notas', { keyPath: 'ejercicioId' });
+      // v0.3 · Comida y peso
+      if (!b.objectStoreNames.contains('pesos')) b.createObjectStore('pesos', { keyPath: 'id' }).createIndex('fecha', 'fecha');
+      if (!b.objectStoreNames.contains('comidas')) b.createObjectStore('comidas', { keyPath: 'id' }).createIndex('fecha', 'fecha');
+      if (!b.objectStoreNames.contains('alimentos')) b.createObjectStore('alimentos', { keyPath: 'id' });
+      if (!b.objectStoreNames.contains('ollas')) b.createObjectStore('ollas', { keyPath: 'id' });
+      if (!b.objectStoreNames.contains('dias')) b.createObjectStore('dias', { keyPath: 'fecha' });
     };
     pet.onsuccess = () => { bd = pet.result; ok(bd); };
     pet.onerror = () => mal(pet.error);
@@ -42,12 +48,17 @@ export const id = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().to
 
 /** Carga todo en memoria al arrancar (son pocos KB): la app trabaja sobre `estado` y escribe cada cambio. */
 export async function cargar() {
-  const [ajustes, sesiones, series, notas] = await Promise.all(ALMACENES.map(todo));
+  const [ajustes, sesiones, series, notas, pesos, comidas, alimentos, ollas, dias] = await Promise.all(ALMACENES.map(todo));
   return {
     ajustes: Object.fromEntries(ajustes.map((a) => [a.clave, a.valor])),
     sesiones: sesiones.sort((a, b) => a.inicio - b.inicio),
     series: series.sort((a, b) => a.ts - b.ts),
     notas: Object.fromEntries(notas.map((n) => [n.ejercicioId, n])),
+    pesos: pesos.sort((a, b) => a.ts - b.ts),
+    comidas: comidas.sort((a, b) => a.ts - b.ts),
+    alimentos: alimentos.sort((a, b) => a.ts - b.ts),
+    ollas: ollas.sort((a, b) => a.ts - b.ts),
+    dias: Object.fromEntries(dias.map((d) => [d.fecha, d])),
   };
 }
 export const ponerAjuste = (clave, valor) => guardar('ajustes', { clave, valor });
@@ -72,7 +83,7 @@ export function leerCopia(texto) {
   if (c.esquema > ESQUEMA) throw new Error('La copia es de una versión de Gofio más nueva. Actualiza la app primero.');
   const ses = (c.datos.sesiones ?? []).filter((s) => s.estado === 'hecha');
   const fechas = ses.map((s) => s.fecha).sort();
-  return { copia: c, resumen: { sesiones: ses.length, series: (c.datos.series ?? []).length, desde: fechas[0] ?? null, hasta: fechas.at(-1) ?? null, exportado: c.exportado } };
+  return { copia: c, resumen: { sesiones: ses.length, series: (c.datos.series ?? []).length, pesos: (c.datos.pesos ?? []).length, comidas: (c.datos.comidas ?? []).length, desde: fechas[0] ?? null, hasta: fechas.at(-1) ?? null, exportado: c.exportado, esquema: c.esquema ?? 1 } };
 }
 
 /** Sustituye todos los datos por los de la copia. */
