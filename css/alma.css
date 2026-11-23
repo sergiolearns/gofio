@@ -979,3 +979,9 @@ button.cabeza-granos:disabled { opacity: 1; cursor: default; }
 .pie-chips.apretada { gap: 6px; }
 .pie-chips.apretada .chip { padding: 0 11px; gap: 6px; }
 .pie-chips.apretada .chip svg { display: none; }
+/* G125 · Mantener pulsado y arrastrar para cambiar el orden (Hoy y «La molienda de hoy») */
+.lista-hoy li, .mol-fila { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform .22s var(--curva-salida); }
+.lista-hoy li.arrastrada, .mol-fila.arrastrada { position: relative; z-index: 3; transition: none; }
+.lista-hoy li.arrastrada .fila-mueve { background: var(--basalto-3); box-shadow: 0 12px 30px rgba(0,0,0,.45); border-radius: 14px; }
+.lista-hoy li.arrastrada .fila-mueve::before { display: none; }
+.lista-hoy:has(li.arrastrada) { overflow: visible; clip-path: none; }

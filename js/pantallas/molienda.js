@@ -6,6 +6,7 @@ import { seriesDelHueco, ordenDe, huecoVivo, siguienteTras, mandarAlFinal, quita
   escalonDe } from '../logica.js';
 import { hoja, esc, kg, icono, granos, grano, vibrar, escalonar, reduceMovimiento, pedirNumero, avisar } from '../ui.js';
 import { deslizable } from './hoy.js';
+import { reordenable } from '../reordenar.js';
 import * as S from '../sonidos.js';
 
 const AGARRADERA = `<span class="mol-agarre" data-agarre aria-hidden="true">${grano(true)}${grano(true)}${grano(true)}</span>`;
@@ -28,8 +29,8 @@ export function hojaMolienda(s, { actual, alElegir, alQuitado, alCambiar, alTolv
         ${ahora ? '<span class="mol-ahora">Ahora</span><button class="chip mol-luego" type="button" data-luego>Luego</button>' : hecho ? '<span class="mol-hecho">Hecho</span>' : ''}
       </div></li>`;
   }).join('');
-  const { nodo: h, cerrar } = hoja(`<div class="hoja-molienda"><h2>La molienda de hoy</h2><p class="sub">Arrastra por los granos para cambiar el orden. Toca uno para ir a él.</p>
-    <ul class="mol-lista" data-lista>${pintar()}</ul>
+  const { nodo: h, cerrar } = hoja(`<div class="hoja-molienda"><h2>La molienda de hoy</h2><p class="sub">Mantén uno pulsado y arrástralo para cambiar el orden. Tócalo para ir a él.</p>
+    <ul class="mol-lista" data-lista data-reordenable>${pintar()}</ul>
     <button class="boton plano grande tolva-abrir" type="button" data-tolva>${icono('mas')}Añadir ejercicio</button></div>`);
   const ul = h.querySelector('[data-lista]');
   escalonar(ul.querySelectorAll('li'), { desde: 120, retraso: 30 });
@@ -58,50 +59,17 @@ export function hojaMolienda(s, { actual, alElegir, alQuitado, alCambiar, alTolv
         },
         cambiar: () => { cerrar(); setTimeout(() => alCambiar?.(k), 200); },
       });
-      const ag = li.querySelector('[data-agarre]');
-      if (ag) arrastrable(li, ag);
     });
   };
-  // Arrastrar por la agarradera: la fila sigue al dedo y las demás se apartan; al soltar, se guarda el orden.
-  const arrastrable = (li, ag) => {
-    let d = null;
-    const filas = () => [...ul.querySelectorAll('li')];
-    ag.addEventListener('pointerdown', (e) => {
-      e.preventDefault(); e.stopPropagation();
-      try { ag.setPointerCapture(e.pointerId); } catch { /* */ }
-      const lista = filas();
-      d = { y0: e.clientY, id: e.pointerId, lista, desde: lista.indexOf(li), alto: li.offsetHeight + 8, a: lista.indexOf(li) };
-      li.classList.add('arrastrada'); vibrar(); S.toque('pop');
-    });
-    ag.addEventListener('pointermove', (e) => {
-      if (!d || e.pointerId !== d.id) return;
-      e.preventDefault();
-      const dy = e.clientY - d.y0;
-      li.style.transform = `translateY(${dy}px) scale(1.02)`;
-      const a = Math.max(0, Math.min(d.lista.length - 1, d.desde + Math.round(dy / d.alto)));
-      if (a !== d.a) { d.a = a; S.toque(0); }
-      d.lista.forEach((x, j) => {
-        if (x === li) return;
-        const mueve = d.desde < a ? (j > d.desde && j <= a ? -d.alto : 0) : (j < d.desde && j >= a ? d.alto : 0);
-        x.style.transform = mueve ? `translateY(${mueve}px)` : '';
-      });
-    });
-    const soltar = async (e) => {
-      if (!d || e.pointerId !== d.id) return;
-      const { lista, desde, a } = d; d = null;
-      li.classList.remove('arrastrada');
-      lista.forEach((x) => { x.style.transform = ''; });
-      if (a === desde) return;
-      const nueva = [...lista]; nueva.splice(desde, 1); nueva.splice(a, 0, li);
-      nueva.forEach((x) => ul.append(x));
-      if (!reduceMovimiento()) li.animate([{ transform: 'scale(1.04)' }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+  // Mantener pulsada cualquier fila (o al momento desde los granos de la izquierda) y arrastrar (G125).
+  reordenable(ul, {
+    puede: (li) => !!li.querySelector('[data-agarre]'),
+    alSoltar: async (nueva) => {
       const vivos = nueva.map((x) => Number(x.dataset.k));
       s.orden = [...vivos, ...ordenDe(s).filter((k) => !vivos.includes(k))];
-      await guardarSesion(s); vibrar(); S.toque('piedra');
-    };
-    ag.addEventListener('pointerup', soltar);
-    ag.addEventListener('pointercancel', soltar);
-  };
+      await guardarSesion(s);
+    },
+  });
   enganchar();
   h.querySelector('[data-tolva]').onclick = () => { cerrar(); setTimeout(() => alTolva?.(), 220); };
   return { cerrar };

@@ -6,7 +6,7 @@ import { el, esc, kg, mmss, icono, hoja, confirmar, avisar, vibrar, escalonar, p
 import * as S from '../sonidos.js';
 import { SERVIDOR, avisosPosibles, avisosActivos, encenderAvisos, apagarAvisos } from '../avisos.js';
 
-export const VERSION = '0.2.21';
+export const VERSION = '0.2.22';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {

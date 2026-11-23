@@ -2,10 +2,11 @@
 // vuelta tras días sin ir (R14) y modo «día malo» (R21). Arriba, la muela gigante: un círculo de verdad que gira.
 import * as G from '../cerebro/index.js';
 import { estado, ajuste, hoy, planDeHoy, porQue, prescripcion, vueltaHoy, sesionEnCurso, sesionesHechas, empezarSesion, resumen,
-  siguienteHueco, seriesDelHueco, ordenDe, huecoVivo, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste } from '../logica.js';
+  siguienteHueco, seriesDelHueco, ordenDe, huecoVivo, musculoCorto, seriesDe, descartarSesion, descargaActiva, ponerAjuste, guardarSesion } from '../logica.js';
 import { el, esc, kg, icono, triangulo, grano, granos, ajustarTitulo, hoja, vibrar, escalonar, reduceMovimiento, cuandoRevelada, avisar, contar } from '../ui.js';
 import { aMoler } from '../amoler.js';
 import { tocaTostar } from './tostar.js';
+import { reordenable } from '../reordenar.js';
 import { toque } from '../sonidos.js';
 import * as S from '../sonidos.js';
 
@@ -149,13 +150,23 @@ export function hoyPantalla(params = {}, nav) {
     li.addEventListener('click', abrir);
     li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } });
   });
+  // G125 · Mantener pulsado un ejercicio y arrastrarlo: cambia el orden de hoy (antes de empezar o con la molienda a medias).
+  const ulHoy = nodo.querySelector('.lista-hoy');
+  if (ulHoy && (editable || enCurso)) reordenable(ulHoy, {
+    alSoltar: async (nueva) => {
+      const idx = nueva.map((li) => Number(li.dataset.i));
+      if (enCurso) { enCurso.orden = [...idx, ...ordenDe(enCurso).filter((k) => !idx.includes(k))]; await guardarSesion(enCurso); return; }
+      await ponerRetoques(fecha, clave, { ...retoques(fecha, clave), orden: idx.map((i) => idBase(ejercicios[i])) });
+    },
+  });
   nodo.querySelector('[data-resumen]')?.addEventListener('click', () => nav.ir('hecho', { sesionId: hechaHoy.id, soloVer: true }));
   nodo.querySelectorAll('[data-otro]').forEach((b) => b.addEventListener('click', () => otroDia(plan, nav)));
   nodo.querySelector('[data-empezar]')?.addEventListener('click', async (e) => {
     const boton = e.currentTarget; if (boton.dataset.va) return; boton.dataset.va = '1';
     vibrar();
     let s = enCurso;
-    if (!s) s = await empezarSesion({ diaId: sesion.diaId, nombre: sesion.nombre + (diaMaloActivo ? ' (día malo)' : ''), ejercicios, modo: diaMaloActivo ? 'dia-malo' : sesion.tipo === 'combinada' ? 'combinada' : 'normal' });
+    const enOrden = ulHoy ? [...ulHoy.querySelectorAll('li[data-i]')].map((li) => ejercicios[Number(li.dataset.i)]) : ejercicios;
+    if (!s) s = await empezarSesion({ diaId: sesion.diaId, nombre: sesion.nombre + (diaMaloActivo ? ' (día malo)' : ''), ejercicios: enOrden, modo: diaMaloActivo ? 'dia-malo' : sesion.tipo === 'combinada' ? 'combinada' : 'normal' });
     diaMaloActivo = false; eleccion = null;
     const i = Math.max(0, siguienteHueco(s, s.actual ?? 0));
     const total = s.plan.reduce((a, x) => a + x.series, 0);
@@ -349,7 +360,7 @@ const FONDOS = `<span class="fondo-accion cambiar" aria-hidden="true">${icono('c
 function retoques(fecha, clave) {
   const r = ajuste('retoquesHoy');
   const x = r?.fecha === fecha ? r.por?.[clave] : null;
-  return { quitados: x?.quitados ?? [], cambios: x?.cambios ?? {} };
+  return { quitados: x?.quitados ?? [], cambios: x?.cambios ?? {}, orden: x?.orden ?? [] };
 }
 async function ponerRetoques(fecha, clave, valor) {
   const r = ajuste('retoquesHoy');
@@ -358,8 +369,12 @@ async function ponerRetoques(fecha, clave, valor) {
   await ponerAjuste('retoquesHoy', { fecha, por });
 }
 function aplicarRetoques(lista, rt) {
-  return lista.filter((e) => !rt.quitados.includes(e.ej))
+  const out = lista.filter((e) => !rt.quitados.includes(e.ej))
     .map((e) => (rt.cambios[e.ej] ? { ...e, ej: rt.cambios[e.ej], original: e.ej } : e));
+  // G125 · El orden que dejaste arrastrando en Hoy (por el ejercicio de la rutina, aunque lo cambies de maña).
+  if (!rt.orden?.length) return out;
+  const pos = (e) => { const k = rt.orden.indexOf(e.original ?? e.ej); return k < 0 ? 1e3 + lista.findIndex((x) => x.ej === (e.original ?? e.ej)) : k; };
+  return out.map((e, i) => [e, pos(e), i]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(([e]) => e);
 }
 
 /** El gesto: sigue al dedo 1:1; pasado un tercio del ancho, «engancha» (toque y vibración) y al soltar se hace. */
@@ -382,6 +397,7 @@ export function deslizable(li, { quitar, cambiar }) {
   const empezar = (x, y) => { g = { x0: x, y0: y, dx: 0, modo: null, enganche: false }; };
   const mover = (x, y, e) => {
     if (!g) return;
+    if (li.dataset.reordenando) { g = null; return; }   // G125: mantener pulsado y arrastrar es cambiar el orden
     const dx = x - g.x0, dy = y - g.y0;
     if (!g.modo) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;

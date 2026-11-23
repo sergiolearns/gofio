@@ -163,7 +163,7 @@ export function hoja(contenido, { clara = false, alCerrar } = {}) {
   // Arrastrar hacia abajo desde el asa o con la hoja arriba del todo: sigue al dedo 1:1 y respeta la velocidad al soltar.
   let y0 = null, t0 = 0, dy = 0;
   h.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('input,textarea,select,button') && !e.target.closest('.asa')) return;
+    if (e.target.closest('input,textarea,select,button,[data-reordenable]') && !e.target.closest('.asa')) return;
     if (h.scrollTop > 0 && !e.target.closest('.asa')) return;
     y0 = e.clientY; t0 = performance.now(); dy = 0; h.style.transition = 'none';
   });
