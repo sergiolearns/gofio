@@ -96,9 +96,19 @@ export function planDeHoy(fecha = hoy(), ahora = Date.now()) {
   const plan = G.planificar({
     plantilla, series: seriesHechas(), sesiones: sesionesHechas(), hoy: fecha, ahora,
     diasPorSemana: ajuste('diasPorSemana'), diasPorDefecto: ajuste('diasDisponibles') ?? 3, minutos: ajuste('minutos'),
+    quedoSinHacer: quedoSinHacer(fecha),
   });
-  const ejercicios = plan.tipo === 'combinada' ? plan.ejercicios : G.diaDe(plantilla, plan.diaId).ejercicios;
+  // G133 · Del día de la plantilla salen los ejercicios cuyos músculos principales aún se recuperan.
+  const ejercicios = plan.tipo === 'combinada' ? plan.ejercicios : G.diaDe(plantilla, plan.diaId).ejercicios.filter((e) => !(plan.fuera ?? []).includes(e.ej));
   return { ...plan, nombre: plan.tipo === 'combinada' ? 'Combinada' : G.diaDe(plantilla, plan.diaId).nombre, ejercicios };
+}
+
+/** G133 · Lo que se quedó sin hacer en la última sesión terminada (antes de hoy): ejercicios con series pendientes o quitados. */
+export function quedoSinHacer(fecha = hoy()) {
+  const ult = sesionesHechas().filter((s) => s.fecha < fecha).sort((a, b) => (a.inicio ?? 0) - (b.inicio ?? 0)).at(-1);
+  if (!ult) return [];
+  const hechas = seriesDe(ult.id);
+  return [...new Set(ult.plan.filter((p, k) => (p.quitadas ?? 0) > 0 || hechas.filter((x) => x.slot === k).length < p.series).map((p) => p.ej))];
 }
 
 // Nombres cortos para hablar de tú a tú.
@@ -111,10 +121,19 @@ const VA_CORTO = { pecho: 'el pecho va corto', dorsal: 'la espalda va corta', 'h
   'hombro-posterior': 'el hombro de atrás va corto', biceps: 'el bíceps va corto', triceps: 'el tríceps va corto', cuadriceps: 'la pierna va corta',
   isquios: 'la pierna va corta', gluteo: 'el glúteo va corto', gemelos: 'los gemelos van cortos', abdomen: 'el abdomen va corto' };
 
+/** G133 · Qué se está recuperando, dicho corto. */
+export function frasePierna(plan) {
+  return (plan.recuperando ?? []).some((m) => ['cuadriceps', 'isquios', 'gluteo'].includes(m)) ? 'la pierna' : 'lo de ayer';
+}
 /** R15.8 · El porqué en una frase corta. */
 export function porQue(plan) {
   const { musculo } = plan.motivo ?? {};
   if (!musculo) return 'Semana hecha. Lo de hoy, de regalo.';
+  if (plan.razon === 'recuperacion') return `Combinada con lo fresco: ${frasePierna(plan)} aún se recupera.`;
+  if (plan.tipo === 'dia' && plan.fuera?.length) {
+    const n = plan.fuera.map((id) => G.ejercicio(id).nombre.toLowerCase());
+    return `Hoy sin ${n.length === 1 ? n[0] : `${n.slice(0, -1).join(', ')} ni ${n.at(-1)}`}: ${frasePierna(plan)} aún se recupera.`;
+  }
   if (plan.tipo === 'combinada') return 'Última de la semana: lo que más falta, junto.';
   return `Te toca: ${VA_CORTO[musculo] ?? `${musculoCorto(musculo)} va corto`} esta semana.`;
 }

@@ -97,44 +97,85 @@ export function arrimar({ trabajo, escalon, tipo = 'multi', repsObjetivo = 10, l
   return { piedras: quedan, plan, vasFuerte: saltadas > 0 };
 }
 
-// ── R29 · Lo que queda: la siguiente serie de trabajo ─────────────────────────
-export const UMBRAL_MARGEN = 3;   // ⚪ diseño de Gofio
+// ── R29 · Lo que queda: la siguiente serie de trabajo (libro 1.7, G134) ─────────
+export const UMBRAL_MARGEN = 3;   // ⚪ diseño de Gofio: para subir hace falta que sobre mucho
 export const TOPE_SEGURIDAD = 1.10; // ley 7: nada por encima de un 10 % sobre tu mejor fuerza estimada reciente
+export const FATIGA_SERIE = 0.02;  // ⚪ lo que se pierde de una serie a la siguiente si aún no hay datos de hoy (2 %)
+export const FATIGA_MAX = 0.06;    // ⚪ y como mucho, aunque hoy vayas cayendo deprisa (6 %)
+export const TOPE_BAJADA = 0.25;   // ⚪ de una serie a otra, Gofio no baja más de un 25 %
+
+export const HOLGURA = 0.025;      // ⚪ si lo ideal queda a menos de un escalón o de un 2,5 %, se deja el peso
 
 /**
- * R29 · La siguiente serie del mismo ejercicio, con la que acabas de hacer.
- * Margen = (reps hechas + reserva) − (reps objetivo + reserva objetivo). ≥ 3: si ya llegaste al tope del rango, +1
- * escalón; si no, mismo peso buscando una más. ≤ −3 o por debajo del rango: −1 escalón. Si no, igual.
- * @returns {{peso:number, reps:number, senal:'igual'|'sube'|'baja'|'mas', margen:number}}
+ * La fatiga que se espera para la siguiente serie: la mitad de lo que cayó tu fuerza estimada entre las dos últimas
+ * series de trabajo de hoy (entre el 1 % y el 6 %); sin una anterior, un 2 %. ⚪ (la caída de repeticiones serie a serie
+ * con el mismo peso es lo normal: Willardson y Burkett 2006; Richmond y Godard 2004).
  */
-export function siguienteSerie({ hecha, repsObjetivo, repMin, repMax, tipo = 'multi', escalon, mejorReciente = 0 }) {
-  const rirObj = rirObjetivo(tipo).max;
-  const rir = Math.min(4, Math.max(0, hecha.rir ?? rirObj));
-  const objetivo = repsObjetivo ?? repMin;
-  const margen = hecha.reps + rir - (objetivo + rirObj);
+export function fatigaEsperada(hecha, anteriores = []) {
+  const prev = anteriores.at(-1);
+  if (!prev) return FATIGA_SERIE;
+  const a = e1rm(prev.peso, prev.reps, prev.rir ?? 2), b = e1rm(hecha.peso, hecha.reps, hecha.rir ?? 2);
+  if (!(a > 0)) return FATIGA_SERIE;
+  return Math.min(FATIGA_MAX, Math.max(0.01, (a - b) / a / 2));
+}
+
+/**
+ * R29 · La siguiente serie del mismo ejercicio, con la que acabas de hacer (v1.7).
+ * 1) Tu fuerza de ahora = la fuerza estimada de la serie hecha (Epley con la reserva, R11), menos la fatiga esperada.
+ * 2) El peso que toca = el que, con esa fuerza, da las repeticiones objetivo con la reserva objetivo (la del medio).
+ *    Así no es lo mismo 7 que 4 al fallo: cuanto más corto te quedaste, más baja. Para bajar, lo que haga falta
+ *    (hasta un 25 %); para subir, como mucho un escalón y solo si sobró mucho (margen ≥ 3) estando arriba del rango.
+ * @returns {{peso:number, reps:number, senal:'igual'|'sube'|'baja'|'mas', margen:number, fuerza:number}}
+ */
+export function siguienteSerie({ hecha, repsObjetivo, repMin, repMax, tipo = 'multi', escalon, mejorReciente = 0, anteriores = [] }) {
+  const ro = rirObjetivo(tipo);
+  const rir = Math.min(4, Math.max(0, hecha.rir ?? ro.max));
+  const objetivo = Math.max(repMin, Math.min(repMax, repsObjetivo ?? repMin));
+  const margen = hecha.reps + rir - (objetivo + ro.max);
+  const fuerza = e1rm(hecha.peso, hecha.reps, rir) * (1 - fatigaEsperada({ ...hecha, rir }, anteriores));
+  const ideal = fuerza / (1 + (objetivo + (ro.min + ro.max) / 2) / 30);
   let peso = hecha.peso, reps = objetivo, senal = 'igual';
   if (margen >= UMBRAL_MARGEN) {
-    if (hecha.reps >= repMax) { peso = siguienteEscalon(hecha.peso, escalon, +1); reps = objetivo; senal = 'sube'; }
+    if (hecha.reps >= repMax) { peso = siguienteEscalon(hecha.peso, escalon, +1); senal = 'sube'; }
     else { reps = Math.min(repMax, hecha.reps + 1); senal = 'mas'; }
-  } else if (margen <= -UMBRAL_MARGEN || hecha.reps < repMin) {
-    peso = siguienteEscalon(hecha.peso, escalon, -1); reps = objetivo; senal = 'baja';
-  } else {
-    reps = Math.max(Math.min(objetivo, repMax), repMin);
+  } else if (hecha.peso - ideal >= Math.max(escalonMinimo(escalon), HOLGURA * hecha.peso) - 1e-9) {
+    // Bajar lo que diga tu fuerza de ahora, redondeado al escalón más cercano, con tope.
+    const suelo = redondearAEscalon(hecha.peso * (1 - TOPE_BAJADA), escalon, 'arriba');
+    let p = redondearAEscalon(ideal, escalon, 'abajo');
+    const arriba = siguienteEscalon(p, escalon, +1);
+    if (arriba < hecha.peso && ideal - p > arriba - ideal) p = arriba;
+    p = Math.max(p, suelo);
+    if (p < hecha.peso - 1e-9) { peso = p; senal = 'baja'; }
   }
   // Ley 7 · Seguridad (R8): nada por encima de un 10 % sobre tu mejor fuerza estimada reciente.
   if (mejorReciente > 0 && peso > hecha.peso) {
-    const minRir = rirObjetivo(tipo).min;
-    if (e1rm(peso, reps, minRir) > TOPE_SEGURIDAD * mejorReciente) { peso = hecha.peso; senal = 'igual'; }
+    if (e1rm(peso, reps, ro.min) > TOPE_SEGURIDAD * mejorReciente) { peso = hecha.peso; senal = 'igual'; }
   }
-  return { peso: r2(peso), reps, senal, margen };
+  return { peso: r2(peso), reps, senal, margen, fuerza: r2(fuerza) };
+}
+
+/**
+ * R29 (G134) · «Vas cayendo»: en un ejercicio, dos o más series de trabajo seguidas en las que bajaste el peso y aun así
+ * no llegaste a lo que tocaba (por debajo del rango, o al fallo sin llegar a las repeticiones objetivo).
+ * Quiere decir que empezaste por encima de lo que puedes mantener hoy.
+ */
+export function vasCayendo(series, { repMin, repsObjetivo }) {
+  if (series.length < 3) return false;
+  const obj = repsObjetivo ?? repMin;
+  const corta = (s) => s.reps < repMin || ((s.rir ?? 2) === 0 && s.reps < obj);
+  let bajadas = 0;
+  for (let i = 1; i < series.length; i++) {
+    if (series[i].peso < series[i - 1].peso - 1e-9 && corta(series[i])) bajadas++;
+  }
+  return bajadas >= 2 && corta(series[0]);
 }
 
 // ── Las leyes de la piedra (para las pruebas y para «¿Por qué?») ───────────────
 export const LEYES = [
   'Arrimar sube: cada piedra pesa lo mismo o más que la última que levantaste hoy en ese ejercicio, y ninguna pasa del peso de trabajo.',
   'Más peso, menos reps: en Arrimar, al subir el peso bajan las repeticiones.',
-  'Lo hecho cuenta: nada de lo que propone queda por debajo de lo que ya moviste hoy en ese ejercicio, salvo que tu reserva diga que ibas al límite.',
-  'Saltos con tope: entre dos series de trabajo, Gofio no cambia más de un escalón él solo.',
+  'Lo hecho cuenta: nada de lo que propone queda por debajo de lo que ya moviste hoy en ese ejercicio, salvo que lo que hiciste diga que no llegas.',
+  'Saltos con tope: para subir, Gofio nunca pasa de un escalón él solo; para bajar, lo que diga tu fuerza de ahora, hasta un 25 %.',
   'Arrimar no cuenta: las piedras no suman volumen, fuerza ni progresión (R26).',
   'Series, solo tú: Gofio no añade series por su cuenta; la ñapa la pides tú.',
   'Seguridad (R8): ningún peso propuesto pasa de un 10 % sobre tu mejor fuerza estimada de las últimas 6 semanas.',

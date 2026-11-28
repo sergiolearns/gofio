@@ -47,7 +47,7 @@ test('R29 · margen: sobra mucho y estás arriba del rango → +1 escalón; sobr
   assert.deepEqual(G.siguienteSerie({ ...b, hecha: { peso: 180, reps: 13, rir: 4 } }).senal, 'sube');
   assert.equal(G.siguienteSerie({ ...b, hecha: { peso: 180, reps: 13, rir: 4 } }).peso, 182.5);
   assert.equal(G.siguienteSerie({ ...b, hecha: { peso: 180, reps: 12, rir: 4 } }).senal, 'igual'); // margen 2: igual
-  assert.deepEqual(G.siguienteSerie({ ...b, repsObjetivo: 10, hecha: { peso: 180, reps: 11, rir: 4 } }), { peso: 180, reps: 12, senal: 'mas', margen: 3 });
+  { const x = G.siguienteSerie({ ...b, repsObjetivo: 10, hecha: { peso: 180, reps: 11, rir: 4 } }); assert.deepEqual([x.peso, x.reps, x.senal, x.margen], [180, 12, 'mas', 3]); }
   assert.equal(G.siguienteSerie({ ...b, hecha: { peso: 180, reps: 9, rir: 0 } }).senal, 'baja');
   assert.equal(G.siguienteSerie({ ...b, hecha: { peso: 180, reps: 12, rir: 2 } }).senal, 'igual');
 });
@@ -113,24 +113,53 @@ test('Leyes 1 y 2 (Arrimar) en 4000 moliendas al azar: suben, no bajan de lo lev
   }
 });
 
-test('Leyes 3, 4 y 7 (Lo que queda) en 5000 series al azar: como mucho un escalón, solo baja si ibas al límite, nunca más de un 10 % sobre lo mejor', () => {
+test('Leyes 3, 4 y 7 (Lo que queda, v1.7) en 5000 series al azar: sube como mucho un escalón, baja solo si no llegas y como mucho un 25 %, nunca más de un 10 % sobre lo mejor', () => {
   const r = azar(1715);
   for (let k = 0; k < 5000; k++) {
     const escalon = elige(r, ESCALONES);
     const repMin = elige(r, [6, 8, 10, 12]); const repMax = repMin + elige(r, [2, 3, 5]);
     const tipo = elige(r, ['multi', 'aislamiento']);
     const peso = G.redondearAEscalon(2 + r() * 250, escalon, 'abajo');
-    const hecha = { peso, reps: Math.floor(r() * (repMax + 6)), rir: Math.floor(r() * 5) };
+    if (!(peso > 0)) continue;
+    const hecha = { peso, reps: 1 + Math.floor(r() * (repMax + 6)), rir: Math.floor(r() * 5) };
     const repsObjetivo = repMin + Math.floor(r() * (repMax - repMin + 1));
     const mejorReciente = r() < 0.5 ? 0 : G.e1rm(peso, repMax, 2) * (0.8 + r() * 0.4);
     const s = G.siguienteSerie({ hecha, repsObjetivo, repMin, repMax, tipo, escalon, mejorReciente });
-    const arriba = G.siguienteEscalon(peso, escalon, +1), abajo = G.siguienteEscalon(peso, escalon, -1);
-    assert.ok([peso, arriba, abajo].some((x) => Math.abs(x - s.peso) < 1e-6), `ley 4 ${JSON.stringify({ hecha, s })}`);
+    if (s.peso > peso + 1e-6) assert.ok(Math.abs(s.peso - G.siguienteEscalon(peso, escalon, +1)) < 1e-6, `ley 4 (sube) ${JSON.stringify({ hecha, s })}`);
     if (s.peso < peso - 1e-6) {
-      const rirObj = G.rirObjetivo(tipo).max;
-      assert.ok(hecha.reps < repMin || hecha.reps + hecha.rir - (repsObjetivo + rirObj) <= -G.UMBRAL_MARGEN, `ley 3 ${JSON.stringify({ hecha, s })}`);
+      assert.ok(s.peso >= G.redondearAEscalon(peso * 0.75, escalon, 'arriba') - 1e-6 || s.peso >= peso * 0.75 - 1e-6, `ley 4 (baja) ${JSON.stringify({ hecha, s })}`);
+      const ro = G.rirObjetivo(tipo);
+      const ideal = G.e1rm(peso, hecha.reps, Math.min(4, hecha.rir)) * (1 - G.FATIGA_SERIE) / (1 + (repsObjetivo + (ro.min + ro.max) / 2) / 30);
+      assert.ok(ideal < peso, `ley 3 ${JSON.stringify({ hecha, s })}`);
     }
     if (s.peso > peso + 1e-6 && mejorReciente > 0) assert.ok(G.e1rm(s.peso, s.reps, G.rirObjetivo(tipo).min) <= G.TOPE_SEGURIDAD * mejorReciente + 1e-6, 'ley 7');
     assert.ok(s.reps >= repMin && s.reps <= repMax, `reps en el rango ${JSON.stringify({ hecha, s, repMin, repMax })}`);
   }
+});
+
+test('R29 v1.7 (G134) · no es lo mismo 7 que 4 al fallo: cuanto más corto, más baja (hack 100 kg, 8-10)', () => {
+  const b = { repsObjetivo: 8, repMin: 8, repMax: 10, tipo: 'multi', escalon: { base: 0, paso: 5 } };
+  const p = (reps) => G.siguienteSerie({ ...b, hecha: { peso: 100, reps, rir: 0 } }).peso;
+  assert.equal(p(10), 100);           // 10 al fallo: las 8 con reserva, sigue
+  assert.ok(p(8) < 100);              // 8 al fallo: la siguiente no llega
+  assert.ok(p(7) <= p(8) && p(4) < p(7), `${p(8)} ${p(7)} ${p(4)}`);
+  assert.ok(p(4) >= 75);              // tope: un 25 %
+  // Con reserva no se baja aunque te pararas antes (te quedaba).
+  assert.equal(G.siguienteSerie({ ...b, hecha: { peso: 100, reps: 7, rir: 3 } }).peso, 100);
+});
+test('R29 v1.7 · la fatiga de hoy cuenta: si la serie anterior cayó mucho, la siguiente baja más', () => {
+  const b = { repsObjetivo: 8, repMin: 8, repMax: 10, tipo: 'multi', escalon: 2.5 };
+  const sin = G.siguienteSerie({ ...b, hecha: { peso: 80, reps: 7, rir: 0 } }).peso;
+  const con = G.siguienteSerie({ ...b, hecha: { peso: 80, reps: 7, rir: 0 }, anteriores: [{ peso: 80, reps: 10, rir: 1 }] }).peso;
+  assert.ok(con <= sin);
+});
+test('R29 v1.7 · «Vas cayendo»: bajas el peso en cada serie y aun así no llegas', () => {
+  const o = { repMin: 8, repsObjetivo: 8 };
+  assert.ok(G.vasCayendo([{ peso: 120, reps: 6, rir: 0 }, { peso: 110, reps: 6, rir: 0 }, { peso: 100, reps: 7, rir: 0 }], o));
+  assert.ok(!G.vasCayendo([{ peso: 100, reps: 9, rir: 1 }, { peso: 100, reps: 8, rir: 1 }, { peso: 95, reps: 8, rir: 1 }], o));
+});
+test('R12 (G134) · si cambiaste el peso entre series, la próxima vez se empieza por lo que dice la primera', () => {
+  const r = G.proximaVez({ peso: 100, series: [{ peso: 120, reps: 6, rir: 0 }, { peso: 110, reps: 6, rir: 0 }, { peso: 100, reps: 7, rir: 0 }, { peso: 100, reps: 4, rir: 0 }], repMin: 8, repMax: 10, tipo: 'multi', escalon: { base: 0, paso: 5 } });
+  assert.ok(r.mixto && r.peso < 120 && r.peso >= 100, JSON.stringify(r));
+  assert.equal(r.peso, 105); // 120 × 6 al fallo ≈ 144 de fuerza → 8 con 2 de reserva ≈ 108 → 105
 });

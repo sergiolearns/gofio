@@ -7,7 +7,7 @@ import * as S from '../sonidos.js';
 import { SERVIDOR, avisosPosibles, avisosActivos, encenderAvisos, apagarAvisos } from '../avisos.js';
 import { fuentes } from './comida.js';
 
-export const VERSION = '0.3.0';
+export const VERSION = '0.3.1';
 
 /** Exporta la copia completa: hoja de Compartir en el iPhone (Archivos, iCloud…) o descarga. */
 export async function exportarCopia() {

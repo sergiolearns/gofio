@@ -985,3 +985,6 @@ button.cabeza-granos:disabled { opacity: 1; cursor: default; }
 .lista-hoy li.arrastrada .fila-mueve { background: var(--basalto-3); box-shadow: 0 12px 30px rgba(0,0,0,.45); border-radius: 14px; }
 .lista-hoy li.arrastrada .fila-mueve::before { display: none; }
 .lista-hoy:has(li.arrastrada) { overflow: visible; clip-path: none; }
+
+/* G134 · «Vas cayendo»: en el sitio de la frase del descanso, más pequeña y en millo. */
+.descanso-frase.cayendo { font-size: 24px; color: var(--millo); }

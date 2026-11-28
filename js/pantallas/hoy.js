@@ -491,11 +491,13 @@ function otroDia(plan, nav) {
   const lunes = G.lunesDe(hoy());
   const hechos = new Map(sesionesHechas().filter((s) => s.fecha >= lunes).map((s) => [s.diaId, s.fecha]));
   const opciones = plantilla.dias.map((d) => {
-    const marca = d.id === plan.diaId ? 'Toca hoy' : hechos.has(d.id) ? `Hecho el ${G.NOMBRE_DIA[G.diaSemana(hechos.get(d.id))]}` : '';
     const series = d.ejercicios.reduce((s, e) => s + e.series, 0);
+    // G133 · Si más de la mitad de sus series son de músculos que aún se recuperan, se dice (y lo eliges tú).
+    const cansadas = plan.recuperacion ? d.ejercicios.filter((e) => G.principalesCansados(e.ej, plan.recuperacion).length).reduce((s, e) => s + e.series, 0) : 0;
+    const marca = d.id === plan.diaId ? 'Toca hoy' : cansadas > series / 2 ? 'Aún se recupera' : hechos.has(d.id) ? `Hecho el ${G.NOMBRE_DIA[G.diaSemana(hechos.get(d.id))]}` : '';
     return `<li><button type="button" data-dia="${d.id}"><span class="que"><b>${esc(d.nombre)}</b><span>${d.ejercicios.length} ejercicios · ${series} series</span></span><span class="marca">${esc(marca)}</span></button></li>`;
   });
-  if (plan.tipo === 'combinada') opciones.unshift(`<li><button type="button" data-dia="combinada"><span class="que"><b>Combinada</b><span>Lo que más falta, en una</span></span><span class="marca">Toca hoy</span></button></li>`);
+  if (plan.tipo === 'combinada') opciones.unshift(`<li><button type="button" data-dia="combinada"><span class="que"><b>Combinada</b><span>${plan.razon === 'recuperacion' ? 'Lo que falta, con lo que está fresco' : 'Lo que más falta, en una'}</span></span><span class="marca">Toca hoy</span></button></li>`);
   const malo = `<li><button type="button" data-malo><span class="icono-fila">${icono('malo')}</span><span class="que"><b>${diaMaloActivo ? 'Volver a lo normal' : 'Día malo'}</b><span>${diaMaloActivo ? 'La molienda entera' : 'Un fisco de lo importante. Cuenta igual.'}</span></span></button></li>`;
   const { nodo, cerrar } = hoja(`<h2>Otro día</h2><p class="sub">Elige tú.</p><ul class="opciones">${malo}${opciones.join('')}</ul>`);
   escalonar(nodo.querySelectorAll('.opciones li'), { desde: 120, retraso: 35 });

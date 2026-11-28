@@ -1,6 +1,6 @@
 // Service worker de Gofio: guarda la app para que funcione sin conexión (en el sótano del gimnasio).
 // Al publicar una versión nueva se cambia VERSION; la app avisa y el usuario decide cuándo actualizar.
-const VERSION = 'gofio-0.3.0';
+const VERSION = 'gofio-0.3.1';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest',
   'css/variables.css', 'css/app.css',
@@ -14,14 +14,15 @@ const ARCHIVOS = [
   'js/cerebro/index.js', 'js/cerebro/musculos.js', 'js/cerebro/fechas.js', 'js/cerebro/ejercicios.js', 'js/cerebro/plantilla.js',
   'js/cerebro/volumen.js', 'js/cerebro/esfuerzo.js', 'js/cerebro/progresion.js', 'js/cerebro/vuelta.js', 'js/cerebro/planificador.js',
   'js/cerebro/dia-malo.js', 'js/cerebro/sustituciones.js', 'js/cerebro/constancia.js', 'js/cerebro/generador.js', 'js/cerebro/fuerza.js', 'js/cerebro/marcha.js',
-  'js/cerebro/molinero.js', 'js/cerebro/animos.js', 'js/cerebro/tostar.js', 'js/cerebro/comida.js',
+  'js/cerebro/molinero.js', 'js/cerebro/animos.js', 'js/cerebro/tostar.js', 'js/cerebro/comida.js', 'js/cerebro/recuperacion.js',
   // v0.3 · Comida y peso
   'js/pantallas/comida.js', 'js/pantallas/peso.js', 'js/pantallas/olla.js', 'js/pantallas/escanear.js', 'js/pantallas/miscosas.js',
   'js/comida/cocina.js', 'js/comida/dibujos.js', 'js/comida/piezas.js', 'js/comida/fuego.js', 'js/comida/etiqueta.js', 'js/comida/leer-etiqueta.js',
   'datos/alimentos.json',
 ];
-// Lo pesado (el lector de códigos y el de etiquetas) no va en la instalación: se guarda la primera vez que se usa.
-const AL_USARLO = /\/vendor\//;
+// Lo pesado (el lector de códigos, el de etiquetas y los productos del súper) no va en la instalación: se guarda la
+// primera vez que se usa, en una caché que no se borra al cambiar de versión (el nombre del archivo lleva la fecha).
+const AL_USARLO = /\/vendor\/|\/datos\/super-/;
 self.addEventListener('install', (e) => {
   // Cada archivo, pedido de nuevo a la red y no a la caché del navegador: GitHub Pages deja los archivos 10 minutos en
   // caché y, sin esto, una versión nueva podía guardarse con piezas de la anterior (G97).

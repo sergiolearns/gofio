@@ -112,6 +112,27 @@ export function cargarBase() {
   return cargando;
 }
 export const baseCargada = () => base;
+
+// ── Los productos del súper (Open Food Facts, vendidos en España; G132) ──
+// Va aparte y se descarga la primera vez que buscas (unos megas): luego funciona sin conexión.
+// Aún sin publicar: falta sacarla del volcado de Open Food Facts (herramientas/off-espana.py). Mientras, null.
+export const SUPER = null;
+let superB = null, cargandoSuper = null;
+export function cargarSuper() {
+  if (superB) return Promise.resolve(superB);
+  if (!SUPER) return Promise.reject(new Error('sin base del súper'));
+  if (!cargandoSuper) cargandoSuper = fetch(SUPER).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((j) => {
+    const marcas = j.marcas;
+    superB = { fecha: j.fecha, n: j.productos.length, productos: j.productos.map(([codigo, nombre, m, kcal, prot, hc, grasa, dib, pop]) => {
+      const marca = m >= 0 ? marcas[m] : null;
+      return { id: 'off:' + codigo, codigo, nombre, marca, fuente: 'off', dib: dib || 'envase', pop: pop || 0, por100: { kcal, prot, hc, grasa }, clave: sinTildes(nombre + ' ' + (marca ?? '')) };
+    }) };
+    superB.porId = new Map(superB.productos.map((a) => [a.id, a]));
+    return superB;
+  }).catch((e) => { cargandoSuper = null; throw e; });
+  return cargandoSuper;
+}
+export const superCargado = () => superB;
 // Cómo se dice en casa (Canarias y Colombia) y cómo lo dice BEDCA.
 const SINONIMOS = { papa: 'patata', papas: 'patata', guineo: 'platano', banano: 'platano', banana: 'platano', frijol: 'frijol judia', frijoles: 'frijol judia', habichuela: 'judia', millo: 'maiz', jugo: 'zumo', arveja: 'guisante', ahuyama: 'calabaza', durazno: 'melocoton', zapallo: 'calabaza', choclo: 'maiz', batata: 'boniato batata' };
 /** Lo tuyo con la misma forma que lo de la base. */
@@ -121,7 +142,7 @@ export function misCosas() {
   return [...ollas, ...mios];
 }
 export function alimentoPorRef(ref) {
-  return misCosas().find((x) => x.id === ref) ?? base?.porId.get(ref) ?? null;
+  return misCosas().find((x) => x.id === ref) ?? base?.porId.get(ref) ?? superB?.porId.get(ref) ?? null;
 }
 /** Busca en tus ollas, tus alimentos y la base. Cada palabra tiene que estar; gana lo que más usas y lo que empieza igual. */
 export function buscar(texto, max = 40) {
@@ -129,7 +150,7 @@ export function buscar(texto, max = 40) {
   if (!q) return [];
   const palabras = q.split(/\s+/).map((p) => [p, ...(SINONIMOS[p]?.split(' ') ?? [])]);
   const enteras = palabras.map((alts) => alts.map((p) => new RegExp(`(^|[^a-z])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`)));
-  const todos = [...misCosas(), ...(base?.alimentos ?? [])];
+  const todos = [...misCosas(), ...(base?.alimentos ?? []), ...(superB?.productos ?? [])];
   const u = usos();
   const res = [];
   for (const a of todos) {
@@ -137,7 +158,9 @@ export function buscar(texto, max = 40) {
     const empieza = palabras[0].some((p) => a.clave.startsWith(p));
     const entera = enteras.every((alts) => alts.some((r) => r.test(a.clave)));
     const crudo = /crud|fresc/.test(a.clave) ? 1 : 0;
-    res.push({ a, puntos: (a.mio ? 50 : 0) + (u[a.id] ?? 0) * 10 + (empieza ? 20 : 0) + (entera ? 15 : 0) + crudo * 2 - a.clave.length / 20 });
+    // Lo genérico (BEDCA, TCAC, USDA) antes que un producto de marca, salvo que busques la marca o lo escanees mucho.
+    const marca = a.marca && palabras.some((alts) => alts.some((p) => sinTildes(a.marca).includes(p)));
+    res.push({ a, puntos: (a.mio ? 50 : 0) + (u[a.id] ?? 0) * 10 + (empieza ? 20 : 0) + (entera ? 15 : 0) + crudo * 2 - a.clave.length / 20 + (a.fuente === 'off' ? (marca ? 12 : -8) + Math.min(6, Math.log10(1 + (a.pop ?? 0)) * 2) : 0) });
   }
   return res.sort((x, y) => y.puntos - x.puntos).slice(0, max).map((x) => x.a);
 }
@@ -154,6 +177,27 @@ export function loUltimo(n = 6) {
   return res;
 }
 export const tamanosDe = (a) => (a?.tam && base?.tamanos[a.tam]) || null;
+/** G135 · Las medidas de un alimento: las tuyas (pesadas una vez) y la ración de su etiqueta. */
+export function medidasDe(a) {
+  const mias = (ajuste('medidas') ?? {})[a.id] ?? [];
+  const propias = estado.alimentos.find((x) => x.id === a.id)?.medidas ?? a.medidas ?? [];
+  const vistas = new Set();
+  return [...mias, ...propias].filter((m) => m?.g > 0 && !vistas.has(m.nombre.toLowerCase()) && vistas.add(m.nombre.toLowerCase()));
+}
+export async function guardarMedida(a, m) {
+  const todas = { ...(ajuste('medidas') ?? {}) };
+  todas[a.id] = [...(todas[a.id] ?? []).filter((x) => x.nombre.toLowerCase() !== m.nombre.toLowerCase()), { nombre: m.nombre, g: Math.round(m.g * 10) / 10 }];
+  await ponerAjuste('medidas', todas);
+}
+/** La ración de la etiqueta de Open Food Facts como medida («1 rebanada (27 g)» → «1 rebanada · 27 g»). */
+export function racionEtiqueta(p) {
+  const g = parseFloat(String(p.serving_quantity ?? '').replace(',', '.'));
+  if (!(g > 0 && g < 2000)) return [];
+  let n = String(p.serving_size ?? '').replace(/\(.*?\)/g, '').replace(/[0-9.,]+\s*(g|ml)\b/gi, '').trim();
+  n = n.replace(/^1\s+/, '');
+  if (!n || n.length > 24) n = 'Ración del envase';
+  return [{ nombre: n[0].toUpperCase() + n.slice(1), g }];
+}
 
 // ── Tus alimentos y tus ollas ────────────────────────────
 export async function guardarAlimento(a) {
@@ -184,7 +228,10 @@ export async function borrarOlla(id) { estado.ollas = estado.ollas.filter((y) =>
 export async function buscarCodigo(codigo) {
   const ya = estado.alimentos.find((a) => a.codigo === codigo);
   if (ya) return { ...ya, yaEra: true };
-  const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json?fields=product_name,product_name_es,brands,nutriments,quantity`;
+  try { await cargarSuper(); } catch { /* sin la base del súper, se pregunta a Open Food Facts */ }
+  const local = superB?.porId.get('off:' + codigo);
+  if (local) return { nombre: local.nombre, marca: local.marca, codigo, fuente: 'off', dib: local.dib, por100: { ...local.por100 } };
+  const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json?fields=product_name,product_name_es,brands,nutriments,quantity,serving_size,serving_quantity`;
   const r = await fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer' });
   if (!r.ok) return null;
   const j = await r.json();
@@ -196,9 +243,30 @@ export async function buscarCodigo(codigo) {
   if (kcal == null) return null;
   return {
     nombre: (p.product_name_es || p.product_name || 'Producto').trim(), marca: (p.brands ?? '').split(',')[0].trim() || null, codigo,
-    fuente: 'off', dib: 'tuyo',
+    fuente: 'off', dib: 'envase',
     por100: { kcal: r0(kcal), prot: n.proteins_100g ?? 0, hc: n.carbohydrates_100g ?? 0, grasa: n.fat_100g ?? 0 },
+    medidas: racionEtiqueta(p),
   };
+}
+
+/**
+ * Buscar en Open Food Facts por internet (G132): solo viaja lo que escribes, cuando lo pides con un toque.
+ * Ellos dejan 10 búsquedas por minuto: Gofio no busca solo mientras escribes.
+ */
+export async function buscarEnOFF(texto) {
+  const q = encodeURIComponent(texto.trim());
+  const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&search_simple=1&action=process&json=1&page_size=24&tagtype_0=countries&tag_contains_0=contains&tag_0=spain&fields=code,product_name,product_name_es,brands,nutriments,serving_size,serving_quantity`;
+  const r = await fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer' });
+  if (!r.ok) throw new Error(String(r.status));
+  const j = await r.json();
+  return (j.products ?? []).map((p) => {
+    const n = p.nutriments ?? {};
+    let kcal = n['energy-kcal_100g'];
+    if (kcal == null && n['energy-kj_100g'] != null) kcal = G.kJaKcal(n['energy-kj_100g']);
+    if (kcal == null || !(p.product_name_es || p.product_name)) return null;
+    return { id: 'off:' + p.code, codigo: p.code, nombre: (p.product_name_es || p.product_name).trim(), marca: (p.brands ?? '').split(',')[0].trim() || null, fuente: 'off', dib: 'envase',
+      por100: { kcal: r0(kcal), prot: n.proteins_100g ?? 0, hc: n.carbohydrates_100g ?? 0, grasa: n.fat_100g ?? 0 }, medidas: racionEtiqueta(p) };
+  }).filter(Boolean);
 }
 
 // ── La semana ────────────────────────────────────────────

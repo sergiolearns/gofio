@@ -3,6 +3,7 @@ import { IDS_MUSCULOS } from './musculos.js';
 import { CATALOGO, ejercicio } from './ejercicios.js';
 import { volumen, volumenPlantilla, TOPE_SESION } from './volumen.js';
 import { lunesDe, diasEntre, diaSemana, sumarDias } from './fechas.js';
+import { recuperacion, principalesCansados } from './recuperacion.js';
 
 const HORA = 3600000;
 const r5 = (x) => Math.round(x * 2) / 2;
@@ -30,7 +31,7 @@ export function mediaSemanal(fechas, hoy, semanas = 4, porDefecto = 3) {
  * @param {number|null} p.diasPorSemana  lo que Sergio cree que irá; null = su media (R15.4)
  * @param {number} p.minutos         duración de la sesión (R15.7: ≈ 3 min por serie)
  */
-export function planificar({ plantilla, series = [], sesiones = [], hoy, ahora, diasPorSemana = null, diasPorDefecto = 3, minutos, catalogo = CATALOGO }) {
+export function planificar({ plantilla, series = [], sesiones = [], hoy, ahora, diasPorSemana = null, diasPorDefecto = 3, minutos, quedoSinHacer = [], catalogo = CATALOGO }) {
   const lunes = lunesDe(hoy);
   const semana = series.filter((s) => s.fecha >= lunes && s.fecha < hoy);
   const sesSemana = sesiones.filter((s) => s.fecha >= lunes && s.fecha < hoy);
@@ -46,7 +47,9 @@ export function planificar({ plantilla, series = [], sesiones = [], hoy, ahora, 
   const t = ahora ?? Date.parse(hoy + 'T12:00:00');
   const recientes = volumen(series.filter((s) => s.ts != null && t - s.ts < 48 * HORA && t - s.ts >= 0)
     .map((s) => ({ ejercicioId: s.ejercicioId })), catalogo);
-  const frescura = Object.fromEntries(IDS_MUSCULOS.map((m) => [m, recientes[m] >= 6 ? 0.5 : 1]));
+  // R15.9 (v1.7, G133) · Un músculo trabajado fuerte como principal que aún se recupera no cuenta hoy (frescura 0).
+  const rec = recuperacion(series, t, catalogo);
+  const frescura = Object.fromEntries(IDS_MUSCULOS.map((m) => [m, rec[m].recuperando ? 0 : recientes[m] >= 6 ? 0.5 : 1]));
   // 3 · Puntuación de cada día = Σ min(lo que da ese día, la deuda) × frescura × deuda relativa.
   //     (v1.1: la deuda relativa hace que gane el músculo que va más atrasado, no el que tiene el objetivo más grande.)
   const aporteDia = Object.fromEntries(plantilla.dias.map((d) => [d.id, volumen(d.ejercicios, catalogo)]));
@@ -69,11 +72,29 @@ export function planificar({ plantilla, series = [], sesiones = [], hoy, ahora, 
   const rotacion = [...orden.slice(desde), ...orden.slice(0, desde)].filter((id) => pendientes.some((d) => d.id === id));
   // Lo que se entrenó ayer (para explicar el porqué).
   const ayer = sesiones.find((s) => diasEntre(s.fecha, hoy) === 1);
-  const base = { deuda, objetivo, hecho, frescura, puntuaciones, quedan, esperadas, pendientes: pendientes.map((d) => d.id), ayer: ayer?.diaId ?? null };
+  const recuperando = IDS_MUSCULOS.filter((m) => rec[m].recuperando);
+  const base = { deuda, objetivo, hecho, frescura, puntuaciones, quedan, esperadas, pendientes: pendientes.map((d) => d.id), ayer: ayer?.diaId ?? null, recuperacion: rec, recuperando };
+  const mins = minutos ?? plantilla.minutos ?? 75;
+  // Un día de la plantilla sin lo que aún se recupera. Si se queda en menos de la mitad, mejor una combinada con lo fresco.
+  const elDia = (diaId, razon) => {
+    const dia = plantilla.dias.find((d) => d.id === diaId);
+    const fuera = dia.ejercicios.filter((e) => principalesCansados(e.ej, rec, catalogo).length > 0);
+    const quedanSeries = dia.ejercicios.filter((e) => !fuera.includes(e)).reduce((n, e) => n + e.series, 0);
+    const total = dia.ejercicios.reduce((n, e) => n + e.series, 0);
+    if (fuera.length && quedanSeries < total / 2) {
+      const fresca = sesionCombinada({ pendientes: plantilla.dias, deuda, relativa, frescura, minutos: mins, quedoSinHacer, catalogo });
+      if (fresca.reduce((n, e) => n + e.series, 0) >= quedanSeries) {
+        return { ...base, tipo: 'combinada', diaId: null, razon: 'recuperacion', ejercicios: fresca, fuera: fuera.map((e) => e.ej), motivo: motivo(volumen(fresca, catalogo), deuda, relativa, frescura) };
+      }
+    }
+    return { ...base, tipo: 'dia', diaId, razon, fuera: fuera.map((e) => e.ej), motivo: motivo(aporteDia[diaId], deuda, relativa, frescura) };
+  };
 
   // 5 · Quedan tantas sesiones como días por hacer → el siguiente de la rotación.
   if (quedan >= pendientes.length) {
-    return { ...base, tipo: 'dia', diaId: rotacion[0], razon: 'rotacion', motivo: motivo(aporteDia[rotacion[0]], deuda, relativa, frescura) };
+    // La rotación, salvo que su día sea sobre todo de lo que aún se recupera: entonces, el pendiente más fresco.
+    const fresco = rotacion.find((id) => plantilla.dias.find((d) => d.id === id).ejercicios.every((e) => principalesCansados(e.ej, rec, catalogo).length === 0));
+    return elDia(fresco ?? rotacion[0], 'rotacion');
   }
   // 6 · Quedan menos → el de más puntuación (a igualdad, el de la rotación).
   const mejor = rotacion.reduce((b, id) => (puntuaciones[id] > puntuaciones[b] + 1e-9 ? id : b), rotacion[0]);
@@ -83,12 +104,12 @@ export function planificar({ plantilla, series = [], sesiones = [], hoy, ahora, 
     const total = grandes.reduce((s, m) => s + deuda[m], 0);
     const cubre = grandes.reduce((s, m) => s + Math.min(aporteDia[mejor][m], deuda[m]), 0);
     if (grandes.length >= 3 && cubre < 0.5 * total) {
-      const combinada = sesionCombinada({ pendientes, deuda, relativa, frescura, minutos: minutos ?? plantilla.minutos ?? 75, catalogo });
+      const combinada = sesionCombinada({ pendientes, deuda, relativa, frescura, minutos: mins, quedoSinHacer, catalogo });
       return { ...base, tipo: 'combinada', diaId: null, razon: 'combinada', ejercicios: combinada, grandes,
         motivo: motivo(volumen(combinada, catalogo), deuda, relativa, frescura) };
     }
   }
-  return { ...base, tipo: 'dia', diaId: mejor, razon: 'puntuacion', motivo: motivo(aporteDia[mejor], deuda, relativa, frescura) };
+  return elDia(mejor, 'puntuacion');
 }
 
 /** R15.8 · El porqué: el músculo al que más ayuda la sesión elegida y cuántas series le faltan. */
@@ -106,7 +127,7 @@ function motivo(ap, deuda, relativa, frescura) {
  * (≈ 3 min por serie) y sin pasar de ~11 fraccionales por músculo (R10). Si sobra tiempo, aislamiento.
  * No entra un ejercicio cuyos músculos principales estén todos cansados (R15.2), ni dos del mismo patrón.
  */
-export function sesionCombinada({ pendientes, deuda, relativa, frescura, minutos = 75, catalogo = CATALOGO }) {
+export function sesionCombinada({ pendientes, deuda, relativa, frescura, minutos = 75, quedoSinHacer = [], catalogo = CATALOGO }) {
   const maxSeries = Math.floor(minutos / 3);
   const resto = { ...deuda };
   const carga = Object.fromEntries(IDS_MUSCULOS.map((m) => [m, 0]));
@@ -114,7 +135,9 @@ export function sesionCombinada({ pendientes, deuda, relativa, frescura, minutos
   const candidatos = pendientes.flatMap((d) => d.ejercicios).filter((e) => !vistos.has(e.ej) && vistos.add(e.ej));
   const elegidos = [];
   let total = 0;
-  const ganancia = (e, n) => Object.entries(ejercicio(e.ej, catalogo).musculos)
+  // G133 · Lo que se quedó sin hacer la última vez pasa delante (si sus músculos están frescos).
+  const extra = (e) => (quedoSinHacer.includes(e.ej) ? 1.5 : 1);
+  const ganancia = (e, n) => extra(e) * Object.entries(ejercicio(e.ej, catalogo).musculos)
     .reduce((s, [m, f]) => s + Math.min(f * n, resto[m]) * frescura[m] * (relativa[m] || 0), 0);
   const cabe = (e, n) => Object.entries(ejercicio(e.ej, catalogo).musculos).every(([m, f]) => carga[m] + f * n <= TOPE_SESION + 1e-9);
   for (const tipo of ['multi', 'aislamiento']) {
@@ -123,8 +146,10 @@ export function sesionCombinada({ pendientes, deuda, relativa, frescura, minutos
       for (const e of candidatos) {
         const ej = ejercicio(e.ej, catalogo);
         if (elegidos.some((x) => x.ej === e.ej || ejercicio(x.ej, catalogo).patron === ej.patron) || ej.tipo !== tipo) continue;
-        // No se repite como músculo principal uno que está cansado (R15.2).
-        if (Object.entries(ej.musculos).filter(([, f]) => f === 1).every(([m]) => frescura[m] < 1)) continue;
+        // No se repite como músculo principal uno que está cansado (R15.2), ni entra si alguno de sus principales
+        // aún se recupera (R15.9, G133: nada de hack dos días seguidos).
+        const principales = Object.entries(ej.musculos).filter(([, f]) => f === 1);
+        if (principales.every(([m]) => frescura[m] < 1) || principales.some(([m]) => frescura[m] === 0)) continue;
         let n = Math.min(e.series, maxSeries - total);
         while (n > 0 && !cabe(e, n)) n--;
         if (n < 2) continue;

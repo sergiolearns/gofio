@@ -170,3 +170,4 @@
    cuentan distinto con position: sticky. */
 .pantalla:has(> .c-pie){padding-bottom:0}
 .pantalla.con-pestanas:has(> .c-pie)::after{content:"";flex:none;height:calc(var(--abajo) + 60px)}
+.c-medidas .c-med-nueva{background:none;border:1.5px dashed var(--piedra);color:var(--harina-texto)}

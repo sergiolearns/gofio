@@ -49,6 +49,7 @@ function avisoDe(p, slot, n) {
   switch (p.accion) {
     case 'subir': return { icono: 'sube', texto: `Sube a ${kg(p.peso)} · ${r}`, corto: `Sube a ${kg(p.peso)} kg` };
     case 'bajar': return { icono: 'baja', texto: `Baja a ${kg(p.peso)} · ${r}`, corto: `Baja a ${kg(p.peso)} kg` };
+    case 'ajustar': return { icono: 'baja', texto: `Empieza en ${kg(p.peso)} · ${r}`, corto: `Empieza en ${kg(p.peso)} kg` };
     case 'primera': return { icono: 'igual', texto: `Primera vez · ${rango(slot.repMin, slot.repMax)} reps · ${deja(p.rir)}`, corto: 'Primera vez' };
     default: return { icono: 'igual', texto: `Mismo peso · ${r}`, corto: 'Mismo peso' };
   }
@@ -98,8 +99,11 @@ export function seriePantalla(params, nav) {
   // La siguiente, preparada en el descanso (R29, G115): lo que dejes ahí es lo que sale aquí.
   const prep = s.prep && s.prep.i === i && s.prep.n === n ? s.prep : null;
   // pesoTrabajo: el que dijiste al pedir arrimar sin peso conocido (G108).
-  let peso = prep?.peso ?? ultimaHoy?.peso ?? p.peso ?? pesoTrabajo;
-  let reps = prep?.reps ?? p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin;
+  // G134 · Sin la siguiente preparada (iOS recargó la app en el descanso), R29 se calcula aquí con lo de hoy.
+  const hoyEj = hechas.filter((x) => x.ejercicioId === slot.ej);
+  const r29 = !prep && ultimaHoy ? G.siguienteSerie({ hecha: ultimaHoy, repsObjetivo: p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin, repMin: slot.repMin, repMax: slot.repMax, tipo: ej.tipo, escalon, mejorReciente: mejorReciente(slot.ej), anteriores: hoyEj.slice(0, -1) }) : null;
+  let peso = prep?.peso ?? r29?.peso ?? ultimaHoy?.peso ?? p.peso ?? pesoTrabajo;
+  let reps = prep?.reps ?? r29?.reps ?? p.reps[Math.min(n, p.reps.length - 1)] ?? slot.repMin;
   let rir = null;   // G105: la reserva no viene marcada; la eliges al acabar la serie
   let fallo = !!prep?.fallo; // R27 (G106): al fallo, solo esta serie y solo si lo eliges tú
   // Moliendo a medias (iOS recargó la app a mitad de la serie) o pedido desde un aviso («¿Hecha?» abre «¿Cómo fue?»).
@@ -125,7 +129,13 @@ export function seriePantalla(params, nav) {
   if (arrimando && !piedraEnCurso) { peso = ar.piedras[0].peso; reps = ar.piedras[0].reps; }
   const vasFuerte = !arrimando && n === 0 && ar.vasFuerte && piedrasHechas.length > 0;
   const repsMeta = reps, pesoMeta = peso;
-  const aviso = avisoDe(p, slot, n);
+  let aviso = avisoDe(p, slot, n);
+  // G134 · A mitad del ejercicio manda lo de hoy (R29), no lo que decía el plan al empezar.
+  const s29 = (prep ?? r29)?.senal;
+  if (n > 0 && s29 && !slot.diaMalo) {
+    const w = prep?.peso ?? r29?.peso;
+    aviso = { ...aviso, ...({ baja: { icono: 'baja', corto: `Baja a ${kg(w)} kg` }, sube: { icono: 'sube', corto: `Sube a ${kg(w)} kg` }, mas: { icono: 'sube', corto: 'Una más' }, igual: { icono: 'igual', corto: 'Mismo peso' } })[s29] };
+  }
   const record = mejorAntes(slot.ej, s.id);
   const restoTotal = s.plan.reduce((acc, _, k) => acc + Math.max(0, s.plan[k].series - seriesDelHueco(s, k).length), 0);
   const esUltima = restoTotal === 1;
@@ -469,7 +479,7 @@ export function seriePantalla(params, nav) {
     // R29 · La siguiente del mismo ejercicio, ya preparada con la que acabas de hacer (se cambia en el descanso).
     if (n + 1 < slot.series) {
       const objetivo = p.reps[Math.min(n + 1, p.reps.length - 1)] ?? slot.repMin;
-      const r = G.siguienteSerie({ hecha: { peso, reps, rir }, repsObjetivo: objetivo, repMin: slot.repMin, repMax: slot.repMax, tipo: ej.tipo, escalon, mejorReciente: mejorReciente(slot.ej) });
+      const r = G.siguienteSerie({ hecha: { peso, reps, rir }, repsObjetivo: objetivo, repMin: slot.repMin, repMax: slot.repMax, tipo: ej.tipo, escalon, mejorReciente: mejorReciente(slot.ej), anteriores: seriesDelHueco(s, i).slice(0, -1) });
       s.prep = { i, n: n + 1, peso: r.peso, reps: r.reps, fallo: false, senal: r.senal, gofio: { peso: r.peso, reps: r.reps } };
     } else delete s.prep;
     await vuelo;
@@ -724,7 +734,7 @@ export function descansoPantalla(params, nav) {
   if (mismo) {
     prep = s.prep && s.prep.i === d.siguiente && s.prep.n === hechasSig ? s.prep : null;
     if (!prep && ultima) {
-      const r = G.siguienteSerie({ hecha: ultima, repsObjetivo: objetivoSig, repMin: sig.repMin, repMax: sig.repMax, tipo: ejSig.tipo, escalon: escSig, mejorReciente: mejorReciente(sig.ej) });
+      const r = G.siguienteSerie({ hecha: ultima, repsObjetivo: objetivoSig, repMin: sig.repMin, repMax: sig.repMax, tipo: ejSig.tipo, escalon: escSig, mejorReciente: mejorReciente(sig.ej), anteriores: hechasDesde.slice(0, -1) });
       prep = s.prep = { i: d.siguiente, n: hechasSig, peso: r.peso, reps: r.reps, fallo: false, senal: r.senal, gofio: { peso: r.peso, reps: r.reps } };
       guardarSesion(s);
     }
@@ -760,6 +770,10 @@ export function descansoPantalla(params, nav) {
         <span class="ls-que"><b class="cifra num" data-ls-que>${kg(prep.peso)} × ${prep.reps}</b><span data-ls-deja>${prep.fallo ? 'al fallo' : esc(dejaSig)}</span></span></span>
       <span class="ts-senal senal-${prep.senal}">${icono(senalIco === 'mas' ? 'sube' : senalIco)}${senalTxt}</span>${icono('sigue', 'class="ls-flecha"')}
     </button>` : '';
+  // G134 · «Vas cayendo»: bajas el peso en cada serie y aun así no llegas. Se dice una vez, sin regañar.
+  // Va en el sitio de la frase de ánimo (una línea), para que el pie no se mueva (G119).
+  const cayendo = mismo && prep && G.vasCayendo(hechasDesde, { repMin: desde.repMin, repsObjetivo: objetivoSig })
+    ? `Empezaste por encima. Quédate en ${kg(prep.peso)} kg.` : '';
   const loQueViene = `<div class="lo-que-viene" data-lqv><span class="ts-etiqueta">Lo que viene</span><span class="lqv-fila"><b class="lqv-nombre">${esc(ejSig.nombre)}</b><b class="cifra lqv-que">${esc(queSig())}</b></span></div>`;
   // Lo molido (G120): una tarjeta con dos datos. Si la fuerza sube, cuánto; si no, tu mejor serie de hoy. Y la próxima vez.
   let resumen = '';
@@ -768,8 +782,9 @@ export function descansoPantalla(params, nav) {
     const antes = mejorAntes(desde.ej, s.id);
     const pct = antes > 0 ? Math.round((G.e1rm(mejor.peso, mejor.reps, mejor.rir) / antes - 1) * 100) : null;
     const pesoTrabajo = hechasDesde.at(-1).peso;
-    const px = G.proximaVez({ peso: pesoTrabajo, series: hechasDesde.filter((x) => x.peso === pesoTrabajo).map((x) => ({ reps: x.reps, rir: x.rir })), repMin: desde.repMin, repMax: desde.repMax, tipo: ejDesde.tipo, escalon: escalonDe(desde.ej) });
-    const proxima = px.accion === 'subir' ? `${icono('sube')}${kg(px.peso)} kg` : px.accion === 'bajar' ? `${icono('baja')}${kg(px.peso)} kg` : `${kg(px.peso)} kg, una más`;
+    const px = G.proximaVez({ peso: pesoTrabajo, series: hechasDesde.map((x) => ({ peso: x.peso, reps: x.reps, rir: x.rir })), repMin: desde.repMin, repMax: desde.repMax, tipo: ejDesde.tipo, escalon: escalonDe(desde.ej) });
+    // G134 · Si fuiste cambiando el peso, la próxima empieza por lo que dice tu primera serie.
+    const proxima = px.mixto ? `Empieza en ${kg(px.peso)} kg` : px.accion === 'subir' ? `${icono('sube')}${kg(px.peso)} kg` : px.accion === 'bajar' ? `${icono('baja')}${kg(px.peso)} kg` : `${kg(px.peso)} kg, una más`;
     const dato = pct != null && pct >= 1
       ? `<p class="mol-fuerza">${icono('sube')}+${pct} % de fuerza</p>`
       : `<p class="mol-mejor"><span>Tu mejor serie</span><b class="cifra num">${kg(mejor.peso)} × ${mejor.reps}</b></p>`;
@@ -836,7 +851,7 @@ export function descansoPantalla(params, nav) {
     tramo = t;
     nodo.classList.toggle('mira', t === 1); nodo.classList.toggle('reanima', t === 2);
     // Soltar (G115): la frase va con lo que acabas de mover; «Suelta los brazos» no sale tras un día de pierna.
-    if (t === 0) { const f = G.animo(desde.ej, 'soltar', { evitar: ultimaFrase }); ultimaFrase = f; ponFrase(f, 'suelta'); }
+    if (t === 0) { const f = cayendo || G.animo(desde.ej, 'soltar', { evitar: ultimaFrase }); ultimaFrase = f; ponFrase(f, cayendo ? 'cayendo' : 'suelta'); }
     if (t === 1) ponFrase(elige(F2));
     if (t === 2) { ponFrase(elige(F3)); S.suena('sube', 0, Math.max(1, quedan)); }
     avisoServidor();
@@ -1037,7 +1052,7 @@ export function descansoPantalla(params, nav) {
     const b = e.currentTarget; if (b.dataset.va) return; b.dataset.va = '1';
     desde.series += 1; desde.extra = (desde.extra ?? 0) + 1;
     const pD = prescripcion(desde);
-    const r = G.siguienteSerie({ hecha: ultima, repsObjetivo: pD.reps[Math.min(hechasDesde.length, pD.reps.length - 1)] ?? desde.repMin, repMin: desde.repMin, repMax: desde.repMax, tipo: ejDesde.tipo, escalon: escalonDe(desde.ej), mejorReciente: mejorReciente(desde.ej) });
+    const r = G.siguienteSerie({ hecha: ultima, repsObjetivo: pD.reps[Math.min(hechasDesde.length, pD.reps.length - 1)] ?? desde.repMin, repMin: desde.repMin, repMax: desde.repMax, tipo: ejDesde.tipo, escalon: escalonDe(desde.ej), mejorReciente: mejorReciente(desde.ej), anteriores: hechasDesde.slice(0, -1) });
     s.prep = { i: d.desde, n: hechasDesde.length, peso: r.peso, reps: r.reps, fallo: false, senal: r.senal, gofio: { peso: r.peso, reps: r.reps } };
     d.siguiente = d.desde;
     await guardarSesion(s);

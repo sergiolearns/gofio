@@ -290,3 +290,44 @@ test('R25 · la plantilla propuesta funciona con el planificador (R15)', () => {
   const r = G.planificar({ plantilla: p, hoy: '2026-11-16', diasPorSemana: 3 });
   assert.equal(r.diaId, 'g1');
 });
+
+// ── G133 · La recuperación (R15.9, libro 1.7): el caso de Sergio del 27-28 nov ──
+test('R15.9 · el día después de una combinada con hack y rumano al fallo, nada de hack ni rumano (ni nada con la pierna de principal)', () => {
+  const P = G.PLANTILLA_SERGIO;
+  const viernes = '2026-11-27', sabado = '2026-11-28';
+  const t = Date.parse(viernes + 'T18:00:00');
+  // Ayer: combinada cortada. Hack 4 series bajando el peso hasta el fallo y rumano 2 series; lo demás, sin hacer.
+  const ser = [
+    ...[0, 1, 2, 3].map((k) => ({ ejercicioId: 'sentadilla-hack', fecha: viernes, ts: t + k * 180000, peso: 120 - k * 10, reps: 6, rir: 0 })),
+    ...[0, 1].map((k) => ({ ejercicioId: 'peso-muerto-rumano', fecha: viernes, ts: t + 900000 + k * 180000, peso: 80, reps: 8, rir: 1 })),
+  ];
+  const ses = [{ fecha: '2026-11-24', diaId: 'd1' }, { fecha: '2026-11-25', diaId: 'd3' }, { fecha: viernes, diaId: null }];
+  const r = G.planificar({ plantilla: P, series: ser, sesiones: ses, hoy: sabado, ahora: Date.parse(sabado + 'T15:30:00'), diasPorSemana: 5, quedoSinHacer: ['prensa', 'curl-femoral-tumbado'] });
+  assert.ok(r.recuperando.includes('cuadriceps') && r.recuperando.includes('isquios'), JSON.stringify(r.recuperando));
+  const ejercicios = r.tipo === 'combinada' ? r.ejercicios.map((e) => e.ej) : P.dias.find((d) => d.id === r.diaId).ejercicios.map((e) => e.ej).filter((e) => !r.fuera.includes(e));
+  for (const e of ejercicios) {
+    const principales = Object.entries(G.ejercicio(e).musculos).filter(([, f]) => f === 1).map(([m]) => m);
+    assert.ok(!principales.some((m) => ['cuadriceps', 'isquios'].includes(m)), `${e} no debería estar (${r.tipo} ${r.razon})`);
+  }
+  assert.ok(ejercicios.length >= 3, `queda una sesión de verdad: ${ejercicios}`);
+});
+test('R15.9 · se recupera: pierna al fallo 72 h, pierna sin fallo 48 h, una sola serie suave no cuenta', () => {
+  const t0 = Date.parse('2026-11-27T18:00:00');
+  const h = (x) => t0 + x * 3600000;
+  const fallo = [{ ejercicioId: 'sentadilla-hack', ts: t0, rir: 0 }];
+  assert.ok(G.recuperacion(fallo, h(70)).cuadriceps.recuperando);
+  assert.ok(!G.recuperacion(fallo, h(73)).cuadriceps.recuperando);
+  const normal = [{ ejercicioId: 'prensa', ts: t0, rir: 2 }, { ejercicioId: 'prensa', ts: t0 + 1, rir: 2 }];
+  assert.ok(G.recuperacion(normal, h(40)).cuadriceps.recuperando);
+  assert.ok(!G.recuperacion(normal, h(49)).cuadriceps.recuperando);
+  assert.ok(!G.recuperacion([{ ejercicioId: 'prensa', ts: t0, rir: 3 }], h(5)).cuadriceps.recuperando);
+  // El tren superior se recupera antes: pecho sin fallo, 24 h.
+  const pecho = [{ ejercicioId: 'press-convergente', ts: t0, rir: 2 }, { ejercicioId: 'press-convergente', ts: t0 + 1, rir: 2 }];
+  assert.ok(!G.recuperacion(pecho, h(25)).pecho.recuperando);
+});
+test('G133 · lo que se quedó sin hacer pasa delante en la combinada (si está fresco)', () => {
+  const P = G.PLANTILLA_SERGIO;
+  const deuda = Object.fromEntries(G.IDS_MUSCULOS.map((m) => [m, 10])), relativa = Object.fromEntries(G.IDS_MUSCULOS.map((m) => [m, 1])), frescura = Object.fromEntries(G.IDS_MUSCULOS.map((m) => [m, 1]));
+  const con = G.sesionCombinada({ pendientes: P.dias, deuda, relativa, frescura, minutos: 75, quedoSinHacer: ['pajaros-mancuernas'] }).map((e) => e.ej);
+  assert.ok(con.includes('pajaros-mancuernas'), con.join(', '));
+});

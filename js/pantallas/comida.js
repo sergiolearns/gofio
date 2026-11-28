@@ -200,20 +200,38 @@ export function esmayado({ fecha = hoy(), momento = null, modo = 'comer', alApun
   const res = nodo.querySelector('[data-res]'), inicio = nodo.querySelector('[data-inicio]');
   const input = nodo.querySelector('.c-buscar input');
   let ultimo = [];
+  let enLinea = []; // lo encontrado en Open Food Facts para esta búsqueda
   const pintarRes = () => {
     const q = input.value;
     if (!q.trim()) { res.innerHTML = ''; inicio.hidden = false; return; }
     inicio.hidden = true;
     if (!C.baseCargada()) { res.innerHTML = '<p class="c-nada">Abriendo la despensa…</p>'; C.cargarBase().then(pintarRes).catch(() => { res.innerHTML = '<p class="c-nada">No se pudo abrir la base de alimentos.</p>'; }); return; }
-    ultimo = C.buscar(q);
-    res.innerHTML = ultimo.length ? `<ul class="c-lista">${ultimo.map((a) => fila(a, subDe(a), `${Math.round(a.por100.kcal)} kcal<br><small>100 g</small>`)).join('')}</ul>`
-      : `<p class="c-nada">Nada con «${esc(q)}».</p><button class="c-anadir" type="button" data-crear>${icono('mas')}Crear «${esc(q)}» con tus números</button>`;
+    if (C.SUPER && !C.superCargado() && !cargandoSuper) { cargandoSuper = true; C.cargarSuper().then(() => { cargandoSuper = false; pintarRes(); }).catch(() => { cargandoSuper = 'no'; }); }
+    ultimo = [...C.buscar(q), ...enLinea.filter((x) => !C.alimentoPorRef(x.id))];
+    const fila2 = (a) => fila(a, subDe(a), `${Math.round(a.por100.kcal)} kcal<br><small>100 g</small>`);
+    const cargando = cargandoSuper === true ? '<p class="c-nada" style="padding:8px 0">Trayendo los productos del súper…</p>' : '';
+    const enOFF = q.trim().length >= 3 ? `<button class="c-anadir" type="button" data-off style="color:var(--millo)">${icono('lista')}Buscar «${esc(q.trim())}» en Open Food Facts</button><p class="c-nota" style="margin:-6px 0 8px;color:var(--piedra);font-size:12px">Solo viaja lo que has escrito.</p>` : '';
+    res.innerHTML = ultimo.length ? `${cargando}<ul class="c-lista">${ultimo.map(fila2).join('')}</ul>${enOFF}<button class="c-anadir" type="button" data-crear>${icono('mas')}Crear «${esc(q.trim())}» con tus números</button>`
+      : `${cargando}<p class="c-nada">Nada con «${esc(q)}».</p>${enOFF}<button class="c-anadir" type="button" data-crear>${icono('mas')}Crear «${esc(q.trim())}» con tus números</button>`;
     res.querySelector('[data-crear]')?.addEventListener('click', () => { cerrar(); nuevoAlimento({ nombre: q.trim(), alGuardar: (a) => seguir(a) }); });
+    res.querySelector('[data-off]')?.addEventListener('click', async (e) => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = 'Buscando en Open Food Facts…'; vibrar();
+      try {
+        const xs = await C.buscarEnOFF(q);
+        enLinea = xs;
+        if (!xs.length) { avisar('Open Food Facts no tiene nada con ese nombre.'); }
+        pintarRes();
+        if (xs.length) S.suena('leido');
+      } catch { b.disabled = false; b.textContent = 'Sin conexión o muy seguido. Prueba en un momento.'; }
+    });
   };
-  input.addEventListener('input', pintarRes);
-  const elegir = (ref) => {
-    const a = ultimo.find((x) => x.id === ref) ?? C.alimentoPorRef(ref) ?? C.loUltimo(20).find((x) => x.a.id === ref)?.a;
+  let cargandoSuper = false, espera = null;
+  input.addEventListener('input', () => { enLinea = []; clearTimeout(espera); espera = setTimeout(pintarRes, 90); });
+  const elegir = async (ref) => {
+    let a = ultimo.find((x) => x.id === ref) ?? C.alimentoPorRef(ref) ?? C.loUltimo(20).find((x) => x.a.id === ref)?.a;
     if (!a) return;
+    // Lo que llega de internet se guarda como tuyo: la próxima vez está sin conexión.
+    if (enLinea.includes(a)) { const g = await C.guardarAlimento({ nombre: a.nombre, marca: a.marca, codigo: a.codigo, fuente: 'off', dib: 'envase', por100: a.por100, medidas: a.medidas ?? [] }); a = { ...g, mio: true }; }
     vibrar(); cerrar(); seguir(a);
   };
   const seguir = (a) => {
@@ -243,8 +261,12 @@ export function racion(a, { fecha = hoy(), momento = null, comida = null, alApun
     if (!a.olla.pesoCocinado && gr) medidas.push({ id: 'racion', nombre: 'Ración', g: gr, uno: 'ración', varios: 'raciones', sinGramos: true });
   }
   const tam = C.tamanosDe(a);
+  // G135 · Tus medidas (las de cualquier alimento, pesadas una vez) y la ración que trae la etiqueta del producto.
+  const plural = (u) => (/ón$/.test(u) ? u.replace(/ón$/, 'ones') : /s$/.test(u) ? u : u.split(' ').map((w, k) => (k === 0 || /[aeiouáéíóú]$/.test(w) ? w + 's' : w)).join(' '));
+  for (const m of C.medidasDe(a)) medidas.push({ id: 'mm' + medidas.length, nombre: m.nombre, g: m.g, uno: m.nombre.toLowerCase(), varios: plural(m.nombre.toLowerCase()), mia: true });
   if (tam) {
-    if (tam.una) { const pl = /ón$/.test(tam.u) ? tam.u.replace(/ón$/, 'ones') : /s$/.test(tam.u) ? tam.u : tam.u.replace(/^(\S+)/, '$1s'); medidas.push({ id: 'una', nombre: tam.u[0].toUpperCase() + tam.u.slice(1), g: tam.una, uno: tam.u, varios: pl, tam: true }); }
+    if (tam.una) medidas.push({ id: 'una', nombre: tam.u[0].toUpperCase() + tam.u.slice(1), g: tam.una, uno: tam.u, varios: plural(tam.u), tam: true });
+    else if (tam.tallas) tam.tallas.forEach((t, k) => { const id = ['p', 'm', 'g'][k]; medidas.push({ id, nombre: t[0].toUpperCase() + t.slice(1), g: tam[id], uno: `${tam.u} ${t}`, varios: plural(`${tam.u} ${t}`), tam: true }); });
     else for (const [k, n1, n2] of [['p', 'Pequeña', 'pequeñas'], ['m', 'Mediana', 'medianas'], ['g', 'Grande', 'grandes']]) medidas.push({ id: k, nombre: n1, g: tam[k], uno: n1.toLowerCase(), varios: n2, tam: true });
   }
   const soloRaciones = a.olla && !a.olla.pesoCocinado;
@@ -255,14 +277,14 @@ export function racion(a, { fecha = hoy(), momento = null, comida = null, alApun
     const previa = medidas.find((m) => m.id !== 'gramos' && comida.medida?.includes(m.uno));
     if (previa) { med = previa; cant = Math.round(comida.gramos / previa.g * 2) / 2 || 1; } else { med = medidas.at(-1); cant = comida.gramos; }
   } else if (med.id === 'gramos') cant = 100;
-  if (tam && !comida && !tam.una) { med = medidas.find((m) => m.id === 'm'); }
+  if (tam && !comida && !tam.una && !medidas.some((m) => m.mia)) { med = medidas.find((m) => m.id === 'm'); }
   let mom = comida?.momento ?? momento ?? momentoAhora();
   const gramos = () => (med.id === 'gramos' ? cant : cant * med.g);
   const medidaTxt = () => (med.id === 'gramos' ? `${Math.round(cant)} g` : `${cantidadTxt(cant)} ${cant === 1 ? med.uno : med.varios}`);
   const fuente = C.FUENTE[a.fuente] ?? '';
   const porRacion = soloRaciones ? G.aporteDe(p, medidas[0].g) : null;
   const { nodo, cerrar } = hoja(`<h2>${esc(a.nombre)}</h2><p class="sub">${fuente ? `${fuente} · ` : ''}${porRacion ? (sn ? `${num(porRacion.prot, 0)} g de proteína por ración` : `${Math.round(porRacion.kcal)} kcal y ${num(porRacion.prot, 0)} g de proteína por ración`) : sn ? `${num(p.prot, 1)} g de proteína por 100 g` : `${Math.round(p.kcal)} kcal y ${num(p.prot, 1)} g de proteína por 100 g`}${tam ? '. ¿No la pesaste? Elige su tamaño.' : ''}</p>
-    ${medidas.length > 1 ? `<div class="c-medidas" role="radiogroup">${medidas.map((m) => `<button type="button" data-med="${m.id}" aria-pressed="${m === med}">${esc(m.nombre)}${m.id !== 'gramos' && !m.sinGramos ? ` · ${Math.round(m.g)} g` : ''}</button>`).join('')}</div>` : ''}
+    <div class="c-medidas" role="radiogroup">${medidas.length > 1 ? medidas.map((m) => `<button type="button" data-med="${m.id}" aria-pressed="${m === med}">${esc(m.nombre)}${m.id !== 'gramos' && !m.sinGramos ? ` · ${Math.round(m.g)} g` : ''}</button>`).join('') : ''}${a.olla ? '' : '<button type="button" data-nueva-medida class="c-med-nueva">+ Medida</button>'}</div>
     <div class="contador" style="margin-top:14px"><button class="redondo" type="button" data-menos data-son="-1" aria-label="Menos">${icono('menos')}</button><div class="valor"><button type="button" data-escribir data-son="0" aria-label="Escribir la cantidad"><span class="cifra peso num" data-cant></span></button><span class="unidad" data-uni></span></div><button class="redondo" type="button" data-mas data-son="1" aria-label="Más">${icono('mas')}</button></div>
     <div class="c-res">${sn ? '' : '<span><b data-kcal></b>kcal</span>'}<span class="p"><b data-prot></b>proteína</span></div>
     ${tam && med.tam !== false ? '<p class="c-nota" data-nota-tam style="margin:10px 0 0;color:var(--piedra);text-align:center">Tamaños medios de USDA. Si la pesas, mejor.</p>' : ''}
@@ -293,6 +315,10 @@ export function racion(a, { fecha = hoy(), momento = null, comida = null, alApun
     const v = await pedirNumero({ titulo: med.id === 'gramos' ? 'Gramos' : med.nombre, valor: med.id === 'gramos' ? Math.round(cant) : cant, unidad: med.id === 'gramos' ? 'g' : med.varios });
     if (v != null && v > 0) { cant = med.id === 'gramos' ? Math.round(v) : Math.round(v * 2) / 2 || 0.5; ver(); }
   });
+  nodo.querySelector('[data-nueva-medida]')?.addEventListener('click', () => {
+    cerrar();
+    medidaNueva(a, () => racion(a, { fecha, momento: mom, comida, alApuntar }));
+  });
   nodo.querySelectorAll('[data-mom]').forEach((b) => b.addEventListener('click', () => { mom = b.dataset.mom; nodo.querySelectorAll('[data-mom]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); vibrar(); }));
   nodo.querySelector('[data-apuntar]').addEventListener('click', async () => {
     if (comida) await C.cambiarComida(comida, { gramos: gramos(), momento: mom, medida: medidaTxt() });
@@ -300,6 +326,20 @@ export function racion(a, { fecha = hoy(), momento = null, comida = null, alApun
     vibrar(); cerrar(); alApuntar?.();
   });
   nodo.querySelector('[data-quitar]')?.addEventListener('click', async () => { await C.borrarComida(comida); cerrar(); alApuntar?.(); avisar('Quitado.'); });
+}
+
+// ── G135 · Una medida tuya para cualquier alimento: la pesas una vez («una rebanada», «un yogur», «mi taza») ───
+export function medidaNueva(a, alGuardar) {
+  const { nodo, cerrar } = hoja(`<h2>Una medida tuya</h2><p class="sub">${esc(a.nombre)}. Pésala una vez y la próxima vez solo la tocas.</p>
+    <label class="c-campo"><span>Nombre</span><input class="c-texto" data-n placeholder="Una rebanada" autocomplete="off"></label>
+    <label class="c-campo"><span>Gramos</span><span class="c-v"><input class="c-v" data-g inputmode="decimal" placeholder="—"><small>g</small></span></label>
+    <div class="botones"><button class="boton" type="button" data-ok>Guardar medida</button></div>`, { clara: true });
+  nodo.querySelector('[data-ok]').addEventListener('click', async () => {
+    const n = nodo.querySelector('[data-n]').value.trim(); const g = parseFloat(nodo.querySelector('[data-g]').value.replace(',', '.'));
+    if (!n || !(g > 0)) { avisar('Falta el nombre o los gramos.'); return; }
+    await C.guardarMedida(a, { nombre: n, g });
+    vibrar(); cerrar(); alGuardar?.();
+  });
 }
 
 // ── Un alimento con tus números (y lo que lee la etiqueta) ───
@@ -327,7 +367,7 @@ export function fuentes() {
     <p><b>BEDCA.</b> Base de Datos Española de Composición de Alimentos, de la AESAN (v1.0, 2010). Uso personal y no comercial, citando la fuente. www.bedca.net</p>
     <p><b>TCAC.</b> Tabla de Composición de Alimentos Colombianos, del ICBF (2018): arepas, plátano, yuca, quesos y más. www.icbf.gov.co</p>
     <p><b>USDA FoodData Central.</b> SR Legacy (2018): lo que falta y el peso de los tamaños (una papa mediana, un huevo grande). Dominio público.</p>
-    <p><b>Open Food Facts.</b> Los envasados, por el código de barras. Solo viaja el código; nada tuyo. Datos con licencia ODbL.</p>
+    <p><b>Open Food Facts.</b> Los productos del súper que se venden en España (Mercadona, Lidl, Carrefour, Dia, marcas canarias…), dentro de la app y sin conexión. Si algo no está, se busca por internet con un toque o por el código de barras: solo viaja lo que escribes o el código; nada tuyo. Lo rellena la gente: si un número no cuadra, mira la etiqueta. Datos con licencia ODbL.</p>
     <p><b>Las cuentas.</b> Tu gasto sale de lo que comes y de cómo cambia tu peso (6.500 kcal por kilo). La proteína, de tu peso: 1,8 g por kilo (2 si buscas perder grasa). Nunca por debajo de tu gasto en reposo.</p>
     <p>Gofio no es una app médica: no diagnostica ni trata nada.</p></div>`);
 }

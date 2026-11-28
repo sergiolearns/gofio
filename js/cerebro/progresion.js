@@ -113,6 +113,19 @@ export function pesoDeSubida(peso, { repMin, repMax, tipo, escalon }) {
 export function proximaVez({ peso, series, repMin, repMax, tipo, escalon }) {
   const rir = rirObjetivo(tipo);
   if (!series?.length) return { accion: 'mantener', peso, reps: [], rir };
+  // G134 · Si cambiaste el peso entre series (empezaste fuerte y fuiste bajando), la próxima vez se empieza con el peso
+  // que tu primera serie dice que puedes mover haciendo repMin con la reserva objetivo: ni el de la primera (que no
+  // aguantaste) ni el de la última (que llevaba toda la fatiga).
+  const pesos = series.map((s) => s.peso).filter((p) => p > 0);
+  if (pesos.length === series.length && Math.max(...pesos) - Math.min(...pesos) > 1e-9) {
+    const p0 = series[0];
+    const fuerza = p0.peso * (1 + (p0.reps + Math.max(0, p0.rir ?? rir.max)) / 30);
+    const ideal = fuerza / (1 + (repMin + rir.max) / 30);
+    let nuevo = redondearAEscalon(ideal, escalon, 'abajo');
+    if (!(nuevo > 0)) nuevo = Math.min(...pesos);
+    const accion = nuevo > p0.peso + 1e-9 ? 'subir' : nuevo < p0.peso - 1e-9 ? 'ajustar' : 'mantener';
+    return { accion, peso: nuevo, reps: series.map(() => repMin), rir, mixto: true, empezo: p0.peso };
+  }
   // 1) Todas las series en el tope del rango, con el RIR objetivo o con más margen → siguiente escalón y parte baja del rango.
   const todasArriba = series.every((s) => s.reps >= repMax && s.rir >= rir.min);
   if (todasArriba) {

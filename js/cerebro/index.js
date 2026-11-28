@@ -18,3 +18,4 @@ export * from './molinero.js';   // R28, R29 y las leyes de la piedra (v1.5, La 
 export * from './animos.js';     // los ánimos con grupo y momento (La brega)
 export * from './tostar.js';     // R30 (v1.5, La brega)
 export * from './comida.js';     // R1-R8, R17, R31 (v1.6, Comida y peso)
+export * from './recuperacion.js'; // R15.9 (v1.7, G133)
